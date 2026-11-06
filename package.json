@@ -1,0 +1,21 @@
+{
+  "name": "polyaero-cathay-smarttag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PolyAero Cathay SmartTag Hackathon Monorepo",
+  "scripts": {
+    "dev:mobile": "pnpm --filter @polyaero/mobile start",
+    "dev:staff": "pnpm --filter @polyaero/staff dev",
+    "build:staff": "pnpm --filter @polyaero/staff build",
+    "build:packages": "pnpm --filter \"@polyaero/design-tokens\" --filter \"@polyaero/shared\" build",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "lint": "pnpm -r --parallel run lint",
+    "test": "pnpm --filter @polyaero/shared test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

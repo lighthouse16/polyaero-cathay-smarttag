@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "PolyAero SmartTag",
+    "slug": "polyaero-smarttag",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "polyaero-smarttag",
+    "splash": {
+      "backgroundColor": "#006564"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.polyaero.smarttag",
+      "infoPlist": {
+        "NFCReaderUsageDescription": "PolyAero SmartTag uses NFC to pair, read, and update digital baggage tags."
+      }
+    },
+    "android": {
+      "package": "com.polyaero.smarttag",
+      "adaptiveIcon": {
+        "backgroundColor": "#006564"
+      },
+      "permissions": [
+        "android.permission.NFC"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "poly-aero-hackathon-2026"
+      },
+      "prototypeNotice": "PolyAero Cathay SmartTag Hackathon Concept - Unofficial Research Prototype"
+    }
+  }
+}

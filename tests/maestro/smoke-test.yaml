@@ -1,0 +1,8 @@
+appId: com.polyaero.smarttag
+---
+- launchApp
+- assertVisible: "PolyAero SmartTag"
+- assertVisible: "CATHAY HACKATHON 2026"
+- assertVisible: "Simulate NFC Tap to Tag"
+- tapOn: "Simulate NFC Tap to Tag"
+- assertVisible: "Scan Status: SUCCESS"
