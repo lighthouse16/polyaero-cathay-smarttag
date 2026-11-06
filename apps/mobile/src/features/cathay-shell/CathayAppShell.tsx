@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from 'react-native';
 import { CathaySplashScreen } from './CathaySplashScreen';
 import { CathayLanguageModal } from './CathayLanguageModal';
@@ -27,9 +29,24 @@ export type CathayScreenId = 'splash' | 'language' | 'welcome' | 'home' | 'trips
 
 export const CathayAppShell: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState<CathayScreenId>('splash');
+  const [isDevMenuVisible, setIsDevMenuVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<SmartTagScanResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Check URL query parameters on web for automated QA testing (?screen=home)
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const screenParam = params.get('screen') as CathayScreenId | null;
+      if (
+        screenParam &&
+        ['splash', 'language', 'welcome', 'home', 'trips'].includes(screenParam)
+      ) {
+        setActiveScreen(screenParam);
+      }
+    }
+  }, []);
 
   const handleSimulateNfcTap = async () => {
     setIsScanning(true);
@@ -68,8 +85,6 @@ export const CathayAppShell: React.FC = () => {
       case 'welcome':
         return (
           <CathayMemberWelcomeScreen
-            onSignUp={() => setActiveScreen('home')}
-            onSignIn={() => setActiveScreen('home')}
             onContinueAsGuest={() => setActiveScreen('home')}
           />
         );
@@ -77,13 +92,7 @@ export const CathayAppShell: React.FC = () => {
       case 'home':
         return (
           <CathayHomeScreen
-            activeTab="home"
-            onSelectTab={(tab) => {
-              if (tab === 'trips') {
-                setActiveScreen('trips');
-              }
-            }}
-            onSignInPress={() => setActiveScreen('welcome')}
+            onOpenDevMenu={() => setIsDevMenuVisible(true)}
           />
         );
 
@@ -101,7 +110,7 @@ export const CathayAppShell: React.FC = () => {
                   <Text style={styles.backButtonText}>Cathay Home</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.tripsTitle}>My Trips & Baggage</Text>
+                <Text style={styles.tripsTitle}>SmartTag Prototype</Text>
                 <View style={styles.backButtonPlaceholder} />
               </View>
             </SafeAreaView>
@@ -184,39 +193,68 @@ export const CathayAppShell: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      {/* Screen Presentation */}
+      {/* 100% Full-Screen Clean Passenger Interface (NO visible switcher bar) */}
       <View style={styles.screenArea}>{renderCurrentScreen()}</View>
 
-      {/* Screen Switcher Bar (For evaluation & demo across all 4 screens) */}
-      <View style={styles.screenSwitcherBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.switcherContent}
-        >
-          <Text style={styles.switcherLabel}>SCREEN:</Text>
-          {(['splash', 'language', 'welcome', 'home', 'trips'] as const).map((screen) => (
-            <TouchableOpacity
-              key={screen}
-              style={[
-                styles.switcherPill,
-                activeScreen === screen && styles.switcherPillActive,
-              ]}
-              onPress={() => setActiveScreen(screen)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.switcherPillText,
-                  activeScreen === screen && styles.switcherPillTextActive,
-                ]}
+      {/* Development / Evaluation Menu Modal (Gated, never shown in normal render) */}
+      <Modal
+        visible={isDevMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsDevMenuVisible(false)}
+      >
+        <View style={styles.devMenuOverlay}>
+          <View style={styles.devMenuCard}>
+            <View style={styles.devMenuHeader}>
+              <Text style={styles.devMenuTitle}>PolyAero Developer Navigation</Text>
+              <TouchableOpacity
+                onPress={() => setIsDevMenuVisible(false)}
+                activeOpacity={0.7}
               >
-                {screen === 'language' ? 'Language Modal' : screen === 'trips' ? 'SmartTag' : screen.charAt(0).toUpperCase() + screen.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.devMenuSub}>
+              Select any screen to evaluate visual fidelity or test prototype features:
+            </Text>
+
+            <View style={styles.devOptionsList}>
+              {(
+                [
+                  { id: 'splash', label: '1. Splash Screen' },
+                  { id: 'language', label: '2. Language & Country Modal' },
+                  { id: 'welcome', label: '3. Member Welcome Screen' },
+                  { id: 'home', label: '4. Cathay Home Screen' },
+                  { id: 'trips', label: '5. SmartTag Prototype (PolyAero)' },
+                ] as const
+              ).map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.devOptionBtn,
+                    activeScreen === item.id && styles.devOptionBtnActive,
+                  ]}
+                  onPress={() => {
+                    setActiveScreen(item.id);
+                    setIsDevMenuVisible(false);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.devOptionBtnText,
+                      activeScreen === item.id && styles.devOptionBtnTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -224,44 +262,70 @@ export const CathayAppShell: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   screenArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
-  screenSwitcherBar: {
-    backgroundColor: '#0F172A',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  switcherContent: {
+  devMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    padding: 20,
   },
-  switcherLabel: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginRight: 2,
-  },
-  switcherPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  devMenuCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  switcherPillActive: {
+  devMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  devMenuTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  devMenuSub: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  devOptionsList: {
+    gap: 8,
+  },
+  devOptionBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  devOptionBtnActive: {
     backgroundColor: '#006564',
   },
-  switcherPillText: {
-    color: '#94A3B8',
-    fontSize: 11,
+  devOptionBtnText: {
+    fontSize: 14,
+    color: '#334155',
     fontWeight: '500',
   },
-  switcherPillTextActive: {
+  devOptionBtnTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
   },

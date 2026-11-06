@@ -9,16 +9,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface CathayHomeScreenProps {
-  onSelectTab?: (tab: 'home' | 'book' | 'trips' | 'profile' | 'tools') => void;
+  onOpenDevMenu?: () => void;
   onSearchPress?: () => void;
   onOffersPress?: () => void;
-  onSignInPress?: () => void;
-  activeTab?: 'home' | 'book' | 'trips' | 'profile' | 'tools';
 }
 
 interface DestinationOffer {
@@ -58,24 +57,64 @@ const DESTINATION_OFFERS: DestinationOffer[] = [
 ];
 
 export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
-  onSelectTab,
+  onOpenDevMenu,
   onSearchPress,
   onOffersPress,
-  onSignInPress,
-  activeTab = 'home',
 }) => {
-  const [currentTab, setCurrentTab] = useState<'home' | 'book' | 'trips' | 'profile' | 'tools'>(
-    activeTab
-  );
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const handleTabChange = (tab: 'home' | 'book' | 'trips' | 'profile' | 'tools') => {
-    setCurrentTab(tab);
-    onSelectTab?.(tab);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+  };
+
+  const handleTabPress = (tabName: string) => {
+    if (tabName === 'Home') return;
+    if (tabName === 'My trips') {
+      showToast('My trips pending reference in Phase 1B. SmartTag prototype is available in Dev Menu.');
+    } else {
+      showToast(`${tabName} screen is pending reference in Phase 1B.`);
+    }
   };
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
+
+      {/* Subtle Feedback Banner for Non-Implemented Features */}
+      {toastMessage && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
+
+      {/* Non-Functional Auth Demo Dialog */}
+      <Modal
+        visible={showAuthModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAuthModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Authentication Notice</Text>
+            <Text style={styles.modalBody}>
+              Member sign in and registration require Cathay Pacific identity integration.
+              In this hackathon prototype, passenger flows run in guest mode.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowAuthModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalCloseText}>Continue as Guest</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView
         style={styles.mainScroll}
@@ -83,7 +122,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Header Area with Skyline Background */}
+        {/* Hero Header Area with Clean Photographic Skyline Background */}
         <ImageBackground
           source={require('../../../assets/cathay/cathay-hero-skyline.png')}
           style={styles.heroBackground}
@@ -92,7 +131,13 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           <SafeAreaView style={styles.headerSafeArea}>
             {/* Top Navigation Row */}
             <View style={styles.headerNavRow}>
-              <View style={styles.headerSpacer} />
+              {/* Invisible secret trigger zone for dev menu */}
+              <TouchableOpacity
+                style={styles.headerSpacer}
+                onLongPress={onOpenDevMenu}
+                activeOpacity={1}
+                accessibilityLabel="Dev menu trigger"
+              />
 
               {/* Center White Brushwing Logo */}
               <View style={styles.brushwingContainer}>
@@ -108,6 +153,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <TouchableOpacity
                   style={styles.iconButton}
                   activeOpacity={0.7}
+                  onPress={() => showToast('No new notifications.')}
                   accessibilityLabel="Notifications"
                 >
                   <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
@@ -117,6 +163,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <TouchableOpacity
                   style={styles.iconButton}
                   activeOpacity={0.7}
+                  onPress={onOpenDevMenu}
                   accessibilityLabel="More options"
                 >
                   <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
@@ -130,7 +177,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 
               <TouchableOpacity
                 style={styles.signInButton}
-                onPress={onSignInPress}
+                onPress={() => setShowAuthModal(true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.signInButtonText}>Sign in / Sign up</Text>
@@ -146,7 +193,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 
             <TouchableOpacity
               style={styles.routeSelectorRow}
-              onPress={onSearchPress}
+              onPress={onSearchPress || (() => showToast('Flight booking flow scheduled for Phase 1B.'))}
               activeOpacity={0.85}
               testID="flight-search-selector"
             >
@@ -159,7 +206,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 
               {/* Center Airplane Badge */}
               <View style={styles.airplaneBadge}>
-                <Ionicons name="airplane" size={17} color="#006564" />
+                <Ionicons name="airplane" size={16} color="#006564" />
               </View>
 
               {/* Destination */}
@@ -176,16 +223,16 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
         <View style={styles.offersSection}>
           <Text style={styles.sectionTitle}>Our latest offers</Text>
 
-          {/* Promo Callout Card */}
+          {/* Promo Callout Card (Accurate #DDE7E6 surface) */}
           <TouchableOpacity
             style={styles.promoBanner}
-            onPress={onOffersPress}
+            onPress={onOffersPress || (() => showToast('Promotions browser scheduled for Phase 1B.'))}
             activeOpacity={0.85}
             testID="promo-callout-banner"
           >
             <Ionicons name="ticket-outline" size={22} color="#1C2024" />
             <View style={styles.promoTextContainer}>
-              <Text style={styles.promoText}>
+              <Text style={styles.promoText} numberOfLines={2}>
                 <Text style={styles.promoBold}>Flying soon? </Text>
                 Browse our lowest fares for next 60 days.
               </Text>
@@ -204,6 +251,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={styles.carouselScrollView}
             contentContainerStyle={styles.carouselContainer}
           >
             {DESTINATION_OFFERS.map((offer) => (
@@ -211,7 +259,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 key={offer.id}
                 style={styles.destinationCard}
                 activeOpacity={0.9}
-                onPress={onSearchPress}
+                onPress={() => showToast(`Selected destination: ${offer.city}`)}
               >
                 <Image source={offer.image} style={styles.destinationImage} resizeMode="cover" />
                 <View style={styles.destinationDetails}>
@@ -233,111 +281,55 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Fixed Bottom Tab Bar (5 Tabs) */}
+      {/* Fixed Bottom Tab Bar (Home is locked active; other tabs show status notice) */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => handleTabChange('home')}
           activeOpacity={0.8}
           testID="tab-home"
         >
-          <Ionicons
-            name="home"
-            size={22}
-            color={currentTab === 'home' ? '#006564' : '#718096'}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              currentTab === 'home' ? styles.tabLabelActive : styles.tabLabelInactive,
-            ]}
-          >
-            Home
-          </Text>
+          <Ionicons name="home" size={22} color="#006564" />
+          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => handleTabChange('book')}
+          onPress={() => handleTabPress('Book')}
           activeOpacity={0.8}
           testID="tab-book"
         >
-          <Ionicons
-            name="airplane-outline"
-            size={22}
-            color={currentTab === 'book' ? '#006564' : '#718096'}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              currentTab === 'book' ? styles.tabLabelActive : styles.tabLabelInactive,
-            ]}
-          >
-            Book
-          </Text>
+          <Ionicons name="airplane-outline" size={22} color="#718096" />
+          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Book</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => handleTabChange('trips')}
+          onPress={() => handleTabPress('My trips')}
           activeOpacity={0.8}
           testID="tab-trips"
         >
-          <Ionicons
-            name="briefcase-outline"
-            size={22}
-            color={currentTab === 'trips' ? '#006564' : '#718096'}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              currentTab === 'trips' ? styles.tabLabelActive : styles.tabLabelInactive,
-            ]}
-          >
-            My trips
-          </Text>
+          <Ionicons name="briefcase-outline" size={22} color="#718096" />
+          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>My trips</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => handleTabChange('profile')}
+          onPress={() => handleTabPress('Profile')}
           activeOpacity={0.8}
           testID="tab-profile"
         >
-          <Ionicons
-            name="person-outline"
-            size={22}
-            color={currentTab === 'profile' ? '#006564' : '#718096'}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              currentTab === 'profile' ? styles.tabLabelActive : styles.tabLabelInactive,
-            ]}
-          >
-            Profile
-          </Text>
+          <Ionicons name="person-outline" size={22} color="#718096" />
+          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Profile</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => handleTabChange('tools')}
+          onPress={() => handleTabPress('Travel tools')}
           activeOpacity={0.8}
           testID="tab-tools"
         >
-          <Ionicons
-            name="grid-outline"
-            size={22}
-            color={currentTab === 'tools' ? '#006564' : '#718096'}
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              currentTab === 'tools' ? styles.tabLabelActive : styles.tabLabelInactive,
-            ]}
-          >
-            Travel tools
-          </Text>
+          <Ionicons name="grid-outline" size={22} color="#718096" />
+          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Travel tools</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -348,16 +340,93 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 36,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    zIndex: 999,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginBottom: 10,
+  },
+  modalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4A5568',
+    marginBottom: 20,
+  },
+  modalCloseButton: {
+    backgroundColor: '#006564',
+    borderRadius: 6,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   mainScroll: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingBottom: 20,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  carouselScrollView: {
+    width: '100%',
+    maxWidth: '100%',
+    flexGrow: 0,
+    flexShrink: 1,
   },
   heroBackground: {
     width: '100%',
-    height: 250,
+    height: 220,
     justifyContent: 'space-between',
   },
   headerSafeArea: {
@@ -374,6 +443,7 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 60,
+    height: 44,
   },
   brushwingContainer: {
     alignItems: 'center',
@@ -381,7 +451,7 @@ const styles = StyleSheet.create({
   },
   brushwingIcon: {
     width: 26,
-    height: 26,
+    height: 24,
   },
   headerIconsGroup: {
     flexDirection: 'row',
@@ -430,13 +500,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   searchCardWrapper: {
-    paddingHorizontal: 16,
-    marginTop: -28,
+    marginHorizontal: 16,
+    marginTop: -32,
   },
   searchCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 18,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
@@ -453,7 +523,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 14,
   },
   originCol: {
     flex: 1,
@@ -476,13 +546,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   airplaneBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#F0F7F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 12,
+    marginHorizontal: 8,
   },
   destCol: {
     flex: 1,
@@ -506,7 +576,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   offersSection: {
-    marginTop: 26,
+    marginTop: 24,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   sectionTitle: {
     fontSize: 21,
@@ -518,7 +591,7 @@ const styles = StyleSheet.create({
   promoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EBF4F1',
+    backgroundColor: '#DDE7E6',
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -527,11 +600,11 @@ const styles = StyleSheet.create({
   },
   promoTextContainer: {
     flex: 1,
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   promoText: {
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: '#1A202C',
   },
   promoBold: {
@@ -555,7 +628,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   destinationCard: {
-    width: 172,
+    width: 154,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     shadowColor: '#000000',
@@ -567,25 +640,25 @@ const styles = StyleSheet.create({
   },
   destinationImage: {
     width: '100%',
-    height: 114,
+    height: 104,
   },
   destinationDetails: {
-    padding: 14,
+    padding: 12,
   },
   destinationCity: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: '600',
     color: '#1C2024',
   },
   destinationCabin: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: '#718096',
     marginTop: 2,
   },
   priceLabel: {
     fontSize: 11,
     color: '#718096',
-    marginTop: 14,
+    marginTop: 12,
   },
   priceValue: {
     fontSize: 16,
@@ -598,14 +671,15 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 78 : 62,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 6,
+    height: Platform.OS === 'ios' ? 84 : 64,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
     paddingTop: 8,
     backgroundColor: '#FFFFFF',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#E2E8F0',
     justifyContent: 'space-around',
     alignItems: 'center',
+    width: '100%',
   },
   tabItem: {
     flex: 1,
@@ -613,7 +687,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: 10.5,
+    fontSize: 10,
     marginTop: 4,
   },
   tabLabelActive: {

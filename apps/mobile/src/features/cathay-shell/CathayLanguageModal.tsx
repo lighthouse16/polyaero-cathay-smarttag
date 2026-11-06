@@ -32,6 +32,7 @@ export const CathayLanguageModal: React.FC<CathayLanguageModalProps> = ({
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           <View style={styles.card}>
             {/* English Section */}
@@ -90,71 +91,73 @@ export const CathayLanguageModal: React.FC<CathayLanguageModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#EBECEE',
   },
   safeArea: {
     flex: 1,
-    justifyContent: 'center',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 4,
     paddingHorizontal: 22,
     paddingTop: 24,
-    paddingBottom: 6,
+    paddingBottom: 4,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
     elevation: 4,
+    width: '100%',
+    maxWidth: 342,
+    alignSelf: 'center',
   },
   englishTitle: {
-    fontSize: 20,
+    fontSize: 18.5,
     fontWeight: '300',
     color: '#1C2024',
     letterSpacing: -0.2,
-    marginBottom: 12,
-  },
-  chineseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1C2024',
-    marginTop: 18,
     marginBottom: 10,
   },
+  chineseTitle: {
+    fontSize: 15.5,
+    fontWeight: '600',
+    color: '#1C2024',
+    marginTop: 16,
+    marginBottom: 8,
+  },
   bodyText: {
-    fontSize: 13.5,
-    lineHeight: 19.5,
+    fontSize: 13,
+    lineHeight: 18.5,
     color: '#4A5568',
     fontWeight: '400',
   },
   paragraphSpacing: {
-    marginTop: 12,
+    marginTop: 10,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#CBD5E1',
     marginHorizontal: -22,
-    marginTop: 18,
+    marginTop: 16,
   },
   selectorContainer: {
     paddingVertical: 12,
   },
   selectorLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     color: '#718096',
     textTransform: 'uppercase',
   },
   selectorValue: {
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '400',
     color: '#1A202C',
     marginTop: 4,
@@ -165,7 +168,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmText: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: '600',
     color: '#006564',
   },

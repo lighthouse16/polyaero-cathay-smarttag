@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,23 +7,61 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 interface CathayMemberWelcomeScreenProps {
-  onSignUp?: () => void;
-  onSignIn?: () => void;
   onContinueAsGuest?: () => void;
 }
 
 export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps> = ({
-  onSignUp,
-  onSignIn,
   onContinueAsGuest,
 }) => {
+  const [authNoticeType, setAuthNoticeType] = useState<'signin' | 'signup' | null>(null);
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
+
+      {/* Non-Functional Auth Demo Modal */}
+      <Modal
+        visible={authNoticeType !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAuthNoticeType(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              {authNoticeType === 'signup' ? 'Member Registration' : 'Member Sign In'}
+            </Text>
+            <Text style={styles.modalBody}>
+              Production Cathay member authentication is not active in this hackathon prototype.
+              You can explore the passenger experience and SmartTag features in guest mode.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalPrimaryBtn}
+              onPress={() => {
+                setAuthNoticeType(null);
+                onContinueAsGuest?.();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalPrimaryBtnText}>Continue as Guest Passenger</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalSecondaryBtn}
+              onPress={() => setAuthNoticeType(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.scrollView}
@@ -31,7 +69,7 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
           bounces={false}
           showsVerticalScrollIndicator={false}
         >
-          {/* Top Tail Hero Image */}
+          {/* Top Tail Hero Image (Accurate 215pt height) */}
           <View style={styles.heroWrapper}>
             <Image
               source={require('../../../assets/cathay/cathay-hero-tail.png')}
@@ -42,7 +80,9 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
 
           {/* Body Content */}
           <View style={styles.body}>
-            <Text style={styles.heading}>Become a Cathay member today</Text>
+            <Text style={styles.heading}>
+              Become a Cathay member{'\n'}today
+            </Text>
 
             <Text style={styles.subheading}>
               Unlock a world of exclusive member benefits and rewards:
@@ -66,7 +106,7 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
             <View style={styles.actionsContainer}>
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={onSignUp || onContinueAsGuest}
+                onPress={() => setAuthNoticeType('signup')}
                 activeOpacity={0.85}
                 testID="welcome-signup-button"
               >
@@ -75,7 +115,7 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
 
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={onSignIn || onContinueAsGuest}
+                onPress={() => setAuthNoticeType('signin')}
                 activeOpacity={0.7}
                 testID="welcome-signin-button"
               >
@@ -114,7 +154,7 @@ const styles = StyleSheet.create({
   },
   heroWrapper: {
     width: '100%',
-    height: 190,
+    height: 215,
     backgroundColor: '#D1E0E5',
     overflow: 'hidden',
   },
@@ -124,7 +164,7 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 24,
     paddingBottom: 40,
     backgroundColor: '#FFFFFF',
   },
@@ -139,11 +179,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: '#2D3748',
-    marginTop: 18,
+    marginTop: 16,
     marginBottom: 8,
   },
   benefitList: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   benefitItem: {
     fontSize: 15,
@@ -154,7 +194,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: '#4A5568',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   programmeLink: {
     color: '#006564',
@@ -166,12 +206,12 @@ const styles = StyleSheet.create({
     color: '#1A202C',
   },
   actionsContainer: {
-    marginTop: 8,
+    marginTop: 4,
   },
   primaryButton: {
     backgroundColor: '#284239',
     borderRadius: 3,
-    height: 52,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -186,10 +226,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#006564',
     borderRadius: 3,
-    height: 52,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
+    marginTop: 12,
   },
   secondaryButtonText: {
     color: '#006564',
@@ -198,13 +238,64 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   tertiaryButton: {
-    paddingVertical: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tertiaryButtonText: {
     color: '#006564',
     fontSize: 15,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginBottom: 10,
+  },
+  modalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4A5568',
+    marginBottom: 20,
+  },
+  modalPrimaryBtn: {
+    backgroundColor: '#006564',
+    borderRadius: 6,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalSecondaryBtn: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalSecondaryBtnText: {
+    color: '#718096',
+    fontSize: 14,
     fontWeight: '500',
   },
 });

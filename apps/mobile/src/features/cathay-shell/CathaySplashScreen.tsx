@@ -43,12 +43,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandRow: {
-    width: '84%',
+    width: '74%',
+    maxWidth: 290,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandImage: {
     width: '100%',
-    height: 64,
+    aspectRatio: 7.01,
   },
 });

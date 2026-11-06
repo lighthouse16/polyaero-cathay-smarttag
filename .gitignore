@@ -42,4 +42,7 @@ Thumbs.db
 # UI Reconstruction Reference Assets (Sensitive & Large)
 # Must not be committed to Git per privacy & licensing guidelines
 reference-screenshots/
+docs/reference-screenshots/
 docs/references/raw/
+docs/visual-qa/*
+!docs/visual-qa/run_qa.py
