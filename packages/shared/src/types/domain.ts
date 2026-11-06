@@ -57,18 +57,28 @@ export interface Booking {
   createdAt: string;
 }
 
-export type EinkStatus = 'READY' | 'SYNCHRONIZING' | 'UPDATED' | 'LOW_POWER' | 'ERROR';
+export type TagPowerSource = 'PASSIVE_RF' | 'BATTERY_BACKED';
+
+export type EinkStatus =
+  | 'READY'
+  | 'UPDATING'
+  | 'SYNCHRONIZED'
+  | 'WRITE_FAILED'
+  | 'UNPROGRAMMED';
+
+export type BarcodeSymbology = 'INTERLEAVED_2_OF_5' | 'CODE_128';
 
 export interface SmartTag {
   id: string;
-  tagUid: string;            // NFC chip UID e.g. "04:A2:3B:4C:5D:6E:70"
-  hardwareVersion: string;   // "E-INK-2.9-V2"
-  firmwareVersion: string;   // "1.2.4"
-  batteryLevel: number;      // 0 - 100 (%)
+  tagUid: string;            // ISO 14443-A UID (7-byte hex string)
+  hardwareModel: string;     // e.g. "PolyAero-Passive-2.9in"
+  powerSource: TagPowerSource;
+  batteryLevel?: number;     // Optional: only present if tag is battery-backed; omitted for passive RF
   einkDisplayStatus: EinkStatus;
+  barcodeSymbology: BarcodeSymbology; // Interleaved 2 of 5 for standard IATA 10-digit BSM
   linkedBaggageId?: string;
-  isNfcLocked: boolean;
-  lastSyncAt: string;
+  isWriteProtected: boolean;
+  lastWrittenAt: string;
   createdAt: string;
 }
 
@@ -92,7 +102,7 @@ export interface Baggage {
   bookingReference: string;
   passengerId: string;
   flightId: string;
-  weightKg: number;
+  weightKg: number;          // Measured by airport scale at check-in counter/bag-drop, not by SmartTag
   currentStatus: BaggageStatus;
   lastKnownLocation: string; // Airport code or gate e.g. "HKG-T1-BAGGAGE-MAKEUP"
   lastScannedAt: string;

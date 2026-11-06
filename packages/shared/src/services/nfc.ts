@@ -1,92 +1,243 @@
 /**
  * PolyAero Cathay SmartTag - NFC Abstraction Layer
- * Defines clean boundary between high-level SmartTag actions and physical NFC hardware.
+ * Defines contracts and mock implementation for NFC interactions with passive E-ink tags.
  */
+
+import { BarcodeSymbology } from '../types/domain';
+
+export class NfcError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string
+  ) {
+    super(message);
+    this.name = 'NfcError';
+  }
+}
+
+export class NfcDisabledError extends NfcError {
+  constructor(message = 'NFC is disabled on this device.') {
+    super(message, 'NFC_DISABLED');
+    this.name = 'NfcDisabledError';
+  }
+}
+
+export class NfcUnavailableError extends NfcError {
+  constructor(message = 'NFC hardware is not supported or unavailable on this platform.') {
+    super(message, 'NFC_UNAVAILABLE');
+    this.name = 'NfcUnavailableError';
+  }
+}
+
+export class NfcTimeoutError extends NfcError {
+  constructor(message = 'NFC session timed out before a tag was detected.') {
+    super(message, 'NFC_TIMEOUT');
+    this.name = 'NfcTimeoutError';
+  }
+}
+
+export class NfcCancelledError extends NfcError {
+  constructor(message = 'NFC operation was cancelled.') {
+    super(message, 'NFC_CANCELLED');
+    this.name = 'NfcCancelledError';
+  }
+}
+
+export class NfcWriteError extends NfcError {
+  constructor(message = 'Failed to transmit E-ink display buffer via NFC RF field.') {
+    super(message, 'NFC_WRITE_FAILED');
+    this.name = 'NfcWriteError';
+  }
+}
 
 export interface SmartTagPayload {
   tagUid: string;
-  baggageTagNumber: string;
+  baggageTagNumber: string; // 10-digit IATA license plate
   flightNumber: string;
+  originAirport: string;
   destinationAirport: string;
   passengerInitials: string;
   departureDate: string;
-  securityHash: string;
+  barcodeSymbology: BarcodeSymbology;
+  authorizationToken?: string;
 }
 
-export type NfcOperationStatus = 'SUCCESS' | 'TAG_LOST' | 'UNSUPPORTED' | 'PERMISSION_DENIED' | 'TIMEOUT';
+export interface SmartTagWriteResult {
+  success: boolean;
+  tagUid: string;
+  bytesWritten: number;
+  timestamp: string;
+  isMockSimulation: boolean;
+}
 
-export interface NfcScanResult {
-  status: NfcOperationStatus;
-  tagUid?: string;
+export interface SmartTagScanResult {
+  tagUid: string;
   payload?: SmartTagPayload;
-  errorMessage?: string;
+  isMockSimulation: boolean;
 }
 
 export interface INfcService {
-  isSupported(): Promise<boolean>;
+  isAvailable(): Promise<boolean>;
   isEnabled(): Promise<boolean>;
-  startScan(delayMs?: number): Promise<NfcScanResult>;
+  readTagUid(timeoutMs?: number): Promise<SmartTagScanResult>;
+  writeEinkDisplay(payload: SmartTagPayload, timeoutMs?: number): Promise<SmartTagWriteResult>;
   cancelScan(): Promise<void>;
-  writeSmartTag(payload: SmartTagPayload, delayMs?: number): Promise<NfcScanResult>;
 }
 
 /**
  * MockNfcService
- * Used for local simulator development, testing, and web fallback.
- * Allows simulating real NFC taps with E-ink update delays.
+ * Deterministic in-memory simulation for simulator, automated testing, and development.
  */
 export class MockNfcService implements INfcService {
   private isScanning = false;
-  private currentTag: SmartTagPayload | null = {
+  private cancelCurrentScan: (() => void) | null = null;
+  private isNfcEnabled = true;
+  private isNfcAvailable = true;
+  private simulateTimeout = false;
+  private simulateWriteFailure = false;
+
+  private currentTag: SmartTagPayload = {
     tagUid: '04:A2:3B:4C:5D:6E:70',
     baggageTagNumber: '0160892012',
     flightNumber: 'CX888',
+    originAirport: 'HKG',
     destinationAirport: 'YVR',
     passengerInitials: 'T.C.',
     departureDate: '2026-11-10',
-    securityHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    barcodeSymbology: 'INTERLEAVED_2_OF_5',
+    authorizationToken: 'auth_token_mock_signed_998127',
   };
 
-  async isSupported(): Promise<boolean> {
-    return true;
+  async isAvailable(): Promise<boolean> {
+    return this.isNfcAvailable;
   }
 
   async isEnabled(): Promise<boolean> {
-    return true;
+    return this.isNfcEnabled;
   }
 
-  async startScan(delayMs = 600): Promise<NfcScanResult> {
-    this.isScanning = true;
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-
-    if (!this.isScanning) {
-      return { status: 'TIMEOUT', errorMessage: 'Scan cancelled by user.' };
+  async readTagUid(timeoutMs = 3000): Promise<SmartTagScanResult> {
+    if (!this.isNfcAvailable) {
+      throw new NfcUnavailableError();
+    }
+    if (!this.isNfcEnabled) {
+      throw new NfcDisabledError();
     }
 
-    this.isScanning = false;
-    return {
-      status: 'SUCCESS',
-      tagUid: this.currentTag?.tagUid || '04:A2:3B:4C:5D:6E:70',
-      payload: this.currentTag ?? undefined,
-    };
+    this.isScanning = true;
+
+    return new Promise<SmartTagScanResult>((resolve, reject) => {
+      let timer: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.isScanning = false;
+        this.cancelCurrentScan = null;
+      };
+
+      this.cancelCurrentScan = () => {
+        cleanup();
+        reject(new NfcCancelledError());
+      };
+
+      if (this.simulateTimeout) {
+        timer = setTimeout(() => {
+          cleanup();
+          reject(new NfcTimeoutError());
+        }, Math.min(timeoutMs, 200));
+        return;
+      }
+
+      // Simulate normal NFC RF touch latency (200ms)
+      timer = setTimeout(() => {
+        cleanup();
+        resolve({
+          tagUid: this.currentTag.tagUid,
+          payload: { ...this.currentTag },
+          isMockSimulation: true,
+        });
+      }, 150);
+    });
+  }
+
+  async writeEinkDisplay(
+    payload: SmartTagPayload,
+    timeoutMs = 4000
+  ): Promise<SmartTagWriteResult> {
+    if (!this.isNfcAvailable) {
+      throw new NfcUnavailableError();
+    }
+    if (!this.isNfcEnabled) {
+      throw new NfcDisabledError();
+    }
+    if (this.simulateWriteFailure) {
+      throw new NfcWriteError('RF coupling lost during E-ink frame transmission.');
+    }
+
+    this.isScanning = true;
+
+    return new Promise<SmartTagWriteResult>((resolve, reject) => {
+      let timer: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.isScanning = false;
+        this.cancelCurrentScan = null;
+      };
+
+      this.cancelCurrentScan = () => {
+        cleanup();
+        reject(new NfcCancelledError());
+      };
+
+      if (this.simulateTimeout) {
+        timer = setTimeout(() => {
+          cleanup();
+          reject(new NfcTimeoutError());
+        }, Math.min(timeoutMs, 200));
+        return;
+      }
+
+      // Simulate RF energy harvesting transmission time (approx 400ms)
+      timer = setTimeout(() => {
+        cleanup();
+        this.currentTag = { ...payload };
+        resolve({
+          success: true,
+          tagUid: payload.tagUid,
+          bytesWritten: 4736, // 296x128 1-bit E-ink display buffer size
+          timestamp: new Date().toISOString(),
+          isMockSimulation: true,
+        });
+      }, 300);
+    });
   }
 
   async cancelScan(): Promise<void> {
+    if (this.cancelCurrentScan) {
+      this.cancelCurrentScan();
+    }
     this.isScanning = false;
   }
 
-  async writeSmartTag(payload: SmartTagPayload, delayMs = 800): Promise<NfcScanResult> {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-    this.currentTag = { ...payload };
-    return {
-      status: 'SUCCESS',
-      tagUid: payload.tagUid,
-      payload: this.currentTag,
-    };
+  // Test & Simulation Hooks
+  setMockTag(tag: SmartTagPayload): void {
+    this.currentTag = { ...tag };
   }
 
-  // Simulator helper: inject a custom tag or reset state
-  setMockTag(tag: SmartTagPayload | null): void {
-    this.currentTag = tag;
+  setMockEnabled(enabled: boolean): void {
+    this.isNfcEnabled = enabled;
+  }
+
+  setMockAvailable(available: boolean): void {
+    this.isNfcAvailable = available;
+  }
+
+  setSimulateTimeout(simulate: boolean): void {
+    this.simulateTimeout = simulate;
+  }
+
+  setSimulateWriteFailure(simulate: boolean): void {
+    this.simulateWriteFailure = simulate;
   }
 }
