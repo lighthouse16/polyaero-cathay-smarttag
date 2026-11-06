@@ -200,16 +200,23 @@ export default function StaffDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredBaggage.map((bag) => {
-                  const flight = findFlightById(bag.flightId);
-                  return (
-                    <tr
-                      key={bag.id}
-                      style={{
-                        borderBottom: '1px solid #F1F5F9',
-                        backgroundColor: selectedBag?.id === bag.id ? '#F0F9F9' : 'transparent',
-                      }}
-                    >
+                {filteredBaggage.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748B' }}>
+                      No matching baggage records found in session.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredBaggage.map((bag) => {
+                    const flight = findFlightById(bag.flightId);
+                    return (
+                      <tr
+                        key={bag.id}
+                        style={{
+                          borderBottom: '1px solid #F1F5F9',
+                          backgroundColor: selectedBag?.id === bag.id ? '#F0F9F9' : 'transparent',
+                        }}
+                      >
                       <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
                       <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
                       <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
@@ -257,7 +264,7 @@ export default function StaffDashboardPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
