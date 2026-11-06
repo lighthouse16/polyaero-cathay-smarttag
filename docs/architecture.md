@@ -68,3 +68,9 @@ PolyAero Cathay SmartTag is a reusable digital baggage identity platform propose
 - Service-role keys are never exposed in mobile or browser client code.
 - Only anonymous public keys are configured on client devices.
 - Access to baggage records and operational tools is governed by PostgreSQL Row-Level Security (RLS) checking trusted `app_metadata` roles.
+
+### D. Identity Mapping & Row-Level Security (RLS)
+- Passenger records decouple internal UUID primary keys (`passengers.id`) from authentication identities via `passengers.auth_user_id REFERENCES auth.users(id)`.
+- SmartTag records are visibility-restricted: passengers can only SELECT SmartTags linked to their own baggage.
+- Ground staff authorization is strictly validated through `public.is_ground_staff()` with immutable `app_metadata->>'role' = 'ground_staff'` claims and a hardened `search_path = public, pg_temp`.
+- Newly initialized tags start truthfully as `'UNPROGRAMMED'` with `last_written_at = NULL`.

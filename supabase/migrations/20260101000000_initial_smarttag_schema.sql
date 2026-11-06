@@ -5,24 +5,33 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Helper function for automated updated_at timestamps
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 2. Staff Verification Helper (Reads immutable app_metadata set by Supabase Admin)
 CREATE OR REPLACE FUNCTION public.is_ground_staff()
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 BEGIN
   RETURN (coalesce(auth.jwt()->'app_metadata'->>'role', '') = 'ground_staff');
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
 
 -- 3. Passengers Table
 CREATE TABLE IF NOT EXISTS public.passengers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   booking_reference VARCHAR(10) NOT NULL,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
@@ -71,10 +80,10 @@ CREATE TABLE IF NOT EXISTS public.smart_tags (
   hardware_model VARCHAR(50) NOT NULL DEFAULT 'PolyAero-Passive-2.9in',
   power_source VARCHAR(30) NOT NULL DEFAULT 'PASSIVE_RF' CHECK (power_source IN ('PASSIVE_RF', 'BATTERY_BACKED')),
   battery_level INT CHECK (battery_level IS NULL OR (battery_level >= 0 AND battery_level <= 100)),
-  eink_display_status VARCHAR(30) NOT NULL DEFAULT 'SYNCHRONIZED',
+  eink_display_status VARCHAR(30) NOT NULL DEFAULT 'UNPROGRAMMED' CHECK (eink_display_status IN ('UNPROGRAMMED', 'UPDATING', 'SYNCHRONIZED', 'WRITE_FAILED')),
   barcode_symbology VARCHAR(30) NOT NULL DEFAULT 'INTERLEAVED_2_OF_5',
   is_write_protected BOOLEAN NOT NULL DEFAULT FALSE,
-  last_written_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_written_at TIMESTAMPTZ, -- NULL prior to initial hardware write
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -127,6 +136,7 @@ CREATE TABLE IF NOT EXISTS public.recovery_cases (
 );
 
 -- Performance Indexes on Foreign Keys and Lookups
+CREATE INDEX IF NOT EXISTS idx_passengers_auth_user_id ON public.passengers(auth_user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_passenger_id ON public.bookings(passenger_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_flight_id ON public.bookings(flight_id);
 CREATE INDEX IF NOT EXISTS idx_baggage_passenger_id ON public.baggage(passenger_id);
@@ -170,55 +180,85 @@ DROP POLICY IF EXISTS "Passengers view own profile" ON public.passengers;
 CREATE POLICY "Passengers view own profile"
   ON public.passengers FOR SELECT
   TO authenticated
-  USING (auth.uid() = id OR public.is_ground_staff());
+  USING (auth_user_id = auth.uid() OR public.is_ground_staff());
 
 -- 3. Bookings RLS
 DROP POLICY IF EXISTS "Passengers view own bookings" ON public.bookings;
 CREATE POLICY "Passengers view own bookings"
   ON public.bookings FOR SELECT
   TO authenticated
-  USING (passenger_id = auth.uid() OR public.is_ground_staff());
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.passengers
+      WHERE passengers.id = bookings.passenger_id
+        AND (passengers.auth_user_id = auth.uid() OR public.is_ground_staff())
+    )
+  );
 
--- 4. SmartTags RLS
+-- 4. SmartTags RLS (Restricted visibility: passenger sees only tags linked to their baggage)
 DROP POLICY IF EXISTS "SmartTags viewable by authenticated users" ON public.smart_tags;
-CREATE POLICY "SmartTags viewable by authenticated users"
+DROP POLICY IF EXISTS "Staff can manage SmartTags" ON public.smart_tags;
+DROP POLICY IF EXISTS "Passengers view own linked smart tags" ON public.smart_tags;
+
+CREATE POLICY "Passengers view own linked smart tags"
   ON public.smart_tags FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    public.is_ground_staff() OR
+    EXISTS (
+      SELECT 1 FROM public.baggage
+      JOIN public.passengers ON passengers.id = baggage.passenger_id
+      WHERE baggage.smart_tag_id = smart_tags.id
+        AND passengers.auth_user_id = auth.uid()
+    )
+  );
 
-DROP POLICY IF EXISTS "Staff can manage SmartTags" ON public.smart_tags;
 CREATE POLICY "Staff can manage SmartTags"
   ON public.smart_tags FOR ALL
   TO authenticated
-  USING (public.is_ground_staff());
+  USING (public.is_ground_staff())
+  WITH CHECK (public.is_ground_staff());
 
 -- 5. Baggage RLS
 DROP POLICY IF EXISTS "Passengers view own baggage" ON public.baggage;
+DROP POLICY IF EXISTS "Staff can view and update all baggage" ON public.baggage;
+DROP POLICY IF EXISTS "Staff can manage all baggage" ON public.baggage;
+
 CREATE POLICY "Passengers view own baggage"
   ON public.baggage FOR SELECT
   TO authenticated
-  USING (passenger_id = auth.uid());
+  USING (
+    public.is_ground_staff() OR
+    EXISTS (
+      SELECT 1 FROM public.passengers
+      WHERE passengers.id = baggage.passenger_id
+        AND passengers.auth_user_id = auth.uid()
+    )
+  );
 
-DROP POLICY IF EXISTS "Staff can view and update all baggage" ON public.baggage;
-CREATE POLICY "Staff can view and update all baggage"
+CREATE POLICY "Staff can manage all baggage"
   ON public.baggage FOR ALL
   TO authenticated
-  USING (public.is_ground_staff());
+  USING (public.is_ground_staff())
+  WITH CHECK (public.is_ground_staff());
 
 -- 6. Baggage Events RLS
 DROP POLICY IF EXISTS "Passengers view own baggage events" ON public.baggage_events;
+DROP POLICY IF EXISTS "Staff can insert baggage events" ON public.baggage_events;
+
 CREATE POLICY "Passengers view own baggage events"
   ON public.baggage_events FOR SELECT
   TO authenticated
   USING (
+    public.is_ground_staff() OR
     EXISTS (
       SELECT 1 FROM public.baggage
+      JOIN public.passengers ON passengers.id = baggage.passenger_id
       WHERE baggage.id = baggage_events.baggage_id
-        AND (baggage.passenger_id = auth.uid() OR public.is_ground_staff())
+        AND passengers.auth_user_id = auth.uid()
     )
   );
 
-DROP POLICY IF EXISTS "Staff can insert baggage events" ON public.baggage_events;
 CREATE POLICY "Staff can insert baggage events"
   ON public.baggage_events FOR INSERT
   TO authenticated
@@ -226,7 +266,9 @@ CREATE POLICY "Staff can insert baggage events"
 
 -- 7. Recovery Cases RLS (Strict ground staff operations only)
 DROP POLICY IF EXISTS "Staff can manage recovery cases" ON public.recovery_cases;
+
 CREATE POLICY "Staff can manage recovery cases"
   ON public.recovery_cases FOR ALL
   TO authenticated
-  USING (public.is_ground_staff());
+  USING (public.is_ground_staff())
+  WITH CHECK (public.is_ground_staff());
