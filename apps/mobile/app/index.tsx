@@ -15,18 +15,26 @@ import {
   mockSmartTag,
   mockBaggageList,
   mockPassenger,
-  NfcScanResult,
+  SmartTagScanResult,
 } from '@polyaero/shared';
 
 export default function StartupScreen() {
   const [isScanning, setIsScanning] = useState(false);
-  const [lastScanResult, setLastScanResult] = useState<NfcScanResult | null>(null);
+  const [scanResult, setScanResult] = useState<SmartTagScanResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSimulateNfcTap = async () => {
     setIsScanning(true);
+    setErrorMessage(null);
     try {
-      const result = await nfcService.startScan(700);
-      setLastScanResult(result);
+      const result = await nfcService.readTagUid();
+      setScanResult(result);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Unexpected NFC operation error.');
+      }
     } finally {
       setIsScanning(false);
     }
@@ -38,29 +46,29 @@ export default function StartupScreen() {
         {/* Prototype Header */}
         <View style={styles.header}>
           <View style={styles.taglineBadge}>
-            <Text style={styles.taglineText}>CATHAY HACKATHON 2026</Text>
+            <Text style={styles.taglineText}>POLYAERO • CATHAY HACKATHON 2026</Text>
           </View>
-          <Text style={styles.title}>PolyAero SmartTag</Text>
+          <Text style={styles.title}>Cathay SmartTag</Text>
           <Text style={styles.subtitle}>
-            Digital Baggage Identity Platform Prototype
+            Reusable Digital Baggage Identity Platform
           </Text>
         </View>
 
         {/* Phase 0 Status Banner */}
         <View style={styles.banner}>
-          <Text style={styles.bannerHeading}>Phase 0: Scaffold Ready</Text>
+          <Text style={styles.bannerHeading}>Engineering Foundation Ready</Text>
           <Text style={styles.bannerBody}>
-            Native Expo mobile shell, TypeScript strict contracts, and NFC mock
-            service successfully initialized.
+            Native Expo environment, strict TypeScript contracts, and NFC service
+            abstraction initialized.
           </Text>
           <Text style={styles.bannerNotice}>
-            * Unofficial PolyAero Hackathon Concept. Awaiting Cathay App screenshots for pixel-perfect UI reconstruction.
+            Research prototype for Cathay Hackathon 2026. Awaiting Cathay App screenshots for UI reconstruction.
           </Text>
         </View>
 
         {/* Passenger Profile Pill */}
         <View style={styles.passengerRow}>
-          <Text style={styles.passengerLabel}>Logged In Mock Passenger:</Text>
+          <Text style={styles.passengerLabel}>Logged In Passenger:</Text>
           <Text style={styles.passengerName}>
             {mockPassenger.firstName} {mockPassenger.lastName} ({mockPassenger.tierStatus})
           </Text>
@@ -71,9 +79,9 @@ export default function StartupScreen() {
 
         {/* NFC Interaction Simulation Card */}
         <View style={styles.nfcCard}>
-          <Text style={styles.nfcTitle}>NFC Hardware Simulator</Text>
+          <Text style={styles.nfcTitle}>Passive NFC Interface</Text>
           <Text style={styles.nfcDesc}>
-            Test contactless E-ink sync and tag reading without physical hardware.
+            Simulate contactless tag touch and E-ink data inspection.
           </Text>
 
           <TouchableOpacity
@@ -84,21 +92,27 @@ export default function StartupScreen() {
             {isScanning ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.nfcButtonText}>Simulate NFC Tap to Tag</Text>
+              <Text style={styles.nfcButtonText}>Simulate NFC Touch</Text>
             )}
           </TouchableOpacity>
 
-          {lastScanResult && (
+          {errorMessage && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          {scanResult && (
             <View style={styles.scanResultBox}>
               <Text style={styles.scanResultTitle}>
-                Scan Status: {lastScanResult.status}
+                NFC Tag Read: SUCCESS {scanResult.isMockSimulation ? '(SIMULATED)' : ''}
               </Text>
               <Text style={styles.scanResultDetail}>
-                UID: {lastScanResult.tagUid}
+                UID: {scanResult.tagUid}
               </Text>
-              {lastScanResult.payload && (
+              {scanResult.payload && (
                 <Text style={styles.scanResultDetail}>
-                  Flight: {lastScanResult.payload.flightNumber} → {lastScanResult.payload.destinationAirport}
+                  Flight: {scanResult.payload.flightNumber} ({scanResult.payload.originAirport} → {scanResult.payload.destinationAirport})
                 </Text>
               )}
             </View>
@@ -106,7 +120,7 @@ export default function StartupScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>PolyAero Engineering • 2026</Text>
+          <Text style={styles.footerText}>PolyAero Engineering Foundation</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -221,6 +235,19 @@ const styles = StyleSheet.create({
   nfcButtonText: {
     color: '#FFFFFF',
     fontSize: typography.fontSize.body,
+    fontWeight: '600',
+  },
+  errorBox: {
+    backgroundColor: colors.status.dangerBackground,
+    borderColor: colors.status.danger,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  errorText: {
+    fontSize: typography.fontSize.caption,
+    color: colors.status.danger,
     fontWeight: '600',
   },
   scanResultBox: {

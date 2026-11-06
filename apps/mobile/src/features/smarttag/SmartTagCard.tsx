@@ -11,13 +11,15 @@ interface SmartTagCardProps {
 export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
   return (
     <View style={styles.cardContainer}>
-      {/* Header with PolyAero Brand and Status */}
+      {/* Header with PolyAero Brand and Power Subsystem */}
       <View style={styles.headerRow}>
         <View style={styles.brandBadge}>
           <Text style={styles.brandText}>POLYAERO SMARTTAG</Text>
         </View>
-        <View style={styles.batteryContainer}>
-          <Text style={styles.batteryText}>{tag.batteryLevel}% PWR</Text>
+        <View style={styles.powerBadge}>
+          <Text style={styles.powerText}>
+            {tag.powerSource === 'PASSIVE_RF' ? 'PASSIVE RF (BATTERY-FREE)' : `${tag.batteryLevel}% PWR`}
+          </Text>
         </View>
       </View>
 
@@ -32,11 +34,11 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
 
         <View style={styles.einkDetails}>
           <View>
-            <Text style={styles.einkLabel}>TAG NUMBER</Text>
+            <Text style={styles.einkLabel}>TAG NUMBER (ITF-14)</Text>
             <Text style={styles.einkValue}>{baggage?.tagNumber ?? '0160892012'}</Text>
           </View>
           <View>
-            <Text style={styles.einkLabel}>WEIGHT</Text>
+            <Text style={styles.einkLabel}>SCALE WEIGHT</Text>
             <Text style={styles.einkValue}>{baggage?.weightKg ?? 22.4} KG</Text>
           </View>
           <View>
@@ -47,7 +49,7 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
 
         <View style={styles.einkStatusBar}>
           <Text style={styles.einkStatusText}>
-            E-INK: {tag.einkDisplayStatus} • UID: {tag.tagUid.substring(0, 8)}...
+            E-INK: {tag.einkDisplayStatus} • UID: {tag.tagUid.substring(0, 8)}... • BARCODE: {tag.barcodeSymbology}
           </Text>
         </View>
       </View>
@@ -56,7 +58,7 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
       <View style={styles.statusFooter}>
         <View style={styles.statusDot} />
         <Text style={styles.statusText}>
-          Live Status: <Text style={styles.statusBold}>{baggage?.currentStatus ?? 'LOADED'}</Text>
+          Baggage Status: <Text style={styles.statusBold}>{baggage?.currentStatus ?? 'LOADED'}</Text>
         </Text>
       </View>
     </View>
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
   },
-  batteryContainer: {
+  powerBadge: {
     backgroundColor: colors.surface.background,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
@@ -99,10 +101,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.subtle,
   },
-  batteryText: {
-    fontSize: typography.fontSize.caption,
+  powerText: {
+    fontSize: 10,
     color: colors.text.secondary,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   einkFrame: {
     backgroundColor: colors.eink.displayBackground,
@@ -156,7 +159,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#BBBBBB',
   },
   einkStatusText: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#555555',
     fontWeight: '600',
   },
