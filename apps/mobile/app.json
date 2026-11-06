@@ -37,9 +37,6 @@
       "typedRoutes": true
     },
     "extra": {
-      "eas": {
-        "projectId": "poly-aero-hackathon-2026"
-      },
       "prototypeNotice": "PolyAero Cathay SmartTag Hackathon Concept - Unofficial Research Prototype"
     }
   }
