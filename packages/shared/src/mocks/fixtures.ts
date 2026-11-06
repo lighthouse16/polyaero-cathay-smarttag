@@ -10,6 +10,7 @@ import {
 
 export const mockPassenger: Passenger = {
   id: 'pass_01',
+  authUserId: 'usr_auth_01',
   bookingReference: 'CX7K9M',
   firstName: 'Timothy',
   lastName: 'Chan',
@@ -64,6 +65,7 @@ export const mockBooking: Booking = {
   createdAt: '2026-10-01T10:00:00Z',
 };
 
+// Programmed & synchronized active tag
 export const mockSmartTag: SmartTag = {
   id: 'tag_01',
   tagUid: '04:A2:3B:4C:5D:6E:70',
@@ -75,6 +77,20 @@ export const mockSmartTag: SmartTag = {
   isWriteProtected: true,
   lastWrittenAt: '2026-11-06T12:00:00Z',
   createdAt: '2026-03-01T00:00:00Z',
+};
+
+// Newly registered / unprogrammed tag prior to first NFC provisioning
+export const mockUnprogrammedSmartTag: SmartTag = {
+  id: 'tag_02',
+  tagUid: '04:B3:7C:1D:9E:2F:81',
+  hardwareModel: 'PolyAero-Passive-2.9in',
+  powerSource: 'PASSIVE_RF',
+  einkDisplayStatus: 'UNPROGRAMMED',
+  barcodeSymbology: 'INTERLEAVED_2_OF_5',
+  linkedBaggageId: undefined,
+  isWriteProtected: false,
+  lastWrittenAt: null, // Truthful initial state: NULL prior to first physical write
+  createdAt: '2026-11-06T09:00:00Z',
 };
 
 export const mockBaggageList: Baggage[] = [

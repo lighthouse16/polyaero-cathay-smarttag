@@ -50,6 +50,13 @@ export class NfcWriteError extends NfcError {
   }
 }
 
+export class NfcOperationInProgressError extends NfcError {
+  constructor(message = 'Another NFC operation is currently in progress.') {
+    super(message, 'NFC_OPERATION_IN_PROGRESS');
+    this.name = 'NfcOperationInProgressError';
+  }
+}
+
 export interface SmartTagPayload {
   tagUid: string;
   baggageTagNumber: string; // 10-digit IATA license plate
@@ -95,6 +102,7 @@ export class MockNfcService implements INfcService {
   private isNfcAvailable = true;
   private simulateTimeout = false;
   private simulateWriteFailure = false;
+  private lastWrittenAt: string | null = null;
 
   private currentTag: SmartTagPayload = {
     tagUid: '04:A2:3B:4C:5D:6E:70',
@@ -123,6 +131,9 @@ export class MockNfcService implements INfcService {
     if (!this.isNfcEnabled) {
       throw new NfcDisabledError();
     }
+    if (this.isScanning) {
+      throw new NfcOperationInProgressError();
+    }
 
     this.isScanning = true;
 
@@ -148,7 +159,7 @@ export class MockNfcService implements INfcService {
         return;
       }
 
-      // Simulate normal NFC RF touch latency (200ms)
+      // Simulate normal NFC RF touch latency (150ms)
       timer = setTimeout(() => {
         cleanup();
         resolve({
@@ -169,6 +180,12 @@ export class MockNfcService implements INfcService {
     }
     if (!this.isNfcEnabled) {
       throw new NfcDisabledError();
+    }
+    if (this.isScanning) {
+      throw new NfcOperationInProgressError();
+    }
+    if (!payload.tagUid || !payload.baggageTagNumber || !payload.flightNumber) {
+      throw new NfcError('Invalid SmartTag payload attributes.', 'INVALID_PAYLOAD');
     }
     if (this.simulateWriteFailure) {
       throw new NfcWriteError('RF coupling lost during E-ink frame transmission.');
@@ -198,15 +215,17 @@ export class MockNfcService implements INfcService {
         return;
       }
 
-      // Simulate RF energy harvesting transmission time (approx 400ms)
+      // Simulate RF energy harvesting transmission time (approx 300ms)
       timer = setTimeout(() => {
+        const writeTimestamp = new Date().toISOString();
         cleanup();
         this.currentTag = { ...payload };
+        this.lastWrittenAt = writeTimestamp;
         resolve({
           success: true,
           tagUid: payload.tagUid,
           bytesWritten: 4736, // 296x128 1-bit E-ink display buffer size
-          timestamp: new Date().toISOString(),
+          timestamp: writeTimestamp,
           isMockSimulation: true,
         });
       }, 300);
@@ -239,5 +258,9 @@ export class MockNfcService implements INfcService {
 
   setSimulateWriteFailure(simulate: boolean): void {
     this.simulateWriteFailure = simulate;
+  }
+
+  getLastWrittenAt(): string | null {
+    return this.lastWrittenAt;
   }
 }

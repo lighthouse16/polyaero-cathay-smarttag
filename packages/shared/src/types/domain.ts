@@ -7,6 +7,7 @@ export type CathayTier = 'GREEN' | 'SILVER' | 'GOLD' | 'DIAMOND';
 
 export interface Passenger {
   id: string;
+  authUserId?: string; // Foreign key mapping to Supabase Auth auth.users(id)
   bookingReference: string;
   firstName: string;
   lastName: string;
@@ -60,11 +61,10 @@ export interface Booking {
 export type TagPowerSource = 'PASSIVE_RF' | 'BATTERY_BACKED';
 
 export type EinkStatus =
-  | 'READY'
-  | 'UPDATING'
-  | 'SYNCHRONIZED'
-  | 'WRITE_FAILED'
-  | 'UNPROGRAMMED';
+  | 'UNPROGRAMMED'   // Factory state or cleared tag before write
+  | 'UPDATING'       // In progress RF buffer transfer
+  | 'SYNCHRONIZED'   // Display buffer confirmed written
+  | 'WRITE_FAILED';  // RF coupling lost or transmission error
 
 export type BarcodeSymbology = 'INTERLEAVED_2_OF_5' | 'CODE_128';
 
@@ -78,7 +78,7 @@ export interface SmartTag {
   barcodeSymbology: BarcodeSymbology; // Interleaved 2 of 5 for standard IATA 10-digit BSM
   linkedBaggageId?: string;
   isWriteProtected: boolean;
-  lastWrittenAt: string;
+  lastWrittenAt: string | null; // NULL prior to first physical write
   createdAt: string;
 }
 

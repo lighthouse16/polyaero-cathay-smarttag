@@ -50,6 +50,7 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
         <View style={styles.einkStatusBar}>
           <Text style={styles.einkStatusText}>
             E-INK: {tag.einkDisplayStatus} • UID: {tag.tagUid.substring(0, 8)}... • BARCODE: {tag.barcodeSymbology}
+            {tag.lastWrittenAt ? ` • WRITTEN: ${tag.lastWrittenAt.substring(11, 19)}Z` : ' • NOT YET WRITTEN'}
           </Text>
         </View>
       </View>

@@ -45,3 +45,9 @@
 ### B. Implementation Status
 - **Phase 0 (Current)**: `MockNfcService` provides deterministic emulation with scan latency, write buffer calculation, timeout handling, and cancellation hooks.
 - **Phase 1 (Native Build)**: Integration with native NFC drivers via Expo Development Client and `react-native-nfc-manager` for physical device communication.
+
+### C. Tag Lifecycle State Semantics
+- **UNPROGRAMMED**: Initial state of a newly provisioned SmartTag. `last_written_at` remains NULL.
+- **UPDATING**: Active RF energy-harvested frame buffer transmission in progress.
+- **SYNCHRONIZED**: Confirmed physical write. `last_written_at` records the completion timestamp.
+- **WRITE_FAILED**: RF coupling interrupted or transmission error. Does not falsely claim synchronization.
