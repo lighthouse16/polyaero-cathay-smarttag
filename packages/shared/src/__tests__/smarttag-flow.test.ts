@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   InMemorySmartTagRepository,
+  SmartTagFlowNavigator,
   DEMO_BOOKING_REFERENCE,
   DEMO_ITINERARY_ID,
   DEFAULT_DECLARATIONS,
@@ -399,5 +400,70 @@ describe('Baggage Journey Timeline & Recovery Case Lifecycle', () => {
     expect(modules).toHaveLength(57);
     expect(modules[0]).toEqual({ isBar: true, widthUnits: 1 });
     expect(modules[modules.length - 1]).toEqual({ isBar: true, widthUnits: 1 });
+  });
+
+  it('supports full passenger navigation stack, back navigation, resume setup, and missing booking handling', async () => {
+    const repo = new InMemorySmartTagRepository();
+    const nav = new SmartTagFlowNavigator();
+
+    // Missing booking handling
+    expect(repo.getJourneyView('non_existent_id')).toBeNull();
+    expect(nav.getState().currentRoute).toBe('bookings');
+    expect(nav.goBack()).toBe(false);
+
+    // Populate booking & check entry -> Prepare
+    const itin = repo.addDemoItinerary();
+    let entry = resolveBookingSmartTagEntry(itin, repo.getBagsForItinerary(itin.id));
+    expect(entry.targetRoute).toBe('prepare');
+    nav.navigateTo(entry.targetRoute);
+    expect(nav.getState().currentRoute).toBe('prepare');
+
+    // Prepare -> Sync
+    const { bags } = repo.prepareBagsForItinerary({
+      itineraryId: itin.id,
+      bagCount: 1,
+      declarations: DEFAULT_DECLARATIONS,
+    });
+    nav.navigateTo('sync');
+    expect(nav.getState().currentRoute).toBe('sync');
+
+    // Back to bookings preserves unfinished setup & resumes directly to Sync
+    nav.navigateTo('bookings');
+    entry = resolveBookingSmartTagEntry(itin, repo.getBagsForItinerary(itin.id));
+    expect(entry.primaryCtaLabel).toBe('Continue setup');
+    expect(entry.targetRoute).toBe('sync');
+    nav.navigateTo(entry.targetRoute);
+    expect(nav.getState().currentRoute).toBe('sync');
+
+    // Sync -> Result -> Journey -> Recovery (report) and back stack
+    const nfc = new MockNfcService();
+    const payload = buildNfcPayloadForBag(itin, bags[0]);
+    const outcome = await runSmartTagSync({
+      mode: 'SIMULATED_DEMO',
+      service: nfc,
+      payload,
+      expectedTagUid: bags[0].smartTag.tagUid,
+      stepDelayMs: 0,
+    });
+    repo.recordSyncOutcome(bags[0].id, outcome);
+
+    nav.navigateTo('result');
+    expect(nav.getState().currentRoute).toBe('result');
+
+    nav.navigateTo('journey');
+    expect(nav.getState().currentRoute).toBe('journey');
+
+    nav.navigateTo('report');
+    expect(nav.getState().currentRoute).toBe('report');
+
+    // Back stack unwinds report -> journey -> result -> sync -> bookings
+    expect(nav.goBack()).toBe(true);
+    expect(nav.getState().currentRoute).toBe('journey');
+    expect(nav.goBack()).toBe(true);
+    expect(nav.getState().currentRoute).toBe('result');
+    expect(nav.goBack()).toBe(true);
+    expect(nav.getState().currentRoute).toBe('sync');
+    expect(nav.goBack()).toBe(true);
+    expect(nav.getState().currentRoute).toBe('bookings');
   });
 });

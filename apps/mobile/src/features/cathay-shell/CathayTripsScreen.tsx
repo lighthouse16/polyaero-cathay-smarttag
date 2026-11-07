@@ -1,4 +1,25 @@
-import React, { useState } from 'react';
+/**
+ * Screen 01 — My Bookings & Passenger SmartTag Flow Host (Matches Design 01 Mockup)
+ *
+ * Preserves the exact Phase 1A Cathay My bookings shell:
+ *   - Centered "My bookings" heading
+ *   - "Upcoming" | "Past" segmented underline navigation
+ *   - Genuine empty state when no upcoming bookings exist ("You have no upcoming bookings")
+ *   - "Add booking" modal + clearly labeled "Load CX548 demo itinerary (HKG → NRT)" helper
+ *   - Upcoming booking card matching Design 01:
+ *       Fri 21 Nov 2026 | Booking reference 8K3F7D
+ *       HKG (Hong Kong) ✈ NRT (Tokyo)
+ *       CX548 | 1 passenger
+ *       Baggage & SmartTag section with suitcase-tag glyph, conditional primary CTA
+ *       ("Set up SmartTag" / "Continue setup" / "View SmartTag"), and secondary
+ *       "View baggage journey >" row.
+ *   - Hosts the sub-screens (`PrepareSmartTagScreen`, `SyncSmartTagScreen`,
+ *     `SmartTagReadyScreen`, `BaggageJourneyScreen`, `ReportBaggageIssueScreen`)
+ *     inside the My trips tab so the 5-tab floating pill dock remains visible and
+ *     state persists across all transitions.
+ */
+
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,13 +29,39 @@ import {
   SafeAreaView,
   Modal,
   TextInput,
-  ActivityIndicator,
+  BackHandler,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  DEMO_BOOKING_REFERENCE,
+  PassengerItinerary,
+  resolveBookingSmartTagEntry,
+} from '@polyaero/shared';
 import { FlightBooking, UserAuthProfile, INITIAL_BOOKING } from './CathayTypes';
-import { SmartTagCard } from '../smarttag/SmartTagCard';
-import { nfcService } from '../../services/nfc';
-import { SmartTagScanResult } from '@polyaero/shared';
+import {
+  CATHAY_BG,
+  CATHAY_BORDER,
+  CATHAY_JADE,
+  CATHAY_TEXT_PRIMARY,
+  CATHAY_TEXT_SECONDARY,
+  CathayPrimaryButton,
+  CathaySecondaryButton,
+  FlightSummaryCard,
+  InlineNotice,
+  StatusBadge,
+  SuitcaseWithTagGlyph,
+} from '../smarttag/components/CathaySmartTagPrimitives';
+import {
+  smartTagController,
+  smartTagRepository,
+  useSmartTagStore,
+} from '../smarttag/store';
+import { PrepareSmartTagScreen } from '../smarttag/screens/PrepareSmartTagScreen';
+import { SyncSmartTagScreen } from '../smarttag/screens/SyncSmartTagScreen';
+import { SmartTagReadyScreen } from '../smarttag/screens/SmartTagReadyScreen';
+import { BaggageJourneyScreen } from '../smarttag/screens/BaggageJourneyScreen';
+import { ReportBaggageIssueScreen } from '../smarttag/screens/ReportBaggageIssueScreen';
 
 interface CathayTripsScreenProps {
   bookings: FlightBooking[];
@@ -24,11 +71,11 @@ interface CathayTripsScreenProps {
 }
 
 export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
-  bookings,
   user,
   onAddBooking,
   onOpenDevMenu,
 }) => {
+  const { repo, nav } = useSmartTagStore();
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -36,41 +83,57 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
   const [familyName, setFamilyName] = useState(user.familyName || 'Trinh');
   const [givenName, setGivenName] = useState(user.givenName || 'Hai Dang');
   const [refType, setRefType] = useState<'bookingRef' | 'eticket'>('bookingRef');
-  const [refValue, setRefValue] = useState('');
+  const [refValue, setRefValue] = useState(DEMO_BOOKING_REFERENCE);
   const [inputError, setInputError] = useState<string | null>(null);
 
-  // NFC Simulation inside SmartTag section
-  const [isScanningNfc, setIsScanningNfc] = useState(false);
-  const [scanResult, setScanResult] = useState<SmartTagScanResult | null>(null);
+  // Handle Android hardware back button within SmartTag sub-screens
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (nav.currentRoute !== 'bookings') {
+        return smartTagController.goBack();
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [nav.currentRoute]);
 
-  const handleSimulateNfc = async () => {
-    setIsScanningNfc(true);
-    try {
-      const result = await nfcService.readTagUid();
-      setScanResult(result);
-    } catch {
-      setScanResult({
-        tagUid: '04:A1:B2:C3:D4:E5:F6',
-        isMockSimulation: true,
-        payload: {
-          tagUid: '04:A1:B2:C3:D4:E5:F6',
-          baggageTagNumber: '0160892012',
-          flightNumber: 'CX304',
-          originAirport: 'HKG',
-          destinationAirport: 'NKG',
-          passengerInitials: 'HT',
-          departureDate: '2026-11-08',
-          barcodeSymbology: 'INTERLEAVED_2_OF_5',
-        },
-      });
-    } finally {
-      setIsScanningNfc(false);
-    }
+  // Render active SmartTag sub-screen when navigated deeper inside My trips
+  if (nav.currentRoute === 'prepare') {
+    return <PrepareSmartTagScreen onOpenDevMenu={onOpenDevMenu} />;
+  }
+  if (nav.currentRoute === 'sync') {
+    return <SyncSmartTagScreen onOpenDevMenu={onOpenDevMenu} />;
+  }
+  if (nav.currentRoute === 'result') {
+    return <SmartTagReadyScreen onOpenDevMenu={onOpenDevMenu} />;
+  }
+  if (nav.currentRoute === 'journey') {
+    return <BaggageJourneyScreen onOpenDevMenu={onOpenDevMenu} />;
+  }
+  if (nav.currentRoute === 'report') {
+    return (
+      <ReportBaggageIssueScreen
+        defaultEmail={user.email}
+        defaultPhone={user.mobile}
+        onOpenDevMenu={onOpenDevMenu}
+      />
+    );
+  }
+
+  const handleLoadDemoItinerary = () => {
+    smartTagRepository.addDemoItinerary();
+    onAddBooking(INITIAL_BOOKING);
+    setInputError(null);
+    setShowAddModal(false);
   };
 
   const handleConfirmAddBooking = () => {
-    if (refValue.trim().length > 0 && refValue.trim().length < 6) {
-      setInputError('Please enter at least 6 digits');
+    const res = smartTagRepository.lookupAndAddBookingByRef(refValue);
+    if (res.errorMessage || !res.itinerary) {
+      setInputError(
+        res.errorMessage ?? 'Please enter a valid 6-character booking reference.'
+      );
       return;
     }
     setInputError(null);
@@ -78,25 +141,126 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
     setShowAddModal(false);
   };
 
-  const isEmpty = tab === 'past' || bookings.length === 0;
+  const upcomingItineraries = repo.itineraries;
+  const isEmpty = tab === 'past' || upcomingItineraries.length === 0;
+
+  const renderItineraryCard = (itinerary: PassengerItinerary) => {
+    const bags = repo.bagSetupsByItinerary[itinerary.id] ?? [];
+    const primaryBag = bags[0];
+    const entry = resolveBookingSmartTagEntry(itinerary, bags);
+
+    return (
+      <FlightSummaryCard key={itinerary.id} itinerary={itinerary}>
+        <View style={styles.cardSectionDivider} />
+
+        {/* Baggage & SmartTag Feature Section (Exact Design 01 Mockup) */}
+        <View style={styles.smartTagHeroRow}>
+          <SuitcaseWithTagGlyph size="lg" />
+
+          <View style={styles.smartTagTextCol}>
+            <View style={styles.smartTagHeadingRow}>
+              <Text style={styles.smartTagTitle}>Baggage &amp; SmartTag</Text>
+            </View>
+            <Text style={styles.smartTagDescription}>{entry.supportingCopy}</Text>
+          </View>
+        </View>
+
+        {entry.statusBadgeLabel && (
+          <View style={styles.entryBadgeRow}>
+            <StatusBadge
+              label={entry.statusBadgeLabel}
+              tone={entry.statusBadgeTone}
+            />
+            {bags.length > 1 && (
+              <Text style={styles.multiBagCountNote}>
+                {bags.length} checked bags configured
+              </Text>
+            )}
+          </View>
+        )}
+
+        {entry.missingPrerequisiteMessage && (
+          <InlineNotice
+            tone="warning"
+            message={entry.missingPrerequisiteMessage}
+            actionLabel="Complete demo check-in"
+            onAction={() =>
+              smartTagRepository.setCheckInReadiness(
+                itinerary.id,
+                'DEMO_CHECK_IN_COMPLETED'
+              )
+            }
+          />
+        )}
+
+        {/* Primary CTA: Set up SmartTag / Continue setup / View SmartTag */}
+        <CathayPrimaryButton
+          label={entry.primaryCtaLabel}
+          onPress={() =>
+            smartTagController.navigateTo(entry.targetRoute, {
+              itineraryId: itinerary.id,
+              bagSetupId: primaryBag?.id,
+            })
+          }
+          style={styles.setupCtaBtn}
+          testID="btn-setup-smarttag"
+        />
+
+        {entry.actionKind === 'VIEW_SMARTTAG' && (
+          <TouchableOpacity
+            style={styles.reconfigureLink}
+            onPress={() =>
+              smartTagController.navigateTo('prepare', {
+                itineraryId: itinerary.id,
+                bagSetupId: primaryBag?.id,
+              })
+            }
+            testID="btn-reconfigure-smarttag"
+          >
+            <Text style={styles.reconfigureLinkText}>
+              Edit baggage count or reconfigure SmartTag
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.journeyLinkDivider} />
+
+        {/* Secondary CTA: View baggage journey > */}
+        <CathaySecondaryButton
+          label={entry.secondaryCtaLabel}
+          variant="rowChevron"
+          onPress={() =>
+            smartTagController.navigateTo('journey', {
+              itineraryId: itinerary.id,
+              bagSetupId: primaryBag?.id,
+            })
+          }
+          testID="btn-view-baggage-journey"
+        />
+      </FlightSummaryCard>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Top Header (Exact Frame #80: Centered "My bookings", no extra icons) */}
+      {/* Top Header (Exact Design 01: Centered "My bookings") */}
       <View style={styles.header}>
         <TouchableOpacity activeOpacity={0.9} onLongPress={onOpenDevMenu}>
           <Text style={styles.headerTitle}>My bookings</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 2-Column Underline Tabs: Upcoming | Past (Frame #80) */}
+      {/* 2-Column Underline Tabs: Upcoming | Past */}
       <View style={styles.tabsRow}>
         <TouchableOpacity
           style={[styles.tabBtn, tab === 'upcoming' && styles.tabBtnActive]}
           onPress={() => setTab('upcoming')}
           activeOpacity={0.75}
+          testID="tab-bookings-upcoming"
         >
-          <Text style={[styles.tabLabel, tab === 'upcoming' && styles.tabLabelActive]}>
+          <Text
+            style={[styles.tabLabel, tab === 'upcoming' && styles.tabLabelActive]}
+          >
             Upcoming
           </Text>
         </TouchableOpacity>
@@ -105,6 +269,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
           style={[styles.tabBtn, tab === 'past' && styles.tabBtnActive]}
           onPress={() => setTab('past')}
           activeOpacity={0.75}
+          testID="tab-bookings-past"
         >
           <Text style={[styles.tabLabel, tab === 'past' && styles.tabLabelActive]}>
             Past
@@ -120,133 +285,14 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ACTIVE BOOKING & POLYAERO SMARTTAG */}
-        {tab === 'upcoming' && bookings.length > 0 && (
+        {/* UPCOMING BOOKINGS WITH SMARTTAG ENTRY (Design 01) */}
+        {tab === 'upcoming' && upcomingItineraries.length > 0 && (
           <View style={styles.bookingsList}>
-            {bookings.map((b) => (
-              <View key={b.id} style={styles.activeBookingCard}>
-                {/* Cathay Jade-Teal Header with Diagonal Sheen */}
-                <View style={styles.bookingGreenHeader}>
-                  <View style={styles.bookingDiagonalSheen} />
-                  <View style={styles.flightTagRow}>
-                    <View>
-                      <Text style={styles.flightDateLight}>{b.departureDate}</Text>
-                      <Text style={styles.flightNumText}>{b.flightNumber} • {b.cabin}</Text>
-                    </View>
-                    <View style={styles.confirmedPill}>
-                      <Text style={styles.confirmedText}>{b.status}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* White Overlapping Route & SmartTag Body */}
-                <View style={styles.bookingWhiteBody}>
-                  <View style={styles.bookingRouteRow}>
-                    <View style={styles.routeCityCol}>
-                      <Text style={styles.routeTimeTeal}>{b.departureTime}</Text>
-                      <Text style={styles.routeCodeLarge}>{b.origin}</Text>
-                      <Text style={styles.routeCityName}>{b.originCity}</Text>
-                    </View>
-
-                    <View style={styles.routePlaneCol}>
-                      <Text style={styles.routeDurationText}>{b.duration}</Text>
-                      <View style={styles.routeLineRow}>
-                        <Ionicons name="airplane" size={14} color="#1C2024" />
-                        <View style={styles.routeLineBar} />
-                        <View style={styles.routeEndDot} />
-                      </View>
-                      <Text style={styles.nonStopSmall}>Direct</Text>
-                    </View>
-
-                    <View style={styles.routeCityColRight}>
-                      <Text style={styles.routeTimeTeal}>{b.arrivalTime}</Text>
-                      <Text style={styles.routeCodeLarge}>{b.destination}</Text>
-                      <Text style={styles.routeCityName}>{b.destinationCity}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.tripMetaBadgesRow}>
-                    <View style={styles.metaBadge}>
-                      <Text style={styles.metaBadgeLabel}>BOOKING REF</Text>
-                      <Text style={styles.metaBadgeValue}>{b.pnr}</Text>
-                    </View>
-                    <View style={styles.metaBadge}>
-                      <Text style={styles.metaBadgeLabel}>TERMINAL / GATE</Text>
-                      <Text style={styles.metaBadgeValue}>{b.terminal} • {b.gate}</Text>
-                    </View>
-                    <View style={styles.metaBadge}>
-                      <Text style={styles.metaBadgeLabel}>SEAT</Text>
-                      <Text style={styles.metaBadgeValue}>{b.seat}</Text>
-                    </View>
-                  </View>
-
-                  {/* POLYAERO SMARTTAG DIGITAL BAGGAGE INTEGRATION */}
-                  {b.smartTag && b.baggage && (
-                    <View style={styles.smartTagSection}>
-                      <SmartTagCard tag={b.smartTag} baggage={b.baggage} />
-
-                      {/* NFC Tap Hardware Simulation */}
-                      <View style={styles.nfcInteractiveBox}>
-                        <Text style={styles.nfcHeading}>NFC E-Ink Tag Synchronization</Text>
-                        <Text style={styles.nfcSub}>
-                          Tap your phone against the passive PolyAero SmartTag to write IATA barcode and flight routing to the E-ink display.
-                        </Text>
-
-                        <TouchableOpacity
-                          style={[styles.nfcButton, isScanningNfc && styles.nfcButtonDisabled]}
-                          onPress={handleSimulateNfc}
-                          disabled={isScanningNfc}
-                          activeOpacity={0.85}
-                        >
-                          {isScanningNfc ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                          ) : (
-                            <View style={styles.nfcBtnInner}>
-                              <Ionicons name="radio-outline" size={18} color="#FFFFFF" />
-                              <Text style={styles.nfcButtonText}>Simulate NFC Tag Tap</Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-
-                        {scanResult && (
-                          <View style={styles.scanSuccessBox}>
-                            <View style={styles.scanSuccessTitleRow}>
-                              <Ionicons name="checkmark-circle" size={16} color="#2E6B69" />
-                              <Text style={styles.scanSuccessTitle}>E-Ink Display Synchronized</Text>
-                            </View>
-                            <Text style={styles.scanSuccessRow}>
-                              UID: <Text style={styles.boldMono}>{scanResult.tagUid}</Text>
-                            </Text>
-                            <Text style={styles.scanSuccessRow}>
-                              Bag Tag: <Text style={styles.boldMono}>{scanResult.payload?.baggageTagNumber}</Text>
-                            </Text>
-                            <Text style={styles.scanSuccessRow}>
-                              Routing: <Text style={styles.boldMono}>{b.flightNumber} {b.origin} ➔ {b.destination}</Text>
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))}
-
-            {/* Bottom Add Another Booking Section */}
-            <View style={styles.bottomFindSection}>
-              <Text style={styles.cantFindHeading}>Can't find your booking?</Text>
-              <TouchableOpacity
-                style={styles.addBookingOutlineBtn}
-                onPress={() => setShowAddModal(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.addBookingOutlineBtnText}>Add booking</Text>
-              </TouchableOpacity>
-            </View>
+            {upcomingItineraries.map(renderItineraryCard)}
           </View>
         )}
 
-        {/* AUTHENTIC EMPTY STATE (Exact Video Frame #80 & #85) */}
+        {/* GENUINE EMPTY STATE (Preserved from Phase 1A Frame #80 + Demo Itinerary Loader) */}
         {isEmpty && (
           <View style={styles.emptyFullWrapper}>
             <View style={styles.emptyTopCenter}>
@@ -271,7 +317,9 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
             </View>
 
             <View style={styles.emptyBottomSection}>
-              <Text style={styles.cantFindHeading}>Can't find your booking?</Text>
+              <Text style={styles.cantFindHeading}>
+                Can&apos;t find your booking?
+              </Text>
 
               <TouchableOpacity
                 style={styles.addBookingOutlineBtn}
@@ -282,6 +330,24 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                 <Text style={styles.addBookingOutlineBtnText}>Add booking</Text>
               </TouchableOpacity>
 
+              {tab === 'upcoming' && (
+                <TouchableOpacity
+                  style={styles.demoPopulateBtn}
+                  onPress={handleLoadDemoItinerary}
+                  activeOpacity={0.8}
+                  testID="btn-load-demo-itinerary"
+                >
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={16}
+                    color={CATHAY_JADE}
+                  />
+                  <Text style={styles.demoPopulateBtnText}>
+                    Load hackathon demo itinerary (CX548 HKG → NRT • 8K3F7D)
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.creamTipBox}>
                 <Ionicons
                   name="bulb-outline"
@@ -290,7 +356,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                   style={styles.bulbIcon}
                 />
                 <Text style={styles.creamTipText}>
-                  Tap ‘Add booking’ and enter your reference or e-ticket number to add it to your bookings.
+                  Tap ‘Add booking’ and enter reference {DEMO_BOOKING_REFERENCE} (or tap the demo loader above) to preview the CX548 SmartTag passenger experience.
                 </Text>
               </View>
             </View>
@@ -298,7 +364,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
         )}
       </ScrollView>
 
-      {/* ADD A BOOKING MODAL (Exact Video Frames #82 & #83) */}
+      {/* ADD A BOOKING MODAL */}
       <Modal
         visible={showAddModal}
         animationType="slide"
@@ -307,19 +373,24 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
       >
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.modalCloseBtn}>
+            <TouchableOpacity
+              onPress={() => setShowAddModal(false)}
+              style={styles.modalCloseBtn}
+            >
               <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Add a booking</Text>
             <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.modalScroll}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.modalNoticeText}>
-              Please note: Under certain circumstances, the system may need more time to link your booking to your member account.
+              Please note: For the Cathay Hackathon demo, enter synthetic booking reference {DEMO_BOOKING_REFERENCE} (Flight CX548 HKG → NRT, 21 Nov 2026).
             </Text>
 
-            {/* White Grouped Input Box: Family Name & Given Name */}
             <View style={styles.whiteFormBlock}>
               <View style={styles.inputFieldWrap}>
                 <Text style={styles.fieldFloatingLabel}>FAMILY NAME</Text>
@@ -335,7 +406,9 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
               <View style={styles.blockHairline} />
 
               <View style={styles.inputFieldWrap}>
-                <Text style={styles.fieldFloatingLabel}>GIVEN/FIRST NAME AND MIDDLE NAMES</Text>
+                <Text style={styles.fieldFloatingLabel}>
+                  GIVEN/FIRST NAME AND MIDDLE NAMES
+                </Text>
                 <TextInput
                   style={styles.cleanTextInput}
                   value={givenName}
@@ -352,15 +425,27 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                 style={styles.radioRow}
                 onPress={() => {
                   setRefType('bookingRef');
+                  setRefValue(DEMO_BOOKING_REFERENCE);
                   setInputError(null);
                 }}
                 activeOpacity={0.8}
               >
-                <View style={[styles.radioOuter, refType === 'bookingRef' && styles.radioOuterActive]}>
-                  {refType === 'bookingRef' && <View style={styles.radioInnerDot} />}
+                <View
+                  style={[
+                    styles.radioOuter,
+                    refType === 'bookingRef' && styles.radioOuterActive,
+                  ]}
+                >
+                  {refType === 'bookingRef' && (
+                    <View style={styles.radioInnerDot} />
+                  )}
                 </View>
                 <Text style={styles.radioLabelText}>Booking reference</Text>
-                <Ionicons name="information-circle-outline" size={20} color="#195A58" />
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={CATHAY_JADE}
+                />
               </TouchableOpacity>
 
               {refType === 'bookingRef' && (
@@ -374,9 +459,10 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                         setRefValue(v);
                         setInputError(null);
                       }}
-                      placeholder="Booking reference (e.g. 7Y9K2M)"
+                      placeholder={`Booking reference (e.g. ${DEMO_BOOKING_REFERENCE})`}
                       placeholderTextColor="#76777A"
                       autoCapitalize="characters"
+                      testID="input-booking-ref"
                     />
                   </View>
                 </>
@@ -398,16 +484,27 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                 style={styles.radioRow}
                 onPress={() => {
                   setRefType('eticket');
-                  setRefValue('160 8291048291');
+                  setRefValue('160-8801234560');
                   setInputError(null);
                 }}
                 activeOpacity={0.8}
               >
-                <View style={[styles.radioOuter, refType === 'eticket' && styles.radioOuterActive]}>
-                  {refType === 'eticket' && <View style={styles.radioInnerDot} />}
+                <View
+                  style={[
+                    styles.radioOuter,
+                    refType === 'eticket' && styles.radioOuterActive,
+                  ]}
+                >
+                  {refType === 'eticket' && (
+                    <View style={styles.radioInnerDot} />
+                  )}
                 </View>
                 <Text style={styles.radioLabelText}>e-ticket number</Text>
-                <Ionicons name="information-circle-outline" size={20} color="#195A58" />
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={CATHAY_JADE}
+                />
               </TouchableOpacity>
 
               {refType === 'eticket' && (
@@ -419,7 +516,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                       style={styles.cleanTextInput}
                       value={refValue}
                       onChangeText={setRefValue}
-                      placeholder="160 8291048291"
+                      placeholder="160-8801234560"
                       placeholderTextColor="#76777A"
                       keyboardType="number-pad"
                     />
@@ -441,7 +538,8 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
                 <Text
                   style={[
                     styles.continueModalBtnText,
-                    refValue.trim().length >= 6 && styles.continueModalBtnTextActive,
+                    refValue.trim().length >= 6 &&
+                      styles.continueModalBtnTextActive,
                   ]}
                 >
                   Continue
@@ -455,18 +553,11 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
   );
 };
 
-const cardShadow = {
-  shadowColor: '#0F172A',
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
-};
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
   },
   header: {
     height: 48,
@@ -475,15 +566,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 16.5,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#1C2024',
+    color: CATHAY_TEXT_PRIMARY,
   },
   headerSpacer: {
     width: 36,
   },
 
-  /* 2-Column Underline Tabs (Frame #80) */
   tabsRow: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -492,38 +582,103 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   tabBtnActive: {
-    borderBottomColor: '#195A58',
+    borderBottomColor: CATHAY_JADE,
   },
   tabLabel: {
     fontSize: 15.5,
     fontWeight: '400',
-    color: '#4B5563',
+    color: '#5A6168',
   },
   tabLabelActive: {
-    color: '#195A58',
+    color: CATHAY_JADE,
     fontWeight: '600',
   },
 
   contentScroll: {
     flex: 1,
-    backgroundColor: '#F7F7F6',
+    backgroundColor: CATHAY_BG,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 110,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 120,
   },
   scrollContentEmpty: {
     flexGrow: 1,
     justifyContent: 'space-between',
   },
 
-  /* Empty State (Frame #80) */
+  bookingsList: {
+    gap: 18,
+  },
+  cardSectionDivider: {
+    height: 1,
+    backgroundColor: CATHAY_BORDER,
+    marginTop: 14,
+    marginBottom: 16,
+  },
+  smartTagHeroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  smartTagTextCol: {
+    flex: 1,
+  },
+  smartTagHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  smartTagTitle: {
+    fontSize: 17.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    letterSpacing: -0.2,
+  },
+  smartTagDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: CATHAY_TEXT_SECONDARY,
+  },
+  entryBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  multiBagCountNote: {
+    fontSize: 12.5,
+    color: CATHAY_JADE,
+    fontWeight: '600',
+  },
+  setupCtaBtn: {
+    marginTop: 2,
+  },
+  reconfigureLink: {
+    paddingTop: 10,
+    alignItems: 'center',
+  },
+  reconfigureLinkText: {
+    fontSize: 13,
+    color: CATHAY_JADE,
+    fontWeight: '500',
+  },
+  journeyLinkDivider: {
+    height: 1,
+    backgroundColor: CATHAY_BORDER,
+    marginTop: 14,
+  },
+
+  /* Empty State */
   emptyFullWrapper: {
     flex: 1,
     justifyContent: 'space-between',
@@ -552,34 +707,50 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   emptyBottomSection: {
-    marginTop: 48,
+    marginTop: 36,
   },
   cantFindHeading: {
     fontSize: 15.5,
     fontWeight: '600',
     color: '#2C3034',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   addBookingOutlineBtn: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#2E6E6D',
-    borderRadius: 4,
+    borderColor: CATHAY_JADE,
+    borderRadius: 6,
     paddingVertical: 14,
     alignItems: 'center',
   },
   addBookingOutlineBtnText: {
-    color: '#2E6E6D',
+    color: CATHAY_JADE,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  demoPopulateBtn: {
+    marginTop: 10,
+    backgroundColor: '#E6F1EE',
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  demoPopulateBtnText: {
+    color: CATHAY_JADE,
+    fontSize: 13.5,
+    fontWeight: '600',
   },
   creamTipBox: {
     backgroundColor: '#FAF5EA',
-    borderRadius: 4,
+    borderRadius: 6,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    marginTop: 16,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -589,244 +760,28 @@ const styles = StyleSheet.create({
   },
   creamTipText: {
     flex: 1,
-    fontSize: 13.5,
-    lineHeight: 19,
-    color: '#2C3034',
-  },
-
-  /* Active Booking Card */
-  bookingsList: {
-    gap: 20,
-  },
-  activeBookingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    overflow: 'hidden',
-    ...cardShadow,
-  },
-  bookingGreenHeader: {
-    backgroundColor: '#2B6E6D',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 28,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  bookingDiagonalSheen: {
-    position: 'absolute',
-    right: -30,
-    bottom: -40,
-    width: 220,
-    height: 140,
-    backgroundColor: '#135958',
-    borderTopLeftRadius: 140,
-    transform: [{ rotate: '-8deg' }],
-  },
-  flightTagRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  flightDateLight: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
-    marginBottom: 2,
-  },
-  flightNumText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  confirmedPill: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  confirmedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  bookingWhiteBody: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    marginTop: -12,
-    padding: 20,
-    zIndex: 3,
-  },
-  bookingRouteRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  routeCityCol: {
-    flex: 1,
-  },
-  routeCityColRight: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  routeTimeTeal: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#195A58',
-    marginBottom: 2,
-  },
-  routeCodeLarge: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  routeCityName: {
-    fontSize: 12.5,
-    color: '#52565A',
-    marginTop: 2,
-  },
-  routePlaneCol: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  routeDurationText: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginBottom: 6,
-  },
-  routeLineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  routeLineBar: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: '#D1D5DB',
-  },
-  routeEndDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#E5E7EB',
-  },
-  nonStopSmall: {
-    fontSize: 11,
-    color: '#2E6B69',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  tripMetaBadgesRow: {
-    flexDirection: 'row',
-    backgroundColor: '#F5F6F7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  metaBadge: {
-    flex: 1,
-  },
-  metaBadgeLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#76777A',
-    marginBottom: 3,
-  },
-  metaBadgeValue: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  smartTagSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    paddingTop: 12,
-  },
-  nfcInteractiveBox: {
-    backgroundColor: '#F4EFE4',
-    borderRadius: 10,
-    padding: 16,
-    marginTop: 8,
-  },
-  nfcHeading: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  nfcSub: {
-    fontSize: 12.5,
-    color: '#2C3034',
     lineHeight: 18,
-    marginTop: 4,
-    marginBottom: 14,
-  },
-  nfcButton: {
-    backgroundColor: '#233D3B',
-    borderRadius: 6,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  nfcButtonDisabled: {
-    opacity: 0.6,
-  },
-  nfcBtnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  nfcButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '500',
-  },
-  scanSuccessBox: {
-    marginTop: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#D7E6E5',
-  },
-  scanSuccessTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  scanSuccessTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#195A58',
-  },
-  scanSuccessRow: {
-    fontSize: 12,
     color: '#2C3034',
-    marginTop: 2,
-  },
-  boldMono: {
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  bottomFindSection: {
-    marginTop: 12,
   },
 
-  /* Add a Booking Modal (Frames #82 & #83) */
+  /* Add Booking Modal */
   modalSafeArea: {
     flex: 1,
-    backgroundColor: '#F5F6F7',
+    backgroundColor: '#F6F5F2',
   },
   modalHeader: {
+    height: 54,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    height: 52,
-    backgroundColor: '#F5F6F7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   modalCloseBtn: {
-    padding: 6,
+    padding: 4,
   },
   modalHeaderTitle: {
     fontSize: 16.5,
@@ -835,110 +790,112 @@ const styles = StyleSheet.create({
   },
   modalScroll: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 18,
   },
   modalNoticeText: {
     fontSize: 13.5,
+    color: '#52565A',
     lineHeight: 19,
-    color: '#1C2024',
-    fontWeight: '600',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    marginBottom: 18,
   },
   whiteFormBlock: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   inputFieldWrap: {
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   fieldFloatingLabel: {
     fontSize: 10.5,
-    fontWeight: '500',
-    color: '#52565A',
-    marginBottom: 6,
-    letterSpacing: 0.3,
+    color: '#76777A',
+    marginBottom: 4,
+    letterSpacing: 0.2,
   },
   cleanTextInput: {
-    fontSize: 16,
+    fontSize: 15.5,
     color: '#1C2024',
     paddingVertical: 2,
   },
   blockHairline: {
     height: 1,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 16,
   },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   radioOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#C4C6CA',
+    borderWidth: 1.5,
+    borderColor: '#9CA3AF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   radioOuterActive: {
-    borderColor: '#195A58',
+    borderColor: CATHAY_JADE,
   },
   radioInnerDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#195A58',
+    backgroundColor: CATHAY_JADE,
   },
   radioLabelText: {
     flex: 1,
-    fontSize: 16,
-    color: '#52565A',
+    fontSize: 15.5,
+    color: '#1C2024',
   },
   redValidationBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9ECEC',
-    marginHorizontal: 20,
     marginTop: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
+    marginBottom: 4,
   },
   redExclamationBox: {
-    backgroundColor: '#B91C1C',
-    width: 28,
-    height: 28,
+    width: 18,
+    height: 18,
+    backgroundColor: '#C92A2A',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 8,
   },
   redExclamationMark: {
     color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-    fontSize: 15,
   },
   redValidationText: {
+    flex: 1,
+    color: '#C92A2A',
     fontSize: 12.5,
-    color: '#991B1B',
   },
   continueBtnContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    marginTop: 28,
+    marginBottom: 40,
   },
   continueModalBtn: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#E0E2E5',
     borderRadius: 4,
     paddingVertical: 15,
     alignItems: 'center',
   },
   continueModalBtnActive: {
-    backgroundColor: '#233D3B',
+    backgroundColor: CATHAY_JADE,
   },
   continueModalBtnText: {
-    fontSize: 16,
+    color: '#8D9297',
+    fontSize: 15.5,
     fontWeight: '600',
-    color: '#6B7280',
   },
   continueModalBtnTextActive: {
     color: '#FFFFFF',

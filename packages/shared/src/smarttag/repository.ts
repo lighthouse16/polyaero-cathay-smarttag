@@ -510,6 +510,88 @@ export interface SmartTagRepositorySnapshot {
 
 export type SmartTagStoreListener = () => void;
 
+export type SmartTagScreenRoute =
+  | 'bookings'
+  | 'prepare'
+  | 'sync'
+  | 'result'
+  | 'journey'
+  | 'report';
+
+export interface SmartTagNavigationState {
+  currentRoute: SmartTagScreenRoute;
+  history: SmartTagScreenRoute[];
+}
+
+export class SmartTagFlowNavigator {
+  private state: SmartTagNavigationState = {
+    currentRoute: 'bookings',
+    history: [],
+  };
+  private listeners = new Set<() => void>();
+
+  constructor(initialRoute: SmartTagScreenRoute = 'bookings') {
+    if (initialRoute !== 'bookings') {
+      this.state = { currentRoute: initialRoute, history: ['bookings'] };
+    }
+  }
+
+  public getState(): SmartTagNavigationState {
+    return this.state;
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(): void {
+    this.listeners.forEach((l) => l());
+  }
+
+  public navigateTo(
+    route: SmartTagScreenRoute,
+    options?: { replace?: boolean }
+  ): SmartTagNavigationState {
+    if (route === 'bookings') {
+      this.state = { currentRoute: 'bookings', history: [] };
+    } else if (options?.replace) {
+      this.state = {
+        currentRoute: route,
+        history: this.state.history.length > 0 ? this.state.history : ['bookings'],
+      };
+    } else if (this.state.currentRoute !== route) {
+      this.state = {
+        currentRoute: route,
+        history: [...this.state.history, this.state.currentRoute],
+      };
+    }
+    this.emit();
+    return this.state;
+  }
+
+  public goBack(): boolean {
+    if (this.state.currentRoute === 'bookings') {
+      return false;
+    }
+    const nextHistory = [...this.state.history];
+    const previous = nextHistory.pop() ?? 'bookings';
+    this.state = {
+      currentRoute: previous,
+      history: nextHistory,
+    };
+    this.emit();
+    return true;
+  }
+
+  public reset(): void {
+    this.state = { currentRoute: 'bookings', history: [] };
+    this.emit();
+  }
+}
+
 export interface SmartTagRepository {
   getSnapshot(): SmartTagRepositorySnapshot;
   subscribe(listener: SmartTagStoreListener): () => void;

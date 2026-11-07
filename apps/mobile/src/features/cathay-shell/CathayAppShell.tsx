@@ -31,6 +31,7 @@ import {
   INITIAL_USER_PROFILE,
   INITIAL_BOOKING,
 } from './CathayTypes';
+import { smartTagController, smartTagRepository } from '../smarttag/store';
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -94,10 +95,20 @@ const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: 
   return { onboarding: 'splash', tab: 'home', isAuth: false, isBooked: false };
 };
 
-export const CathayAppShell: React.FC = () => {
+export interface CathayAppShellProps {
+  initialTabOverride?: CathayTabId;
+}
+
+export const CathayAppShell: React.FC<CathayAppShellProps> = ({
+  initialTabOverride,
+}) => {
   // Navigation State
-  const [onboardingScreen, setOnboardingScreen] = useState<OnboardingScreenId | null>(() => getInitialScreenState().onboarding);
-  const [activeTab, setActiveTab] = useState<CathayTabId>(() => getInitialScreenState().tab);
+  const [onboardingScreen, setOnboardingScreen] = useState<OnboardingScreenId | null>(() =>
+    initialTabOverride ? null : getInitialScreenState().onboarding
+  );
+  const [activeTab, setActiveTab] = useState<CathayTabId>(() =>
+    initialTabOverride ?? getInitialScreenState().tab
+  );
 
   // Global Auth & Passenger Data State
   const [user, setUser] = useState<UserAuthProfile>(() => {
@@ -214,13 +225,15 @@ export const CathayAppShell: React.FC = () => {
 
   const handleFlightBooked = (booking: FlightBooking) => {
     setBookings((prev) => [booking, ...prev]);
+    smartTagRepository.addDemoItinerary();
+    smartTagController.resetToBookings();
     setRecentSearch({
       id: `rec-${Date.now()}`,
       origin: booking.origin,
       originCity: booking.originCity,
       destination: booking.destination,
       destinationCity: booking.destinationCity,
-      dates: '08 Nov - 15 Nov',
+      dates: '21 Nov - 28 Nov',
       price: 'HKD5,674',
     });
     // Immediately navigate to My Trips tab so user sees their new flight & PolyAero SmartTag!
@@ -370,7 +383,12 @@ export const CathayAppShell: React.FC = () => {
               <TouchableOpacity
                 key={tab.id}
                 style={styles.dockItem}
-                onPress={() => setActiveTab(tab.id)}
+                onPress={() => {
+                  if (tab.id === 'trips' && activeTab === 'trips') {
+                    smartTagController.resetToBookings();
+                  }
+                  setActiveTab(tab.id);
+                }}
                 activeOpacity={0.75}
                 testID={`tab-${tab.id}`}
               >
@@ -523,12 +541,27 @@ export const CathayAppShell: React.FC = () => {
               <TouchableOpacity
                 style={styles.devOptionBtn}
                 onPress={() => {
+                  smartTagRepository.addDemoItinerary();
+                  smartTagController.resetToBookings();
                   setOnboardingScreen(null);
                   setActiveTab('trips');
                   setIsDevMenuVisible(false);
                 }}
               >
-                <Text style={styles.devOptionBtnText}>7. My Trips & PolyAero SmartTag</Text>
+                <Text style={styles.devOptionBtnText}>7. My Trips & PolyAero SmartTag (CX548)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.devOptionBtn}
+                onPress={() => {
+                  smartTagController.resetAllDemoState(false);
+                  setBookings([]);
+                  setOnboardingScreen(null);
+                  setActiveTab('trips');
+                  setIsDevMenuVisible(false);
+                }}
+              >
+                <Text style={styles.devOptionBtnText}>7b. Reset SmartTag Demo State (Empty)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
