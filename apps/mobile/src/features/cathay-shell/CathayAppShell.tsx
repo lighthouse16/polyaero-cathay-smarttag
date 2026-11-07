@@ -31,20 +31,21 @@ import {
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
-const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId } => {
+const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean } => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const screen = params.get('screen');
+    const isAuth = params.get('auth') === '1' || params.get('auth') === 'true';
     if (screen) {
       if (['splash', 'language', 'welcome'].includes(screen)) {
-        return { onboarding: screen as OnboardingScreenId, tab: 'home' };
+        return { onboarding: screen as OnboardingScreenId, tab: 'home', isAuth };
       }
       if (['home', 'book', 'trips', 'profile', 'tools'].includes(screen)) {
-        return { onboarding: null, tab: screen as CathayTabId };
+        return { onboarding: null, tab: screen as CathayTabId, isAuth };
       }
     }
   }
-  return { onboarding: 'splash', tab: 'home' };
+  return { onboarding: 'splash', tab: 'home', isAuth: false };
 };
 
 export const CathayAppShell: React.FC = () => {
@@ -53,7 +54,10 @@ export const CathayAppShell: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CathayTabId>(() => getInitialScreenState().tab);
 
   // Global Auth & Passenger Data State
-  const [user, setUser] = useState<UserAuthProfile>(INITIAL_USER_PROFILE);
+  const [user, setUser] = useState<UserAuthProfile>(() => {
+    const { isAuth } = getInitialScreenState();
+    return isAuth ? { ...INITIAL_USER_PROFILE, isLoggedIn: true } : INITIAL_USER_PROFILE;
+  });
   const [bookings, setBookings] = useState<FlightBooking[]>([INITIAL_BOOKING]);
   const [recentSearch, setRecentSearch] = useState<RecentSearch | null>({
     id: 'rec-01',

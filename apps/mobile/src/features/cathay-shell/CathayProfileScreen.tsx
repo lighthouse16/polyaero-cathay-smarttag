@@ -7,7 +7,6 @@ import {
   ScrollView,
   SafeAreaView,
   Modal,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
@@ -26,340 +25,572 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
   onOpenSignIn,
 }) => {
   const [showMemberCardModal, setShowMemberCardModal] = useState(false);
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showTransactionsModal, setShowTransactionsModal] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoTitle, setInfoTitle] = useState('');
+  const [infoBody, setInfoBody] = useState('');
+
+  const openInfo = (title: string, body: string) => {
+    setInfoTitle(title);
+    setInfoBody(body);
+    setShowInfoModal(true);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.topBarTitle}>Profile</Text>
-        <TouchableOpacity onPress={onOpenDevMenu} style={styles.navBtn}>
-          <Ionicons name="ellipsis-horizontal" size={24} color="#1C2024" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.mainScroll} contentContainerStyle={styles.scrollContent}>
-        {/* If Guest, show sign in / sign up banner */}
+      <ScrollView
+        style={styles.mainScroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* If Guest, show authentic Cathay Member Sign in prompt */}
         {!user.isLoggedIn ? (
-          <View style={styles.guestCard}>
-            <Text style={styles.guestTitle}>Sign in to view your profile</Text>
-            <Text style={styles.guestSub}>
-              Access your digital membership card, Asia Miles balance, and exclusive tier benefits.
-            </Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={onOpenSignIn}>
-              <Text style={styles.primaryBtnText}>Sign in / Sign up</Text>
-            </TouchableOpacity>
+          <View style={styles.guestContainer}>
+            <View style={styles.guestHeader}>
+              <TouchableOpacity onPress={onOpenDevMenu} style={styles.topDevBtn}>
+                <Ionicons name="ellipsis-horizontal" size={22} color="#1C2024" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.guestCard}>
+              <View style={styles.guestIconBadge}>
+                <Ionicons name="person" size={28} color="#006564" />
+              </View>
+              <Text style={styles.guestTitle}>Become a Cathay member</Text>
+              <Text style={styles.guestSub}>
+                Unlock a world of exclusive member benefits and rewards: 48-hour priority online check-in, 24-hour free cancellation, and Asia Miles earning.
+              </Text>
+              <TouchableOpacity
+                style={styles.guestPrimaryBtn}
+                onPress={onOpenSignIn}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.guestPrimaryBtnText}>Sign in / Sign up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <>
-            {/* 1. MEMBER HEADER CARD (Matching frames #86 - #88 in video) */}
-            <View style={styles.memberCardBox}>
-              <View style={styles.memberCardHeaderRow}>
-                <View>
+            {/* Top discreet dev button in header area */}
+            <View style={styles.topBar}>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity onPress={onOpenDevMenu} style={styles.topDevBtn}>
+                <Ionicons name="ellipsis-horizontal" size={22} color="#718096" />
+              </TouchableOpacity>
+            </View>
+
+            {/* 1. MEMBER CARD (Authentic Video Frames #94, #99, #100) */}
+            <View style={styles.memberCardContainer}>
+              {/* Green Card Header */}
+              <View style={styles.memberCardHeader}>
+                <View style={styles.memberInfoCol}>
                   <Text style={styles.memberName}>{`${user.familyName} ${user.givenName}`}</Text>
-                  <Text style={styles.memberId}>{user.membershipNumber}</Text>
+                  <View style={styles.memberIdRow}>
+                    <Text style={styles.memberId}>{user.membershipNumber}</Text>
+                    <Ionicons name="copy-outline" size={13} color="rgba(255, 255, 255, 0.75)" style={{ marginLeft: 6 }} />
+                  </View>
+                  <View style={styles.tierStatusBadge}>
+                    <View style={styles.tierDot} />
+                    <Text style={styles.tierStatusText}>{user.tierStatus} member</Text>
+                  </View>
                 </View>
 
-                {/* QR Code button to open full digital card */}
+                {/* Digital Card / QR Button */}
                 <TouchableOpacity
-                  style={styles.qrCodeIconBtn}
+                  style={styles.qrButton}
                   onPress={() => setShowMemberCardModal(true)}
                   activeOpacity={0.8}
+                  testID="btn-open-member-card"
                 >
-                  <Ionicons name="qr-code-outline" size={26} color="#FFFFFF" />
+                  <Ionicons name="qr-code-outline" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.tierPill}>
-                <Text style={styles.tierPillText}>{user.tierStatus} member</Text>
-              </View>
-
-              {/* Status Points Bar */}
-              <View style={styles.statusPointsCard}>
-                <View style={styles.pointsTopRow}>
-                  <Text style={styles.pointsLabel}>Status Points</Text>
-                  <Text style={styles.pointsValue}>{user.statusPoints} &gt;</Text>
-                </View>
-
-                {/* Progress Bar */}
-                <View style={styles.progressBarTrack}>
-                  <View style={[styles.progressBarFill, { width: '12%' }]} />
-                </View>
-
-                <Text style={styles.pointsToNextText}>
-                  {user.pointsToNextTier} more Status Points to reach Silver
-                </Text>
-                <Text style={styles.daysLeftText}>
-                  You have 54 day(s) left to earn Status Points
-                </Text>
-              </View>
-
-              {/* Asia Miles Row */}
-              <View style={styles.asiaMilesCard}>
-                <Text style={styles.asiaMilesLabel}>Asia Miles</Text>
-                <Text style={styles.asiaMilesValue}>A {user.asiaMiles} &gt;</Text>
-              </View>
-
-              {/* Quick Actions Row: Edit profile, Transactions, My rewards */}
-              <View style={styles.quickActionsRow}>
+              {/* White Card Inner Body: Status Points & Asia Miles */}
+              <View style={styles.memberCardBody}>
+                {/* Status Points Row */}
                 <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => setShowSettingsModal(true)}
+                  style={styles.pointsBlock}
+                  onPress={() =>
+                    openInfo(
+                      'Status Points',
+                      'Earn Status Points on eligible flights with Cathay Pacific and oneworld alliance carriers to upgrade or renew your membership tier.'
+                    )
+                  }
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="person-outline" size={22} color="#006564" />
-                  <Text style={styles.actionBtnLabel}>Edit profile</Text>
+                  <View style={styles.metricHeaderRow}>
+                    <Text style={styles.metricLabel}>Status Points</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={styles.metricValue}>{user.statusPoints}</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#718096" />
+                    </View>
+                  </View>
+
+                  {/* Progress Track */}
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: '8%' }]} />
+                  </View>
+
+                  <Text style={styles.pointsProgressTarget}>
+                    {user.pointsToNextTier} more Status Points to reach Silver
+                  </Text>
+                  <Text style={styles.pointsDaysLeft}>
+                    You have 54 day(s) left to earn Status Points
+                  </Text>
                 </TouchableOpacity>
 
+                <View style={styles.cardInternalDivider} />
+
+                {/* Asia Miles Row */}
                 <TouchableOpacity
-                  style={styles.actionBtn}
+                  style={styles.milesBlock}
                   onPress={() => setShowTransactionsModal(true)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="receipt-outline" size={22} color="#006564" />
-                  <Text style={styles.actionBtnLabel}>Transactions</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => setShowMemberCardModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="gift-outline" size={22} color="#006564" />
-                  <Text style={styles.actionBtnLabel}>My rewards</Text>
+                  <View style={styles.metricHeaderRow}>
+                    <Text style={styles.metricLabel}>Asia Miles</Text>
+                    <View style={styles.metricValueRow}>
+                      <Text style={styles.asiaMilesCurrencySymbol}>A</Text>
+                      <Text style={styles.metricValue}>{user.asiaMiles.toLocaleString()}</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#718096" />
+                    </View>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* 2. COMPLETE YOUR PROFILE NOW (Matching frames #94 - #98 in video) */}
+            {/* 2. YOUR 2027 STATUS PROGRESS SO FAR (Video Frame #94, #150) */}
+            <View style={styles.progress2027Container}>
+              <View style={styles.progress2027HeaderRow}>
+                <Text style={styles.progress2027Title}>Your 2027 Status progress so far</Text>
+                <View style={styles.greenPillBadge}>
+                  <Text style={styles.greenPillText}>Green</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 3. COMPLETE YOUR PROFILE NOW (Video Frame #94, #97, #98) */}
             <TouchableOpacity
               style={styles.completeProfileCard}
-              onPress={() => setShowSettingsModal(true)}
+              onPress={() => setShowCompleteProfileModal(true)}
               activeOpacity={0.85}
+              testID="btn-complete-profile"
             >
-              <View style={styles.completeHeaderRow}>
-                <View style={styles.briefcaseIconWrap}>
-                  <Ionicons name="briefcase" size={16} color="#006564" />
-                </View>
-                <View style={styles.completeTextCol}>
-                  <Text style={styles.completeTitle}>Complete your profile now</Text>
-                  <Text style={styles.completeSub}>
-                    Enjoy hassle-free bookings, faster check-in and enhanced account security.
-                  </Text>
-                </View>
-                <Text style={styles.stepFraction}>1/4</Text>
+              <View style={styles.completeProfileIconCol}>
+                <Ionicons name="briefcase-outline" size={22} color="#006564" />
               </View>
-
-              {/* Checklist breakdown */}
-              <View style={styles.checklistSummary}>
-                <View style={styles.checkRow}>
-                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                  <Text style={styles.checkLabel}>Mobile number sign-in ID</Text>
-                </View>
-                <View style={styles.checkRow}>
-                  <Ionicons name="ellipse-outline" size={16} color="#94A3B8" />
-                  <Text style={styles.checkLabel}>Set your email address as sign-in ID</Text>
-                </View>
-                <View style={styles.checkRow}>
-                  <Ionicons name="ellipse-outline" size={16} color="#94A3B8" />
-                  <Text style={styles.checkLabel}>Add your travel document</Text>
-                </View>
-                <View style={styles.checkRow}>
-                  <Ionicons name="ellipse-outline" size={16} color="#94A3B8" />
-                  <Text style={styles.checkLabel}>Create your passkey</Text>
-                </View>
+              <View style={styles.completeProfileTextCol}>
+                <Text style={styles.completeProfileTitle}>Complete your profile now</Text>
+                <Text style={styles.completeProfileSub}>
+                  Enjoy hassle-free bookings, faster check-in and enhanced account security.
+                </Text>
               </View>
+              <Ionicons name="chevron-forward" size={18} color="#718096" />
             </TouchableOpacity>
 
-            {/* 3. MY BENEFITS SECTION (Matching frame #88 in video) */}
+            {/* 4. THREE ACTION BUTTONS: Edit profile, Transactions, My rewards (Video Frame #96, #97) */}
+            <View style={styles.quickActionsRow}>
+              {/* Button 1: Edit profile */}
+              <TouchableOpacity
+                style={styles.quickActionItem}
+                onPress={() => setShowSettingsModal(true)}
+                activeOpacity={0.7}
+                testID="btn-edit-profile"
+              >
+                <Ionicons name="create-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
+                <Text style={styles.quickActionLabel}>Edit profile</Text>
+              </TouchableOpacity>
+
+              {/* Button 2: Transactions */}
+              <TouchableOpacity
+                style={styles.quickActionItem}
+                onPress={() => setShowTransactionsModal(true)}
+                activeOpacity={0.7}
+                testID="btn-transactions"
+              >
+                <Ionicons name="receipt-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
+                <Text style={styles.quickActionLabel}>Transactions</Text>
+              </TouchableOpacity>
+
+              {/* Button 3: My rewards */}
+              <TouchableOpacity
+                style={styles.quickActionItem}
+                onPress={() => setShowRewardsModal(true)}
+                activeOpacity={0.7}
+                testID="btn-my-rewards"
+              >
+                <Ionicons name="gift-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
+                <Text style={styles.quickActionLabel}>My rewards</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 5. ENHANCED MEMBERSHIP PROMO CARD (Video Frame #96, #97, #155) */}
+            <View style={styles.enhancedCard}>
+              <Text style={styles.enhancedCardTag}>Starting January 2027</Text>
+              <Text style={styles.enhancedCardTitle}>Enhanced membership</Text>
+              <Text style={styles.enhancedCardSub}>
+                A smoother, simpler and better membership
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  openInfo(
+                    'Enhanced membership 2027',
+                    'Starting January 2027, Cathay is introducing a refined tier system with streamlined Status Points thresholds and faster redemption on upgrades and partner benefits.'
+                  )
+                }
+                style={styles.enhancedLearnMoreBtn}
+              >
+                <Text style={styles.enhancedLearnMoreText}>Learn more →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 6. MY BENEFITS SECTION (Video Frame #96, #163) */}
             <View style={styles.benefitsSection}>
-              <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>My benefits</Text>
-                <TouchableOpacity>
-                  <Text style={styles.viewAllText}>View all</Text>
+              <View style={styles.benefitsHeaderRow}>
+                <Text style={styles.benefitsSectionTitle}>My benefits</Text>
+                <TouchableOpacity onPress={() => setShowRewardsModal(true)}>
+                  <Text style={styles.viewAllLink}>View all</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.benefitCard}>
-                <View style={styles.tierStatusTag}>
-                  <View style={styles.greenDot} />
-                  <Text style={styles.tierStatusTagText}>Current status: Green</Text>
+              <View style={styles.currentStatusRow}>
+                <Text style={styles.currentStatusLabel}>Current status:</Text>
+                <View style={styles.currentStatusPill}>
+                  <Text style={styles.currentStatusPillText}>Green</Text>
                 </View>
-                <Text style={styles.unlockedHeading}>You've unlocked</Text>
+              </View>
 
-                <View style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#006564" />
+              {/* Unlocked Benefits List Card */}
+              <View style={styles.benefitsCardBox}>
+                <Text style={styles.unlockedHeaderTitle}>You've unlocked</Text>
+
+                <View style={styles.benefitListItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#006564" style={styles.benefitCheckIcon} />
                   <Text style={styles.benefitItemText}>Priority online check-in (up to 48 hours in advance)</Text>
                 </View>
 
-                <View style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#006564" />
+                <View style={styles.benefitListItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#006564" style={styles.benefitCheckIcon} />
                   <Text style={styles.benefitItemText}>Extra legroom seats redemption</Text>
                 </View>
 
-                <View style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#006564" />
+                {/* Direct SmartTag baggage benefit linkage */}
+                <View style={styles.benefitListItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#006564" style={styles.benefitCheckIcon} />
                   <Text style={styles.benefitItemText}>Extra baggage redemption & PolyAero SmartTag sync</Text>
                 </View>
 
-                <View style={styles.silverUnlockNotice}>
-                  <Ionicons name="lock-closed" size={14} color="#64748B" />
-                  <Text style={styles.silverUnlockNoticeText}>Reach Silver to unlock Business lounge access</Text>
+                <View style={styles.benefitDivider} />
+
+                <View style={styles.lockedMilestoneRow}>
+                  <Ionicons name="lock-closed-outline" size={16} color="#718096" style={{ marginRight: 8 }} />
+                  <Text style={styles.lockedMilestoneText}>Reach Silver to unlock airport lounge access</Text>
                 </View>
               </View>
             </View>
 
             {/* Sign Out Button */}
-            {onSignOut && (
-              <TouchableOpacity style={styles.signOutButton} onPress={onSignOut}>
-                <Text style={styles.signOutButtonText}>Sign out</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.signOutBtn}
+              onPress={onSignOut}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.signOutBtnText}>Sign out</Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
 
-      {/* FULL DIGITAL MEMBERSHIP CARD MODAL (Matching frame #99 in video) */}
-      <Modal visible={showMemberCardModal} transparent animationType="slide" onRequestClose={() => setShowMemberCardModal(false)}>
-        <View style={styles.cardModalOverlay}>
-          <SafeAreaView style={styles.cardModalSafeArea}>
-            <View style={styles.cardModalHeader}>
-              <TouchableOpacity onPress={() => setShowMemberCardModal(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={26} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.cardModalHeaderTitle}>Membership Card</Text>
-              <View style={styles.headerSpacer} />
+      {/* MODAL 1: DIGITAL MEMBERSHIP CARD (Authentic Video Frame #99) */}
+      <Modal
+        visible={showMemberCardModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowMemberCardModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMemberCardModal(false)} style={styles.modalHeaderBtn}>
+              <Ionicons name="close" size={24} color="#1C2024" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Membership Card</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <View style={styles.modalBodyCentered}>
+            {/* Authentic Cathay Digital Member Card View */}
+            <View style={styles.digitalCardShell}>
+              <View style={styles.digitalCardTop}>
+                <Text style={styles.digitalCardLogo}>CATHAY</Text>
+                <Text style={styles.digitalCardTier}>GREEN</Text>
+              </View>
+
+              <Text style={styles.digitalCardMemberName}>
+                {`${user.familyName} ${user.givenName}`}
+              </Text>
+
+              <View style={styles.digitalCardDataRow}>
+                <View>
+                  <Text style={styles.digitalCardDataLabel}>MEMBERSHIP NUMBER</Text>
+                  <Text style={styles.digitalCardDataValue}>{user.membershipNumber}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.digitalCardDataLabel}>MEMBER SINCE</Text>
+                  <Text style={styles.digitalCardDataValue}>2025</Text>
+                </View>
+              </View>
+
+              {/* QR Barcode placeholder matching video */}
+              <View style={styles.qrCodeContainer}>
+                <Ionicons name="qr-code" size={140} color="#1C2024" />
+                <Text style={styles.qrCodeCaption}>Scan at boarding gate or lounge reception</Text>
+              </View>
             </View>
 
-            <View style={styles.cardModalBody}>
-              {/* Cathay Jade Green Digital Membership Card */}
-              <View style={styles.modalGreenCard}>
-                <View style={styles.modalCardTop}>
-                  <View style={styles.cardBrandLockup}>
-                    <Image
-                      source={require('../../../assets/cathay/cathay-brushwing-white.png')}
-                      style={styles.cardBrushwing}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.cardBrandText}>CATHAY</Text>
-                  </View>
-                </View>
+            {/* Apple Wallet action button matching frame #99 */}
+            <TouchableOpacity
+              style={styles.appleWalletBtn}
+              onPress={() => setShowMemberCardModal(false)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="wallet-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.appleWalletBtnText}>Add to Apple Wallet</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
-                <View style={styles.modalCardMiddle}>
-                  <Text style={styles.modalCardPaxName}>{`${user.familyName} ${user.givenName}`}</Text>
-                  <View style={styles.cardMetaGrid}>
-                    <View>
-                      <Text style={styles.metaKey}>MEMBERSHIP NUMBER</Text>
-                      <Text style={styles.metaVal}>{user.membershipNumber}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.metaKey}>STATUS</Text>
-                      <Text style={styles.metaVal}>{user.tierStatus}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.metaKey}>MEMBER SINCE</Text>
-                      <Text style={styles.metaVal}>{user.memberSince}</Text>
-                    </View>
-                  </View>
-                </View>
+      {/* MODAL 2: COMPLETE YOUR PROFILE (Authentic Video Frame #98) */}
+      <Modal
+        visible={showCompleteProfileModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCompleteProfileModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCompleteProfileModal(false)} style={styles.modalHeaderBtn}>
+              <Ionicons name="close" size={24} color="#1C2024" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Complete your profile</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
 
-                {/* Scannable Lounge QR Code */}
-                <View style={styles.qrCodeCenterWrap}>
-                  <View style={styles.qrCodeBox}>
-                    <Ionicons name="qr-code" size={140} color="#000000" />
-                  </View>
-                  <Text style={styles.scanHintText}>Scan at airport check-in or lounge access</Text>
-                </View>
+          <View style={styles.modalBody}>
+            <Text style={styles.completeProfileStepCounter}>1 of 4 completed</Text>
 
-                {/* Add to Apple Wallet Button */}
-                <TouchableOpacity style={styles.appleWalletBtn} activeOpacity={0.85}>
-                  <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.appleWalletBtnText}>Add to Apple Wallet</Text>
+            <View style={styles.checklistGroup}>
+              {/* Item 1: Mobile number */}
+              <View style={styles.checklistItem}>
+                <Ionicons name="checkmark-circle" size={22} color="#006564" />
+                <View style={styles.checklistItemTextCol}>
+                  <Text style={styles.checklistItemTitle}>Mobile number sign-in ID</Text>
+                  <Text style={styles.checklistItemValue}>{user.mobile}</Text>
+                </View>
+              </View>
+
+              {/* Item 2: Email */}
+              <TouchableOpacity
+                style={styles.checklistItem}
+                onPress={() => openInfo('Email address', 'Your primary email is set to: ' + user.email)}
+              >
+                <Ionicons name="ellipse-outline" size={22} color="#CBD5E1" />
+                <View style={styles.checklistItemTextCol}>
+                  <Text style={styles.checklistItemTitle}>Set your email address as sign-in ID</Text>
+                  <Text style={styles.checklistItemValue}>{user.email}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#718096" />
+              </TouchableOpacity>
+
+              {/* Item 3: Travel document */}
+              <TouchableOpacity
+                style={styles.checklistItem}
+                onPress={() => openInfo('Travel document', 'Upload passport details for automatic API check-in.')}
+              >
+                <Ionicons name="ellipse-outline" size={22} color="#CBD5E1" />
+                <View style={styles.checklistItemTextCol}>
+                  <Text style={styles.checklistItemTitle}>Add your travel document</Text>
+                  <Text style={styles.checklistItemSub}>Passport or National ID</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#718096" />
+              </TouchableOpacity>
+
+              {/* Item 4: Passkey */}
+              <TouchableOpacity
+                style={styles.checklistItem}
+                onPress={() => openInfo('Passkey', 'Passkey enabled: Face ID / Touch ID instant authentication.')}
+              >
+                <Ionicons name="ellipse-outline" size={22} color="#CBD5E1" />
+                <View style={styles.checklistItemTextCol}>
+                  <Text style={styles.checklistItemTitle}>Create your passkey</Text>
+                  <Text style={styles.checklistItemSub}>Fast & secure biometric sign-in</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#718096" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* MODAL 3: YOUR PROFILE SETTINGS MENU (Authentic Video Frame #158) */}
+      <Modal
+        visible={showSettingsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowSettingsModal(false)} style={styles.modalHeaderBtn}>
+              <Ionicons name="close" size={24} color="#1C2024" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Your profile</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {[
+              { title: 'Account details', sub: 'Full name, date of birth, contact info' },
+              { title: 'Account security', sub: 'Password, passkey, two-factor authentication' },
+              { title: 'Travel documents', sub: 'Passports, identity cards and visas' },
+              { title: 'Inflight preferences', sub: 'Seating, special dietary meals, entertainment' },
+              { title: 'Travel companions', sub: 'Family and frequent travel guests' },
+              { title: 'Redemption group', sub: 'Nominate redemption group members' },
+              { title: 'Communication preference', sub: 'Email notifications, SMS flight alerts' },
+            ].map((item, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.settingsRowItem}
+                onPress={() => openInfo(item.title, item.sub)}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingsRowTitle}>{item.title}</Text>
+                  <Text style={styles.settingsRowSub}>{item.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#718096" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* MODAL 4: TRANSACTIONS STATEMENTS (Authentic Video Frame #154) */}
+      <Modal
+        visible={showTransactionsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowTransactionsModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowTransactionsModal(false)} style={styles.modalHeaderBtn}>
+              <Ionicons name="close" size={24} color="#1C2024" />
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Transactions</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            <Text style={styles.transactionsHeaderSubtitle}>miles and points activities</Text>
+            <Text style={styles.transactionsExplainer}>
+              It may take several months for miles to be credited to your account. For more details, please visit our FAQs.
+            </Text>
+
+            {/* Credit Card promotion box */}
+            <View style={styles.creditCardPromoBox}>
+              <Ionicons name="card-outline" size={28} color="#006564" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.creditCardPromoTitle}>Link your credit card now to earn even more miles</Text>
+                <TouchableOpacity onPress={() => openInfo('Standard Chartered Cathay Mastercard', 'Earn 1 Asia Mile for every HKD 4 spent.')}>
+                  <Text style={styles.creditCardPromoLink}>Link your card →</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </SafeAreaView>
-        </View>
+
+            {/* Upcoming statement */}
+            <View style={styles.upcomingStatementBox}>
+              <View style={styles.upcomingStatementTop}>
+                <Text style={styles.upcomingStatementTitle}>Upcoming in next statement (Pending)</Text>
+                <Text style={styles.upcomingStatementCount}>0 transactions</Text>
+              </View>
+              <Text style={styles.upcomingStatementEmpty}>
+                You don't have any transactions at the moment.
+              </Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
 
-      {/* SETTINGS / PROFILE DETAILS MODAL (Matching frames #156 - #160 in video) */}
-      <Modal visible={showSettingsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSettingsModal(false)}>
-        <SafeAreaView style={styles.settingsSafeArea}>
-          <View style={styles.settingsHeader}>
-            <TouchableOpacity onPress={() => setShowSettingsModal(false)} style={styles.navBtn}>
-              <Ionicons name="chevron-back" size={24} color="#1C2024" />
+      {/* MODAL 5: MY REWARDS (Authentic Video Frame #161, #163) */}
+      <Modal
+        visible={showRewardsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowRewardsModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowRewardsModal(false)} style={styles.modalHeaderBtn}>
+              <Ionicons name="close" size={24} color="#1C2024" />
             </TouchableOpacity>
-            <Text style={styles.settingsTitle}>Account details</Text>
-            <View style={styles.headerSpacer} />
+            <Text style={styles.modalHeaderTitle}>My rewards</Text>
+            <View style={styles.modalHeaderSpacer} />
           </View>
 
-          <ScrollView style={styles.settingsContent}>
-            <View style={styles.settingsSection}>
-              <Text style={styles.settingsSectionTitle}>Personal information</Text>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Full name</Text>
-                <Text style={styles.settingItemVal}>{`${user.familyName} ${user.givenName}`}</Text>
-              </View>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Date of birth</Text>
-                <Text style={styles.settingItemVal}>16 June 2007</Text>
-              </View>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Country / region</Text>
-                <Text style={styles.settingItemVal}>Hong Kong SAR (China)</Text>
-              </View>
-            </View>
+          <ScrollView style={styles.modalBody}>
+            <Text style={styles.rewardsIntroTitle}>Explore more membership rewards</Text>
+            <Text style={styles.rewardsIntroSub}>
+              Elevate your Status and enjoy even more rewards — both on the ground and in the air.
+            </Text>
 
-            <View style={styles.settingsSection}>
-              <Text style={styles.settingsSectionTitle}>Contact information</Text>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Mobile number</Text>
-                <Text style={styles.settingItemVal}>{user.mobile}</Text>
+            <View style={styles.unlockedBox}>
+              <Text style={styles.unlockedBoxTitle}>Green member benefits</Text>
+              <View style={styles.rewardItemRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#006564" />
+                <Text style={styles.rewardItemText}>Priority online check-in (up to 48 hours in advance)</Text>
               </View>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Email address</Text>
-                <Text style={styles.settingItemVal}>{user.email}</Text>
+              <View style={styles.rewardItemRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#006564" />
+                <Text style={styles.rewardItemText}>Extra legroom seats redemption</Text>
               </View>
-            </View>
-
-            <View style={styles.settingsSection}>
-              <Text style={styles.settingsSectionTitle}>Inflight preferences</Text>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Seat preference</Text>
-                <Text style={styles.settingItemVal}>Window</Text>
-              </View>
-              <View style={styles.settingItemRow}>
-                <Text style={styles.settingItemLabel}>Special meal</Text>
-                <Text style={styles.settingItemVal}>Standard Meal</Text>
+              <View style={styles.rewardItemRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#006564" />
+                <Text style={styles.rewardItemText}>Extra baggage redemption & PolyAero SmartTag linking</Text>
               </View>
             </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* TRANSACTIONS MODAL (Matching frames #153 - #154 in video) */}
-      <Modal visible={showTransactionsModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTransactionsModal(false)}>
-        <SafeAreaView style={styles.settingsSafeArea}>
-          <View style={styles.settingsHeader}>
-            <TouchableOpacity onPress={() => setShowTransactionsModal(false)} style={styles.navBtn}>
+      {/* MODAL 6: GENERIC INFO MODAL */}
+      <Modal
+        visible={showInfoModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowInfoModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowInfoModal(false)} style={styles.modalHeaderBtn}>
               <Ionicons name="close" size={24} color="#1C2024" />
             </TouchableOpacity>
-            <Text style={styles.settingsTitle}>Transactions</Text>
-            <View style={styles.headerSpacer} />
+            <Text style={styles.modalHeaderTitle}>{infoTitle}</Text>
+            <View style={styles.modalHeaderSpacer} />
           </View>
 
-          <View style={styles.transContent}>
-            <Text style={styles.transHeaderHeading}>Miles & Points</Text>
-            <Text style={styles.transSubtitle}>This page shows the transactions of your latest miles and points activities.</Text>
-
-            <View style={styles.emptyTransBox}>
-              <Ionicons name="receipt-outline" size={44} color="#94A3B8" />
-              <Text style={styles.emptyTransTitle}>Upcoming in next statement</Text>
-              <Text style={styles.emptyTransSub}>0 transactions</Text>
-              <Text style={styles.emptyTransDetail}>You don't have any transactions at the moment.</Text>
-            </View>
+          <View style={styles.modalBody}>
+            <Text style={styles.infoModalText}>{infoBody}</Text>
+            <TouchableOpacity
+              style={styles.guestPrimaryBtn}
+              onPress={() => setShowInfoModal(false)}
+            >
+              <Text style={styles.guestPrimaryBtnText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </Modal>
@@ -372,523 +603,699 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  mainScroll: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    height: 48,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  topBarTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  navBtn: {
+  topDevBtn: {
     padding: 6,
   },
-  headerSpacer: {
-    width: 36,
+
+  /* Guest View */
+  guestContainer: {
+    padding: 20,
   },
-  mainScroll: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 16,
+  guestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 20,
   },
   guestCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    marginVertical: 40,
+  },
+  guestIconBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E6F4F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   guestTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 8,
+    textAlign: 'center',
   },
   guestSub: {
-    fontSize: 14,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  primaryBtn: {
+  guestPrimaryBtn: {
     backgroundColor: '#006564',
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    width: '100%',
+    alignItems: 'center',
   },
-  primaryBtnText: {
+  guestPrimaryBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
-  memberCardBox: {
-    backgroundColor: '#004D4C',
+
+  /* 1. Member Card Container */
+  memberCardContainer: {
+    marginHorizontal: 16,
     borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#D8D4CC',
+    marginBottom: 16,
   },
-  memberCardHeaderRow: {
+  memberCardHeader: {
+    backgroundColor: '#2E6C64',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  memberInfoCol: {
+    flex: 1,
+  },
   memberName: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
+  memberIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   memberId: {
     fontSize: 13,
-    color: '#D1EAE7',
-    marginTop: 2,
-  },
-  qrCodeIconBtn: {
-    padding: 4,
-  },
-  tierPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 10,
-    marginBottom: 16,
-  },
-  tierPillText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusPointsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-  },
-  pointsTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  pointsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C2024',
-  },
-  pointsValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#006564',
-  },
-  progressBarTrack: {
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#006564',
-  },
-  pointsToNextText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#1C2024',
-  },
-  daysLeftText: {
-    fontSize: 11.5,
-    color: '#718096',
-    marginTop: 2,
-  },
-  asiaMilesCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  asiaMilesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C2024',
-  },
-  asiaMilesValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#006564',
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  actionBtn: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionBtnLabel: {
-    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
     fontWeight: '500',
-    color: '#334155',
+    letterSpacing: 0.5,
   },
-  completeProfileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  completeHeaderRow: {
+  tierStatusBadge: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 14,
+    alignItems: 'center',
+    marginTop: 10,
   },
-  briefcaseIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E6F4F2',
+  tierDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#86EFAC',
+    marginRight: 6,
+  },
+  tierStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  qrButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  completeTextCol: {
-    flex: 1,
+  memberCardBody: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
   },
-  completeTitle: {
-    fontSize: 15,
+  pointsBlock: {
+    paddingVertical: 4,
+  },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  metricLabel: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#1C2024',
   },
-  completeSub: {
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: '#64748B',
-    marginTop: 2,
+  metricValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  stepFraction: {
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1C2024',
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#E8E5DF',
+    borderRadius: 3,
+    marginVertical: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#006564',
+    borderRadius: 3,
+  },
+  pointsProgressTarget: {
     fontSize: 13,
+    fontWeight: '600',
+    color: '#1C2024',
+  },
+  pointsDaysLeft: {
+    fontSize: 11.5,
+    color: '#718096',
+    marginTop: 3,
+  },
+  cardInternalDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E8E5DF',
+    marginVertical: 14,
+  },
+  milesBlock: {
+    paddingVertical: 4,
+  },
+  asiaMilesCurrencySymbol: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#006564',
+    marginRight: 2,
+  },
+
+  /* 2. 2027 Status Progress */
+  progress2027Container: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
+  },
+  progress2027HeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progress2027Title: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C2024',
+  },
+  greenPillBadge: {
+    backgroundColor: '#E6F4F2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  greenPillText: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#006564',
   },
-  checklistSummary: {
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-    paddingTop: 12,
-  },
-  checkRow: {
+
+  /* 3. Complete Profile Banner */
+  completeProfileCard: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  checkLabel: {
+  completeProfileIconCol: {
+    marginRight: 14,
+  },
+  completeProfileTextCol: {
+    flex: 1,
+  },
+  completeProfileTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1C2024',
+  },
+  completeProfileSub: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#64748B',
+    marginTop: 3,
+  },
+
+  /* 4. Three Quick Action Buttons */
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: 16,
+    marginBottom: 24,
+    paddingVertical: 6,
+  },
+  quickActionItem: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  quickActionIcon: {
+    marginBottom: 6,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    color: '#1C2024',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  /* 5. Enhanced Membership Promo Card */
+  enhancedCard: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    backgroundColor: '#F7F6F3',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
+  },
+  enhancedCardTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#718096',
+    marginBottom: 4,
+  },
+  enhancedCardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginBottom: 4,
+  },
+  enhancedCardSub: {
     fontSize: 13,
-    color: '#475569',
+    color: '#64748B',
+    lineHeight: 18,
   },
+  enhancedLearnMoreBtn: {
+    marginTop: 10,
+  },
+  enhancedLearnMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#006564',
+  },
+
+  /* 6. My Benefits Section */
   benefitsSection: {
-    marginTop: 6,
+    marginHorizontal: 16,
+    marginBottom: 28,
   },
-  sectionTitleRow: {
+  benefitsHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
   },
-  sectionTitle: {
-    fontSize: 18,
+  benefitsSectionTitle: {
+    fontSize: 19,
     fontWeight: '700',
     color: '#1C2024',
+    letterSpacing: -0.3,
   },
-  viewAllText: {
-    fontSize: 13,
-    color: '#006564',
+  viewAllLink: {
+    fontSize: 13.5,
     fontWeight: '600',
+    color: '#006564',
   },
-  benefitCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  tierStatusTag: {
+  currentStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
+    gap: 8,
+    marginBottom: 12,
   },
-  greenDot: {
-    width: 8,
-    height: 8,
+  currentStatusLabel: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  currentStatusPill: {
+    backgroundColor: '#E6F4F2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: 4,
-    backgroundColor: '#10B981',
   },
-  tierStatusTagText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#10B981',
+  currentStatusPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#006564',
   },
-  unlockedHeading: {
-    fontSize: 15,
+  benefitsCardBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
+  },
+  unlockedHeaderTitle: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 12,
   },
-  benefitItem: {
+  benefitListItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
     marginBottom: 10,
   },
-  benefitItemText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#334155',
-    flex: 1,
+  benefitCheckIcon: {
+    marginRight: 10,
+    marginTop: 1,
   },
-  silverUnlockNotice: {
+  benefitItemText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 18,
+  },
+  benefitDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E8E5DF',
+    marginVertical: 12,
+  },
+  lockedMilestoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 6,
-    padding: 10,
-    marginTop: 8,
   },
-  silverUnlockNoticeText: {
+  lockedMilestoneText: {
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
+    color: '#718096',
   },
-  signOutButton: {
+
+  /* Sign out */
+  signOutBtn: {
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 8,
+    marginHorizontal: 16,
+    marginBottom: 30,
   },
-  signOutButtonText: {
+  signOutBtnText: {
+    color: '#DC2626',
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
   },
-  cardModalOverlay: {
+
+  /* Modals General */
+  modalSafeArea: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    backgroundColor: '#FFFFFF',
   },
-  cardModalSafeArea: {
-    flex: 1,
-  },
-  cardModalHeader: {
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     height: 48,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E8E5DF',
   },
-  modalCloseBtn: {
+  modalHeaderBtn: {
     padding: 6,
   },
-  cardModalHeaderTitle: {
+  modalHeaderTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#1C2024',
   },
-  cardModalBody: {
+  modalHeaderSpacer: {
+    width: 36,
+  },
+  modalBody: {
     flex: 1,
-    padding: 24,
+    padding: 20,
+  },
+  modalBodyCentered: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  modalGreenCard: {
-    backgroundColor: '#006564',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  modalCardTop: {
-    marginBottom: 20,
-  },
-  cardBrandLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cardBrushwing: {
-    width: 28,
-    height: 24,
-  },
-  cardBrandText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 2,
-  },
-  modalCardMiddle: {
+  infoModalText: {
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: '#334155',
     marginBottom: 24,
   },
-  modalCardPaxName: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 14,
+
+  /* Digital Card Modal */
+  digitalCardShell: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#2E6C64',
+    borderRadius: 16,
+    padding: 22,
+    marginBottom: 24,
   },
-  cardMetaGrid: {
+  digitalCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  metaKey: {
-    color: '#D1EAE7',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  metaVal: {
+  digitalCardLogo: {
+    fontSize: 18,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 2,
+  },
+  digitalCardTier: {
     fontSize: 13,
     fontWeight: '700',
-    marginTop: 2,
+    color: '#86EFAC',
+    letterSpacing: 1,
   },
-  qrCodeCenterWrap: {
-    alignItems: 'center',
-    marginVertical: 14,
+  digitalCardMemberName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 20,
   },
-  qrCodeBox: {
+  digitalCardDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  digitalCardDataLabel: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 2,
+  },
+  digitalCardDataValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  qrCodeContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 16,
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
   },
-  scanHintText: {
-    color: '#D1EAE7',
-    fontSize: 12,
+  qrCodeCaption: {
+    fontSize: 11,
+    color: '#718096',
     marginTop: 10,
+    textAlign: 'center',
   },
   appleWalletBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#000000',
     borderRadius: 10,
-    paddingVertical: 12,
-    marginTop: 14,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
   },
   appleWalletBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
-  settingsSafeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+
+  /* Complete Profile Modal */
+  completeProfileStepCounter: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#006564',
+    marginBottom: 16,
   },
-  settingsHeader: {
+  checklistGroup: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E5DF',
+  },
+  checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 48,
+    padding: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#E8E5DF',
   },
-  settingsTitle: {
-    fontSize: 16,
+  checklistItemTextCol: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  checklistItemTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#1C2024',
   },
-  settingsContent: {
-    flex: 1,
-    padding: 20,
-  },
-  settingsSection: {
-    marginBottom: 24,
-  },
-  settingsSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1C2024',
-    marginBottom: 10,
-  },
-  settingItemRow: {
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-  },
-  settingItemLabel: {
+  checklistItemValue: {
     fontSize: 12,
     color: '#64748B',
-  },
-  settingItemVal: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1C2024',
     marginTop: 2,
   },
-  transContent: {
-    flex: 1,
-    padding: 24,
+  checklistItemSub: {
+    fontSize: 12,
+    color: '#718096',
+    marginTop: 2,
   },
-  transHeaderHeading: {
-    fontSize: 20,
+
+  /* Settings Modal */
+  settingsRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E8E5DF',
+  },
+  settingsRowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1C2024',
+  },
+  settingsRowSub: {
+    fontSize: 12,
+    color: '#718096',
+    marginTop: 2,
+  },
+
+  /* Transactions Modal */
+  transactionsHeaderSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#718096',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  transactionsExplainer: {
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: '#64748B',
+    marginBottom: 20,
+  },
+  creditCardPromoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F4F2',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#A7D9D3',
+    marginBottom: 24,
+  },
+  creditCardPromoTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#1C2024',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  creditCardPromoLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#006564',
+  },
+  upcomingStatementBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  upcomingStatementTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  upcomingStatementTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#1C2024',
+  },
+  upcomingStatementCount: {
+    fontSize: 12,
+    color: '#718096',
+  },
+  upcomingStatementEmpty: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+
+  /* Rewards Modal */
+  rewardsIntroTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 6,
   },
-  transSubtitle: {
+  rewardsIntroSub: {
     fontSize: 13.5,
-    color: '#64748B',
     lineHeight: 19,
-    marginBottom: 32,
+    color: '#64748B',
+    marginBottom: 20,
   },
-  emptyTransBox: {
-    alignItems: 'center',
-    paddingVertical: 60,
+  unlockedBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  emptyTransTitle: {
-    fontSize: 16,
+  unlockedBoxTitle: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#1C2024',
-    marginTop: 14,
+    marginBottom: 12,
   },
-  emptyTransSub: {
-    fontSize: 13,
-    color: '#006564',
-    fontWeight: '600',
-    marginTop: 4,
+  rewardItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    gap: 10,
   },
-  emptyTransDetail: {
+  rewardItemText: {
+    flex: 1,
     fontSize: 13,
-    color: '#64748B',
-    marginTop: 8,
+    color: '#334155',
+    lineHeight: 18,
   },
 });
