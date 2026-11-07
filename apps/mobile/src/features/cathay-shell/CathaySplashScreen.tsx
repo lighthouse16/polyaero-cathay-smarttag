@@ -50,6 +50,6 @@ const styles = StyleSheet.create({
   },
   brandImage: {
     width: '100%',
-    aspectRatio: 7.01,
+    aspectRatio: 6.13,
   },
 });
