@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  Animated,
+  Easing,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CathaySplashScreen } from './CathaySplashScreen';
@@ -139,6 +142,67 @@ export const CathayAppShell: React.FC = () => {
     }
   }, []);
 
+  // Floating Dock Liquid Droplet Slide Animation (Native Driver - 60fps/APK Safe)
+  const initialItemWidth = Math.max((Dimensions.get('window').width - 28 - 12) / TAB_ITEMS.length, 50);
+  const [itemWidth, setItemWidth] = useState(initialItemWidth);
+  const initialIdx = TAB_ITEMS.findIndex((t) => t.id === activeTab);
+  const [translateX] = useState(() => new Animated.Value(Math.max(initialIdx, 0) * initialItemWidth));
+  const [stretchAnim] = useState(() => new Animated.Value(1));
+  const [squashAnim] = useState(() => new Animated.Value(1));
+  const [screenFade] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    const idx = TAB_ITEMS.findIndex((t) => t.id === activeTab);
+    const targetX = (idx >= 0 ? idx : 0) * itemWidth;
+
+    // Smooth screen crossfade
+    screenFade.setValue(0.75);
+    Animated.timing(screenFade, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+
+    // Elastic liquid droplet animation: spring slide + direction stretch + volume squash
+    Animated.parallel([
+      Animated.spring(translateX, {
+        toValue: targetX,
+        friction: 6.8,
+        tension: 65,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(stretchAnim, {
+          toValue: 1.28,
+          duration: 110,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.spring(stretchAnim, {
+          toValue: 1,
+          friction: 4.2,
+          tension: 85,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(squashAnim, {
+          toValue: 0.86,
+          duration: 110,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.spring(squashAnim, {
+          toValue: 1,
+          friction: 4.2,
+          tension: 85,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [activeTab, itemWidth, screenFade, squashAnim, stretchAnim, translateX]);
+
   const handleSignUpComplete = (profileData: Partial<UserAuthProfile>) => {
     setUser((prev) => ({ ...prev, ...profileData, isLoggedIn: true }));
     setShowWelcomeToast(true);
@@ -225,8 +289,8 @@ export const CathayAppShell: React.FC = () => {
   // 2. MAIN PASSENGER 5-TAB EXPERIENCE
   return (
     <View style={styles.root}>
-      {/* Active Screen Tab View */}
-      <View style={styles.screenArea}>
+      {/* Active Screen Tab View with Silky Crossfade */}
+      <Animated.View style={[styles.screenArea, { opacity: screenFade }]}>
         {activeTab === 'home' && (
           <CathayHomeScreen
             user={user}
@@ -271,19 +335,43 @@ export const CathayAppShell: React.FC = () => {
             onNavigateToTrips={() => setActiveTab('trips')}
           />
         )}
-      </View>
+      </Animated.View>
 
       {/* FLOATING PILL DOCK NAVIGATION BAR (Exact reference: media_1794036763841_00bd8fb8.jpg) */}
       <View style={styles.floatingDockWrap} pointerEvents="box-none">
-        <View style={styles.floatingDock}>
+        <View
+          style={styles.floatingDock}
+          onLayout={(e) => {
+            const width = e.nativeEvent.layout.width;
+            if (width > 0) {
+              const inner = width - 12;
+              setItemWidth(inner / TAB_ITEMS.length);
+            }
+          }}
+        >
+          {/* Liquid Droplet Sliding Capsule (Spring + Elastic Stretch/Squash) */}
+          <Animated.View
+            style={[
+              styles.slidingDropletCapsule,
+              {
+                width: itemWidth,
+                transform: [
+                  { translateX },
+                  { scaleX: stretchAnim },
+                  { scaleY: squashAnim },
+                ],
+              },
+            ]}
+          />
+
           {TAB_ITEMS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={[styles.dockItem, isActive && styles.dockItemActive]}
+                style={styles.dockItem}
                 onPress={() => setActiveTab(tab.id)}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
                 testID={`tab-${tab.id}`}
               >
                 <Ionicons
@@ -516,20 +604,27 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
+  slidingDropletCapsule: {
+    position: 'absolute',
+    top: 7,
+    left: 6,
+    height: 54,
+    backgroundColor: '#DFEDE9',
+    borderRadius: 27,
+    shadowColor: '#195A58',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 2,
+    zIndex: 1,
+  },
   dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     height: 54,
     borderRadius: 27,
-  },
-  dockItemActive: {
-    backgroundColor: '#DFEDE9',
-    shadowColor: '#195A58',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 1,
+    zIndex: 2,
   },
   dockLabel: {
     fontSize: 10.5,
