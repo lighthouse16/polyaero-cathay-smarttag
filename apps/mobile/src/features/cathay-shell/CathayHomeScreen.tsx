@@ -301,7 +301,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout - clean image + category, title, date) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout: crisp image -> headline -> offer details) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
@@ -309,7 +309,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Payment</Text>
                 <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
                 <Text style={styles.promoDateText}>Up to 11% off • 11 Nov 2026</Text>
               </View>
@@ -318,7 +317,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
                 <Text style={styles.promoDateText}>From HKD4,089 • 30 Nov 2026</Text>
               </View>
@@ -327,7 +325,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Student Fare</Text>
                 <Text style={styles.promoDateText}>Up to 10% discount*, extra baggage+</Text>
               </View>
@@ -336,7 +333,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
                 <Text style={styles.promoDateText}>Fly together with special family perks</Text>
               </View>
@@ -345,7 +341,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-offers.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Special offers</Text>
                 <Text style={styles.promoDateText}>Help you plan your next journey</Text>
               </View>
@@ -353,7 +348,41 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 8. TRAVEL INSPIRATION (4 authentic listings with crisp editorial photography) */}
+        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Authentic 4-item circular row matching video frame #183) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
+          <View style={styles.moreWaysRow}>
+            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
+              <View style={styles.moreWaysCircle}>
+                <Ionicons name="bed-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.moreWaysLabel}>Book a hotel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
+              <View style={styles.moreWaysCircle}>
+                <Ionicons name="cube-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.moreWaysLabel}>Book a package</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
+              <View style={styles.moreWaysCircle}>
+                <Ionicons name="shield-checkmark-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.moreWaysLabel}>Travel Insurance</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
+              <View style={styles.moreWaysCircle}>
+                <Ionicons name="car-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.moreWaysLabel}>Rent a car</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 9. TRAVEL INSPIRATION (Authentic editorial carousel matching video frames #184-#188) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Travel inspiration</Text>
 
@@ -389,10 +418,26 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <Text style={styles.articleTitle} numberOfLines={2}>The best concerts to catch in Asia in 2026</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-kyoto.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>Japan • Culture</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>Secret gardens and artisan workshops of Kyoto</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-london.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>United Kingdom • Travel</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>A design lover's weekend guide to London</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 9. STAY UP-TO-DATE (4 authentic listings with crisp news cards) */}
+        {/* 10. STAY UP-TO-DATE (Authentic news carousel matching video frames #188-#189) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Stay up-to-date</Text>
 
@@ -415,6 +460,16 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
               <Image source={require('../../../assets/cathay/news-fleet.jpg')} style={styles.newsImage} resizeMode="cover" />
               <Text style={styles.newsTitle} numberOfLines={2}>Welcoming our next-generation A321neo fleet</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-sustainability.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>Cathay expands Sustainable Aviation Fuel programme</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-dining.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>Award-winning inflight dining with Duddell's</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -789,7 +844,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1C2024',
     paddingHorizontal: 16,
@@ -904,10 +959,13 @@ const styles = StyleSheet.create({
     width: 170,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ECEAE6',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   promoCardImage: {
@@ -915,17 +973,13 @@ const styles = StyleSheet.create({
     height: 108,
   },
   promoCardDetails: {
-    padding: 12,
-  },
-  promoCategoryText: {
-    fontSize: 11,
-    color: '#718096',
-    fontWeight: '500',
-    marginBottom: 2,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   promoHeadlineText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#1C2024',
     lineHeight: 18,
   },
@@ -935,33 +989,72 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: '600',
   },
+  moreWaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  moreWaysItem: {
+    alignItems: 'center',
+    width: 78,
+  },
+  moreWaysCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAE6E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  moreWaysLabel: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: '#1C2024',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 15,
+  },
   articleCard: {
-    width: 176,
+    width: 170,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ECEAE6',
     overflow: 'hidden',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
   },
   articleCardImage: {
     width: '100%',
-    height: 110,
+    height: 108,
   },
   articleCardDetails: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   articleLocation: {
     fontSize: 11,
     color: '#718096',
+    fontWeight: '400',
+    marginBottom: 4,
   },
   articleTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#1C2024',
-    marginTop: 4,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   newsCard: {
     width: 170,
@@ -969,13 +1062,14 @@ const styles = StyleSheet.create({
   newsImage: {
     width: 170,
     height: 104,
-    borderRadius: 8,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
   },
   newsTitle: {
     fontSize: 12.5,
     fontWeight: '600',
     color: '#1C2024',
-    marginTop: 6,
+    marginTop: 8,
     lineHeight: 17,
   },
   disclaimerContainer: {
