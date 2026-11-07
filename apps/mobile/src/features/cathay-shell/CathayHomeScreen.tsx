@@ -23,6 +23,16 @@ interface CathayHomeScreenProps {
   onOpenDevMenu?: () => void;
 }
 
+const BRUSHWING_WHITE = require('../../../assets/cathay/cathay-brushwing-white.png');
+const ICON_ASIA_MILES_WHITE = require('../../../assets/cathay/icon-asia-miles-white.png');
+const ICON_PASSKEY_LOCK = require('../../../assets/cathay/icon-passkey-lock.png');
+const ICON_BOARDING_PASS = require('../../../assets/cathay/tools/icon_boarding_pass.png');
+const ICON_HOTEL = require('../../../assets/cathay/tools/icon_hotel.png');
+const ICON_PACKAGE = require('../../../assets/cathay/tools/icon_package.png');
+const ICON_INSURANCE = require('../../../assets/cathay/tools/icon_insurance.png');
+const ICON_CAR = require('../../../assets/cathay/tools/icon_car.png');
+const ICON_SHOP = require('../../../assets/cathay/tools/icon_shop.png');
+
 export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
   user,
   recentSearch,
@@ -33,7 +43,6 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
   onOpenDevMenu,
 }) => {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(true);
-  const hasPasskeyBanner = Boolean(user.isLoggedIn && showPasskeyPrompt);
 
   return (
     <View style={styles.container}>
@@ -43,16 +52,16 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. HERO HEADER AREA WITH SKYLINE PHOTOGRAPHY */}
+        {/* 1. HERO HEADER AREA WITH SKYLINE PHOTOGRAPHY & CURVED BOTTOM-LEFT CORNER */}
         <ImageBackground
           source={require('../../../assets/cathay/cathay-hero-skyline.png')}
           style={styles.heroBackground}
+          imageStyle={styles.heroBackgroundImage}
           resizeMode="cover"
         >
           <SafeAreaView style={styles.headerSafeArea}>
             {/* Top Navigation Row */}
             <View style={styles.headerNavRow}>
-              {/* Secret trigger zone for dev menu */}
               <TouchableOpacity
                 style={styles.headerSpacer}
                 onLongPress={onOpenDevMenu}
@@ -60,16 +69,14 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 accessibilityLabel="Dev menu trigger"
               />
 
-              {/* Center White Brushwing Logo */}
               <View style={styles.brushwingContainer}>
                 <Image
-                  source={require('../../../assets/cathay/cathay-brushwing-white.png')}
+                  source={BRUSHWING_WHITE}
                   style={styles.brushwingIcon}
                   resizeMode="contain"
                 />
               </View>
 
-              {/* Right Action Icons (Notifications + More) */}
               <View style={styles.headerIconsGroup}>
                 <TouchableOpacity
                   style={styles.iconButton}
@@ -92,16 +99,25 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
               </View>
             </View>
 
-            {/* Member Prompt Banner / Greeting (Matching Video frame #71 vs frame #59) */}
+            {/* Member Prompt Banner / Greeting (Exact Frame #71 vs WhatsApp Screenshot) */}
             <View style={styles.memberPromptRow}>
               {user.isLoggedIn ? (
                 <View style={styles.memberGreetingCol}>
-                  <Text style={styles.memberGreetingTitle}>Hello {user.title} {user.familyName}</Text>
+                  <View style={styles.memberGreetingTopRow}>
+                    <Text style={styles.memberGreetingTitle}>
+                      Hello {user.title} {user.familyName}
+                    </Text>
+                    <View style={styles.miniGreenCardBadge}>
+                      <Image source={BRUSHWING_WHITE} style={styles.miniCardWing} resizeMode="contain" />
+                    </View>
+                  </View>
+
                   <View style={styles.memberMilesRow}>
-                    <Ionicons name="ticket-outline" size={14} color="#FFFFFF" />
-                    <Text style={styles.memberMilesText}>A {user.asiaMiles}</Text>
-                    <Text style={styles.memberDotSeparator}>|</Text>
-                    <Text style={styles.memberStatusPointsText}>Status Points {user.statusPoints}</Text>
+                    <Image source={ICON_ASIA_MILES_WHITE} style={styles.asiaMilesWhiteIcon} resizeMode="contain" />
+                    <Text style={styles.memberMetricBold}>{user.asiaMiles}</Text>
+                    <Text style={styles.memberPipeSeparator}>|</Text>
+                    <Text style={styles.memberStatusLabel}>Status Points</Text>
+                    <Text style={styles.memberMetricBold}>{user.statusPoints}</Text>
                   </View>
                 </View>
               ) : (
@@ -120,26 +136,8 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </SafeAreaView>
         </ImageBackground>
 
-        {/* 2. PASSKEY BANNER (Matching video frame #71 / #182) */}
-        {user.isLoggedIn && showPasskeyPrompt && (
-          <View style={styles.passkeyBannerWrapper}>
-            <View style={styles.passkeyBanner}>
-              <View style={styles.passkeyIconWrap}>
-                <Ionicons name="key" size={16} color="#006564" />
-              </View>
-              <View style={styles.passkeyTextCol}>
-                <Text style={styles.passkeyTitle}>Want to stay signed in?</Text>
-                <Text style={styles.passkeySub}>Create a passkey now for a safer, easier way to sign in.</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowPasskeyPrompt(false)} style={styles.passkeyCloseBtn}>
-                <Ionicons name="close" size={18} color="#718096" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* 3. FLIGHT SEARCH CARD (Floats over hero or sits below passkey banner) */}
-        <View style={[styles.searchCardWrapper, hasPasskeyBanner && styles.searchCardWrapperWithPasskey]}>
+        {/* 2. FLIGHT SEARCH CARD (Always floats over Hero Skyline - Frame #71 & WhatsApp Screenshot) */}
+        <View style={styles.searchCardWrapper}>
           <View style={styles.searchCard}>
             <Text style={styles.searchCardTitle}>Where can we take you?</Text>
 
@@ -156,9 +154,9 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <Text style={styles.cityName}>Hong Kong</Text>
               </View>
 
-              {/* Center Airplane Badge */}
+              {/* Center Airplane Circle Badge */}
               <View style={styles.airplaneBadge}>
-                <Ionicons name="airplane" size={16} color="#006564" />
+                <Ionicons name="airplane" size={16} color="#2E6E6D" />
               </View>
 
               {/* Destination */}
@@ -171,47 +169,82 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </View>
         </View>
 
-        {/* 4. RECENT SEARCHES CARD (Matching video frame #182) */}
+        {/* 3. PASSKEY BANNER (Sits cleanly below Search Card - Exact Frame #71 & #182) */}
+        {user.isLoggedIn && showPasskeyPrompt && (
+          <View style={styles.passkeyBannerWrapper}>
+            <View style={styles.passkeyBanner}>
+              <Image source={ICON_PASSKEY_LOCK} style={styles.passkeyLockImg} resizeMode="contain" />
+              <View style={styles.passkeyTextCol}>
+                <Text style={styles.passkeyTitle}>Want to stay signed in?</Text>
+                <Text style={styles.passkeySub}>
+                  Create a passkey now for a safer, easier way to sign in.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowPasskeyPrompt(false)}
+                style={styles.passkeyCloseBtn}
+              >
+                <Ionicons name="close" size={22} color="#1C2024" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* 4. RECENT SEARCHES SECTION (Exact Frame #182) */}
         {recentSearch && (
           <View style={styles.recentSearchesWrapper}>
-            <Text style={styles.recentSectionTitle}>Recent searches</Text>
-            <TouchableOpacity style={styles.recentSearchCard} onPress={onSearchPress} activeOpacity={0.85}>
+            <Text style={styles.sectionTitleNoPad}>Recent searches</Text>
+            <TouchableOpacity
+              style={styles.recentSearchCard}
+              onPress={onSearchPress}
+              activeOpacity={0.85}
+            >
               <View style={styles.recentPlaneCircle}>
-                <Ionicons name="airplane" size={16} color="#006564" />
+                <Ionicons
+                  name="airplane-outline"
+                  size={20}
+                  color="#195A58"
+                  style={{ transform: [{ rotate: '-45deg' }] }}
+                />
               </View>
               <View style={styles.recentTextCol}>
                 <Text style={styles.recentDatesText}>{recentSearch.dates}</Text>
-                <Text style={styles.recentRouteText}>{recentSearch.origin} to {recentSearch.destination}</Text>
+                <Text style={styles.recentRouteLine}>
+                  <Text style={styles.recentRouteCodeBold}>{recentSearch.origin}</Text>
+                  {' to '}
+                  <Text style={styles.recentRouteCodeBold}>{recentSearch.destination}</Text>
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#718096" />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* 5. CONTEXTUAL PLANE WING BANNER (Crisp high-res background + native typography) */}
+        {/* 5. FULL-WIDTH CONTEXTUAL WING BANNER (Exact Frame #182) */}
         {recentSearch && recentSearch.destination === 'NKG' && (
           <TouchableOpacity
-            style={styles.wingBannerWrapper}
+            style={styles.wingBannerFullWidth}
             onPress={onSearchPress}
             activeOpacity={0.9}
           >
             <ImageBackground
               source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
               style={styles.wingBannerImage}
-              imageStyle={{ borderRadius: 12 }}
               resizeMode="cover"
             >
               <View style={styles.wingBannerOverlay}>
                 <View style={styles.topPickPill}>
                   <Text style={styles.topPickPillText}>Top Pick</Text>
                 </View>
-                <View>
-                  <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
-                  <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
-                </View>
 
-                <View style={styles.wingBookBtn}>
-                  <Text style={styles.wingBookBtnText}>Book now</Text>
+                <View style={styles.wingBottomGroup}>
+                  <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
+                  <Text style={styles.wingBannerSub}>
+                    Pick it up at HKD<Text style={{ fontWeight: '700' }}>5,674</Text>
+                  </Text>
+
+                  <View style={styles.wingBookOutlineBtn}>
+                    <Text style={styles.wingBookOutlineBtnText}>Book now</Text>
+                  </View>
                 </View>
               </View>
             </ImageBackground>
@@ -222,24 +255,22 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
         <View style={styles.offersSection}>
           <Text style={styles.sectionTitle}>Our latest offers</Text>
 
-          {/* Promo Callout Card (Accurate #DDE7E6 surface) */}
           <TouchableOpacity
             style={styles.promoBanner}
             onPress={onOffersPress || onSearchPress}
             activeOpacity={0.85}
             testID="promo-callout-banner"
           >
-            <Ionicons name="ticket-outline" size={22} color="#1C2024" />
+            <Image source={ICON_BOARDING_PASS} style={styles.flyingSoonTicketIcon} resizeMode="contain" />
             <View style={styles.promoTextContainer}>
-              <Text style={styles.promoText} numberOfLines={2}>
+              <Text style={styles.promoText}>
                 <Text style={styles.promoBold}>Flying soon? </Text>
                 Browse our lowest fares for next 60 days.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#718096" />
+            <Ionicons name="chevron-forward" size={19} color="#1C2024" />
           </TouchableOpacity>
 
-          {/* Origin Indicator */}
           <View style={styles.originIndicatorRow}>
             <Text style={styles.fromLabel}>
               From: <Text style={styles.fromCity}>Hong Kong</Text>
@@ -253,123 +284,123 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             style={styles.carouselScrollView}
             contentContainerStyle={styles.carouselContainer}
           >
-            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/dest-nanjing.png')} style={styles.destinationImage} resizeMode="cover" />
-              <View style={styles.destinationDetails}>
-                <Text style={styles.destinationCity}>Nanjing</Text>
-                <Text style={styles.destinationCabin}>Economy</Text>
-                <Text style={styles.priceLabel}>from</Text>
-                <Text style={styles.priceValue}>HKD 3,030</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/dest-beijing.png')} style={styles.destinationImage} resizeMode="cover" />
-              <View style={styles.destinationDetails}>
-                <Text style={styles.destinationCity}>Beijing</Text>
-                <Text style={styles.destinationCabin}>Economy</Text>
-                <Text style={styles.priceLabel}>from</Text>
-                <Text style={styles.priceValue}>HKD 3,670</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/dest-seoul.png')} style={styles.destinationImage} resizeMode="cover" />
-              <View style={styles.destinationDetails}>
-                <Text style={styles.destinationCity}>Seoul</Text>
-                <Text style={styles.destinationCabin}>Economy</Text>
-                <Text style={styles.priceLabel}>from</Text>
-                <Text style={styles.priceValue}>HKD 2,710</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/dest-kaohsiung.jpg')} style={styles.destinationImage} resizeMode="cover" />
-              <View style={styles.destinationDetails}>
-                <Text style={styles.destinationCity}>Kaohsiung</Text>
-                <Text style={styles.destinationCabin}>Economy</Text>
-                <Text style={styles.priceLabel}>from</Text>
-                <Text style={styles.priceValue}>HKD 1,892</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.destinationCard, styles.exploreCard]} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={styles.exploreInner}>
-                <Ionicons name="compass-outline" size={32} color="#006564" />
-                <Text style={styles.exploreTitle}>Explore all 24 lowest fare destinations</Text>
-              </View>
-            </TouchableOpacity>
+            {[
+              { city: 'Nanjing', price: '3,030', img: require('../../../assets/cathay/dest-nanjing.png') },
+              { city: 'Beijing', price: '3,670', img: require('../../../assets/cathay/dest-beijing.png') },
+              { city: 'Seoul', price: '2,710', img: require('../../../assets/cathay/dest-seoul.png') },
+              { city: 'Kaohsiung', price: '1,892', img: require('../../../assets/cathay/dest-kaohsiung.jpg') },
+            ].map((d, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.destinationCard}
+                activeOpacity={0.9}
+                onPress={onSearchPress}
+              >
+                <Image source={d.img} style={styles.destinationImage} resizeMode="cover" />
+                <View style={styles.destinationDetails}>
+                  <Text style={styles.destinationCity}>{d.city}</Text>
+                  <Text style={styles.destinationCabin}>Economy</Text>
+                  <Text style={styles.priceLabel}>from</Text>
+                  <Text style={styles.priceValue}>
+                    HKD<Text style={styles.priceValueBold}>{d.price}</Text>
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout: image -> headline -> date (#718096) -> price/offer (#006564)) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Exact Frame #183 & #184) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
-            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-              <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText} numberOfLines={2}>Double 11 flight offer</Text>
-                <View style={styles.promoDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
-                  <Text style={styles.promoDateText}>11 Nov 2026</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContainer}
+          >
+            {[
+              {
+                badge: 'Cardholder exclusive',
+                category: 'Payment',
+                title: 'Double 11 flight offer',
+                date: '11 Nov 2026',
+                offerPrefix: 'Up to ',
+                offerBold: '11%',
+                offerSuffix: ' off',
+                img: require('../../../assets/cathay/promo-double11.jpg'),
+              },
+              {
+                badge: 'Limited-time fare',
+                category: 'Flights',
+                title: "Explore Almaty's wonders with direct flights",
+                date: '30 Nov 2026',
+                offerPrefix: 'From HKD4,089',
+                offerBold: '',
+                offerSuffix: '',
+                img: require('../../../assets/cathay/promo-almaty.jpg'),
+              },
+              {
+                badge: null,
+                category: 'Flights',
+                title: 'Student Fare',
+                date: '31 Dec 2026',
+                offerPrefix: 'Up to ',
+                offerBold: '10%',
+                offerSuffix: ' discount*',
+                img: require('../../../assets/cathay/promo-student.jpg'),
+              },
+              {
+                badge: null,
+                category: 'Flights',
+                title: 'Family Premium Pass',
+                date: '15 Dec 2026',
+                offerPrefix: 'Special family perks',
+                offerBold: '',
+                offerSuffix: '',
+                img: require('../../../assets/cathay/promo-family.jpg'),
+              },
+            ].map((p, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.promoCardItem}
+                activeOpacity={0.9}
+                onPress={onSearchPress}
+              >
+                <View style={styles.promoImageWrapper}>
+                  <Image source={p.img} style={styles.promoCardImage} resizeMode="cover" />
+                  {p.badge && (
+                    <View style={styles.promoRustBadge}>
+                      <Text style={styles.promoRustBadgeText}>{p.badge}</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.promoOfferText}>Up to 11% off</Text>
-              </View>
-            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-              <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText} numberOfLines={2}>Explore Almaty's wonders with direct flights</Text>
-                <View style={styles.promoDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
-                  <Text style={styles.promoDateText}>30 Nov 2026</Text>
-                </View>
-                <Text style={styles.promoOfferText}>From HKD 4,089</Text>
-              </View>
-            </TouchableOpacity>
+                <View style={styles.promoCardBody}>
+                  <View>
+                    <Text style={styles.promoCategoryGold}>{p.category}</Text>
+                    <Text style={styles.promoHeadlineText}>{p.title}</Text>
+                  </View>
 
-            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-              <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText} numberOfLines={2}>Student Fare</Text>
-                <View style={styles.promoDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
-                  <Text style={styles.promoDateText}>31 Dec 2026</Text>
+                  <View style={styles.promoClockRow}>
+                    <Ionicons name="time" size={16} color="#706218" style={styles.promoClockIcon} />
+                    <Text style={styles.promoClockDateText}>{p.date}</Text>
+                  </View>
                 </View>
-                <Text style={styles.promoOfferText}>Up to 10% discount*</Text>
-              </View>
-            </TouchableOpacity>
 
-            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-              <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText} numberOfLines={2}>Family Premium pass</Text>
-                <View style={styles.promoDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
-                  <Text style={styles.promoDateText}>15 Dec 2026</Text>
+                <View style={styles.promoMintFooterStrip}>
+                  <Text style={styles.promoFooterText}>
+                    {p.offerPrefix}
+                    {p.offerBold ? <Text style={{ fontWeight: '700' }}>{p.offerBold}</Text> : null}
+                    {p.offerSuffix}
+                  </Text>
                 </View>
-                <Text style={styles.promoOfferText}>Special family perks</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-offers.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-              <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText} numberOfLines={2}>Special offers</Text>
-                <View style={styles.promoDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
-                  <Text style={styles.promoDateText}>Limited time</Text>
-                </View>
-                <Text style={styles.promoOfferText}>Plan your next journey</Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Authentic carousel with charcoal icons matching video frames #62 & #183) */}
+        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Exact Frame #183 & #184) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
           <ScrollView
@@ -377,145 +408,131 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.moreWaysScrollContainer}
           >
-            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
-              <View style={styles.moreWaysCircle}>
-                <Ionicons name="bed-outline" size={26} color="#1C2024" />
-              </View>
-              <Text style={styles.moreWaysLabel}>Book a hotel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
-              <View style={styles.moreWaysCircle}>
-                <Ionicons name="briefcase-outline" size={25} color="#1C2024" />
-              </View>
-              <Text style={styles.moreWaysLabel}>Book a package</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
-              <View style={styles.moreWaysCircle}>
-                <Ionicons name="umbrella-outline" size={26} color="#1C2024" />
-              </View>
-              <Text style={styles.moreWaysLabel}>Travel Insurance</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
-              <View style={styles.moreWaysCircle}>
-                <Ionicons name="car-outline" size={26} color="#1C2024" />
-              </View>
-              <Text style={styles.moreWaysLabel}>Rent a car</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
-              <View style={styles.moreWaysCircle}>
-                <Ionicons name="cart-outline" size={25} color="#1C2024" />
-              </View>
-              <Text style={styles.moreWaysLabel}>Cathay Shop</Text>
-            </TouchableOpacity>
+            {[
+              { label: 'Book a hotel', icon: ICON_HOTEL },
+              { label: 'Book a package', icon: ICON_PACKAGE },
+              { label: 'Travel Insurance', icon: ICON_INSURANCE },
+              { label: 'Rent a car', icon: ICON_CAR },
+              { label: 'Cathay Shop', icon: ICON_SHOP },
+            ].map((m, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.moreWaysItem}
+                activeOpacity={0.75}
+                onPress={onSearchPress}
+              >
+                <View style={styles.moreWaysCircle}>
+                  <Image source={m.icon} style={styles.moreWaysCustomIcon} resizeMode="contain" />
+                </View>
+                <Text style={styles.moreWaysLabel}>{m.label}</Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* 9. TRAVEL INSPIRATION (Authentic editorial carousel matching video frames #184-#188) */}
+        {/* 9. TRAVEL INSPIRATION (Full-bleed portrait photo cards - Exact Frame #189) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Travel inspiration</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-macao.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>Macao (Macau) • Travel</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>Cool Macao: where to find music, art and film</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-queensland.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>Queensland • Travel</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>The best of Queensland's dinosaurs</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-asia-christmas.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>Asia • Culture</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>Unique Christmas celebrations across Asia</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-asia-concerts.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>Asia • Events</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>The best concerts to catch in Asia in 2026</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-kyoto.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>Japan • Culture</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>Secret gardens and artisan workshops of Kyoto</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/insp-london.jpg')} style={styles.articleCardImage} resizeMode="cover" />
-              <View style={styles.articleCardDetails}>
-                <Text style={styles.articleLocation}>United Kingdom • Travel</Text>
-                <Text style={styles.articleTitle} numberOfLines={2}>A design lover's weekend guide to London</Text>
-              </View>
-            </TouchableOpacity>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContainer}
+          >
+            {[
+              {
+                title: 'Cool Macao: where to find music, art and film',
+                img: require('../../../assets/cathay/insp-macao.jpg'),
+              },
+              {
+                title: "The best of Queensland's dinosau...",
+                img: require('../../../assets/cathay/insp-queensland.jpg'),
+              },
+              {
+                title: 'Unique Christmas celebrations across Asia',
+                img: require('../../../assets/cathay/insp-asia-christmas.jpg'),
+              },
+              {
+                title: 'The best concerts to catch in Asia in 2026',
+                img: require('../../../assets/cathay/insp-asia-concerts.jpg'),
+              },
+              {
+                title: 'Secret gardens and artisan workshops of Kyoto',
+                img: require('../../../assets/cathay/insp-kyoto.jpg'),
+              },
+              {
+                title: "A design lover's weekend guide to London",
+                img: require('../../../assets/cathay/insp-london.jpg'),
+              },
+            ].map((item, idx) => (
+              <TouchableOpacity key={idx} style={styles.inspPortraitCard} activeOpacity={0.9}>
+                <ImageBackground
+                  source={item.img}
+                  style={styles.inspPortraitImg}
+                  imageStyle={{ borderRadius: 12 }}
+                  resizeMode="cover"
+                >
+                  <View style={styles.inspBottomScrim}>
+                    <Text style={styles.inspOverlayTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* 10. STAY UP-TO-DATE (Authentic news carousel matching video frames #188-#189) */}
+        {/* 10. STAY UP-TO-DATE (White rounded cards - Exact Frame #189) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Stay up-to-date</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-80th-popup.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>Explore our 80th anniversary pop-up at the airport</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-80th-collection.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>The 80th anniversary premium collection unveiled</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-lounge.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>Experience the newly refreshed The Pier lounge</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-fleet.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>Welcoming our next-generation A321neo fleet</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-sustainability.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>Cathay expands Sustainable Aviation Fuel programme</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
-              <Image source={require('../../../assets/cathay/news-dining.jpg')} style={styles.newsImage} resizeMode="cover" />
-              <Text style={styles.newsTitle} numberOfLines={2}>Award-winning inflight dining with Duddell's</Text>
-            </TouchableOpacity>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContainer}
+          >
+            {[
+              {
+                title: 'Explore our 80th anniversary pop-up at the airport',
+                img: require('../../../assets/cathay/news-80th-popup.jpg'),
+              },
+              {
+                title: 'The 80th anniversary premium collection unveiled',
+                img: require('../../../assets/cathay/news-80th-collection.jpg'),
+              },
+              {
+                title: 'Experience the newly refreshed The Pier lounge',
+                img: require('../../../assets/cathay/news-lounge.jpg'),
+              },
+              {
+                title: 'Welcoming our next-generation A321neo fleet',
+                img: require('../../../assets/cathay/news-fleet.jpg'),
+              },
+              {
+                title: 'Cathay expands Sustainable Aviation Fuel programme',
+                img: require('../../../assets/cathay/news-sustainability.jpg'),
+              },
+              {
+                title: "Award-winning inflight dining with Duddell's",
+                img: require('../../../assets/cathay/news-dining.jpg'),
+              },
+            ].map((news, idx) => (
+              <TouchableOpacity key={idx} style={styles.newsWhiteCard} activeOpacity={0.9}>
+                <Image source={news.img} style={styles.newsCardImage} resizeMode="cover" />
+                <View style={styles.newsCardBody}>
+                  <Text style={styles.newsCardTitle}>{news.title}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* 10. DISCLAIMER FOOTER (Matching authentic copy from frames #189, #195) */}
+        {/* 11. DISCLAIMER FOOTER (Exact Frame #189) */}
         <View style={styles.disclaimerContainer}>
           <Text style={styles.disclaimerText}>
-            All fares displayed include taxes and carrier-imposed surcharges. All fares, government taxes and fees, and surcharges are subject to change at any time.
-          </Text>
-          <Text style={styles.disclaimerText}>
+            All fares displayed include taxes and carrier-imposed surcharges. All fares, government taxes and fees, and surcharges are subject to change at any time.{'\n'}
             For ticket cancellations, where applicable, the Hong Kong Passenger Security Charge, the Hong Kong Air Passenger Departure Tax, and the Hong Kong International Airport Construction Fee will be refunded without any administrative fees.
-          </Text>
-          <Text style={styles.disclaimerSubtext}>
-            Cathay Pacific Airways Limited 國泰航空有限公司
           </Text>
         </View>
       </ScrollView>
@@ -523,17 +540,25 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
   );
 };
 
+const cardShadow = {
+  shadowColor: '#0F172A',
+  shadowOpacity: 0.06,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F8F6',
+    backgroundColor: '#F7F7F5',
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
   },
   mainScroll: {
     flex: 1,
-    backgroundColor: '#F9F8F6',
+    backgroundColor: '#F7F7F5',
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
@@ -543,16 +568,23 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
   },
+
+  /* 1. Hero Skyline Header */
   heroBackground: {
     width: '100%',
-    height: 220,
+    height: 225,
     justifyContent: 'space-between',
+  },
+  heroBackgroundImage: {
+    borderBottomLeftRadius: 56,
   },
   headerSafeArea: {
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'android' ? 32 : 8,
+    backgroundColor: 'rgba(10, 20, 28, 0.28)',
+    borderBottomLeftRadius: 56,
   },
   headerNavRow: {
     flexDirection: 'row',
@@ -596,116 +628,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 44,
-    paddingHorizontal: 4,
+    marginBottom: 46,
+    paddingHorizontal: 2,
   },
   memberPromptTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '400',
     letterSpacing: -0.2,
   },
   memberGreetingCol: {},
+  memberGreetingTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   memberGreetingTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontSize: 22,
+    fontWeight: '400',
+    letterSpacing: -0.2,
+  },
+  miniGreenCardBadge: {
+    width: 24,
+    height: 15,
+    borderRadius: 2,
+    backgroundColor: '#2E6E6D',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    marginLeft: 10,
+    position: 'relative',
+  },
+  miniCardWing: {
+    width: 6,
+    height: 6,
+    position: 'absolute',
+    right: 2.5,
+    bottom: 2,
   },
   memberMilesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    marginTop: 6,
   },
-  memberMilesText: {
+  asiaMilesWhiteIcon: {
+    width: 17,
+    height: 17,
+    marginRight: 6,
+  },
+  memberMetricBold: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  memberDotSeparator: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
+  memberPipeSeparator: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 14,
+    marginHorizontal: 10,
   },
-  memberStatusPointsText: {
-    color: '#D1EAE7',
-    fontSize: 13,
+  memberStatusLabel: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    marginRight: 6,
   },
   signInButton: {
     borderWidth: 1,
     borderColor: '#FFFFFF',
     borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   signInButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 13.5,
+    fontWeight: '400',
   },
-  passkeyBannerWrapper: {
-    marginHorizontal: 16,
-    marginTop: -24,
-  },
-  passkeyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  passkeyIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E6F4F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  passkeyTextCol: {
-    flex: 1,
-  },
-  passkeyTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  passkeySub: {
-    fontSize: 11.5,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  passkeyCloseBtn: {
-    padding: 6,
-  },
+
+  /* 2. Search Card */
   searchCardWrapper: {
     marginHorizontal: 16,
-    marginTop: -32,
-  },
-  searchCardWrapperWithPasskey: {
-    marginTop: 12,
+    marginTop: -36,
   },
   searchCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    ...cardShadow,
   },
   searchCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15.5,
+    fontWeight: '400',
     color: '#1C2024',
-    letterSpacing: -0.2,
   },
   routeSelectorRow: {
     flexDirection: 'row',
@@ -718,26 +732,28 @@ const styles = StyleSheet.create({
   },
   routeLabel: {
     fontSize: 12,
-    color: '#718096',
+    color: '#52565A',
     fontWeight: '400',
   },
   airportCode: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#006564',
+    color: '#2E6E6D',
     marginTop: 2,
     letterSpacing: -0.5,
   },
   cityName: {
     fontSize: 13,
-    color: '#4A5568',
+    color: '#2C3034',
     marginTop: 2,
   },
   airplaneBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F0F7F6',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 8,
@@ -748,160 +764,200 @@ const styles = StyleSheet.create({
   },
   routeLabelRight: {
     fontSize: 12,
-    color: '#718096',
+    color: '#52565A',
     fontWeight: '400',
   },
   searchCode: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#006564',
+    color: '#2E6E6D',
     marginTop: 2,
     letterSpacing: -0.5,
   },
   cityNameRight: {
     fontSize: 13,
-    color: '#4A5568',
+    color: '#2C3034',
     marginTop: 2,
   },
-  recentSearchesWrapper: {
+
+  /* 3. Passkey Banner (Frame #71 & #182) */
+  passkeyBannerWrapper: {
     marginHorizontal: 16,
     marginTop: 16,
   },
-  recentSectionTitle: {
+  passkeyBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#EBF3F5',
+    borderRadius: 12,
+    padding: 16,
+    ...cardShadow,
+  },
+  passkeyLockImg: {
+    width: 46,
+    height: 46,
+    marginRight: 14,
+    marginTop: 2,
+  },
+  passkeyTextCol: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  passkeyTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginBottom: 4,
+  },
+  passkeySub: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: 8,
+    lineHeight: 18,
+    color: '#2C3034',
+  },
+  passkeyCloseBtn: {
+    padding: 2,
+  },
+
+  /* 4. Recent Searches (Frame #182) */
+  recentSearchesWrapper: {
+    marginHorizontal: 16,
+    marginTop: 28,
+  },
+  sectionTitleNoPad: {
+    fontSize: 21,
+    fontWeight: '400',
+    color: '#1C2024',
+    marginBottom: 14,
   },
   recentSearchCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 16,
+    width: 224,
+    ...cardShadow,
   },
   recentPlaneCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E6F4F2',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F2F4F5',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 14,
   },
   recentTextCol: {
     flex: 1,
   },
   recentDatesText: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#2C3034',
+    marginBottom: 3,
   },
-  recentRouteText: {
-    fontSize: 14,
+  recentRouteLine: {
+    fontSize: 15.5,
+    color: '#1C2024',
+    fontWeight: '600',
+  },
+  recentRouteCodeBold: {
     fontWeight: '700',
-    color: '#006564',
-    marginTop: 1,
+    color: '#195A58',
   },
-  wingBannerWrapper: {
-    marginHorizontal: 16,
-    marginTop: 18,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+
+  /* 5. Full-Width Wing Banner (Frame #182) */
+  wingBannerFullWidth: {
+    width: '100%',
+    marginTop: 24,
   },
   wingBannerImage: {
     width: '100%',
-    height: 148,
-    justifyContent: 'center',
+    height: 310,
   },
   wingBannerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 35, 40, 0.45)',
-    padding: 16,
+    flex: 1,
+    backgroundColor: 'rgba(10, 32, 38, 0.35)',
+    paddingHorizontal: 18,
+    paddingVertical: 20,
     justifyContent: 'space-between',
-    borderRadius: 12,
   },
   topPickPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#006564',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: '#2E6E6D',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 4,
   },
   topPickPillText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  wingBottomGroup: {
+    marginTop: 'auto',
   },
   wingBannerHeading: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '400',
     color: '#FFFFFF',
-    letterSpacing: -0.3,
+    lineHeight: 28,
   },
   wingBannerSub: {
-    fontSize: 13,
-    color: '#E2E8F0',
-    marginTop: 2,
+    fontSize: 22,
+    color: '#FFFFFF',
     fontWeight: '400',
+    marginTop: 2,
+    marginBottom: 16,
   },
-  wingBookBtn: {
+  wingBookOutlineBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 4,
-    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 6,
   },
-  wingBookBtnText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#006564',
+  wingBookOutlineBtnText: {
+    fontSize: 14.5,
+    fontWeight: '400',
+    color: '#FFFFFF',
   },
+
+  /* 6. Our Latest Offers */
   offersSection: {
-    marginTop: 24,
+    marginTop: 28,
     width: '100%',
     maxWidth: '100%',
-    overflow: 'hidden',
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 21,
+    fontWeight: '400',
     color: '#1C2024',
     paddingHorizontal: 16,
-    letterSpacing: -0.3,
   },
   promoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DDE7E6',
+    backgroundColor: '#DFECEB',
     borderRadius: 10,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     marginHorizontal: 16,
     marginTop: 14,
   },
+  flyingSoonTicketIcon: {
+    width: 28,
+    height: 28,
+  },
   promoTextContainer: {
     flex: 1,
-    marginHorizontal: 10,
+    marginHorizontal: 12,
   },
   promoText: {
-    fontSize: 13.5,
-    lineHeight: 18,
-    color: '#1A2024',
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#1C2024',
   },
   promoBold: {
     fontWeight: '700',
@@ -909,231 +965,229 @@ const styles = StyleSheet.create({
   originIndicatorRow: {
     paddingHorizontal: 16,
     marginTop: 20,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   fromLabel: {
-    fontSize: 14,
-    color: '#4A5568',
+    fontSize: 15,
+    color: '#1C2024',
   },
   fromCity: {
-    color: '#006564',
-    fontWeight: '600',
+    color: '#195A58',
+    fontWeight: '700',
   },
   carouselScrollView: {
     width: '100%',
-    maxWidth: '100%',
-    flexGrow: 0,
-    flexShrink: 1,
   },
   carouselContainer: {
     paddingHorizontal: 16,
     gap: 14,
-    marginTop: 10,
+    marginTop: 12,
+    paddingBottom: 6,
   },
   destinationCard: {
-    width: 154,
+    width: 166,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
     overflow: 'hidden',
+    ...cardShadow,
   },
   destinationImage: {
     width: '100%',
-    height: 104,
+    height: 112,
   },
   destinationDetails: {
-    padding: 12,
+    padding: 14,
   },
   destinationCity: {
     fontSize: 16.5,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#1C2024',
   },
   destinationCabin: {
-    fontSize: 12.5,
-    color: '#718096',
+    fontSize: 13,
+    color: '#2C3034',
     marginTop: 2,
   },
   priceLabel: {
-    fontSize: 11,
-    color: '#718096',
-    marginTop: 12,
+    fontSize: 12,
+    color: '#52565A',
+    marginTop: 14,
   },
   priceValue: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 16.5,
+    fontWeight: '400',
     color: '#1C2024',
-    marginTop: 1,
+    marginTop: 2,
   },
-  exploreCard: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0F7F6',
-  },
-  exploreInner: {
-    alignItems: 'center',
-    padding: 18,
-    gap: 8,
-  },
-  exploreTitle: {
-    fontSize: 13,
+  priceValueBold: {
     fontWeight: '700',
-    color: '#006564',
-    textAlign: 'center',
-    lineHeight: 18,
   },
+
+  /* 7. Discover Fantastic Promotions (Frame #183 & #184) */
   sectionContainer: {
-    marginTop: 28,
+    marginTop: 32,
   },
   promoCardItem: {
-    width: 170,
+    width: 172,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ECEAE6',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'space-between',
+    ...cardShadow,
+  },
+  promoImageWrapper: {
+    width: '100%',
+    height: 112,
+    position: 'relative',
   },
   promoCardImage: {
     width: '100%',
-    height: 108,
+    height: '100%',
   },
-  promoCardDetails: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 14,
+  promoRustBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: '#8B3A16',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  promoRustBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  promoCardBody: {
+    padding: 14,
+    flex: 1,
+    justifyContent: 'space-between',
+    minHeight: 138,
+  },
+  promoCategoryGold: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: '#827127',
+    marginBottom: 4,
   },
   promoHeadlineText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '400',
     color: '#1C2024',
-    lineHeight: 18,
-    minHeight: 36,
+    lineHeight: 21,
   },
-  promoDateRow: {
+  promoClockRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
-  promoDateIcon: {
-    marginRight: 4,
+  promoClockIcon: {
+    marginRight: 6,
   },
-  promoDateText: {
-    fontSize: 11.5,
-    color: '#718096',
+  promoClockDateText: {
+    fontSize: 12.5,
+    color: '#706218',
     fontWeight: '400',
   },
-  promoOfferText: {
-    fontSize: 13.5,
-    color: '#006564',
-    marginTop: 4,
-    fontWeight: '700',
+  promoMintFooterStrip: {
+    backgroundColor: '#EBF4F4',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
+  promoFooterText: {
+    fontSize: 12.5,
+    color: '#1C2024',
+  },
+
+  /* 8. More Ways to Earn and Redeem Miles (Frame #183 & #184) */
   moreWaysScrollContainer: {
-    paddingHorizontal: 16,
-    gap: 16,
-    marginTop: 16,
+    paddingHorizontal: 20,
+    gap: 18,
+    marginTop: 18,
   },
   moreWaysItem: {
     alignItems: 'center',
-    width: 80,
+    width: 96,
   },
   moreWaysCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8E5DF',
+    borderColor: '#C4C6CA',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+  },
+  moreWaysCustomIcon: {
+    width: 38,
+    height: 38,
   },
   moreWaysLabel: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13.5,
+    fontWeight: '400',
     color: '#1C2024',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 16,
+    marginTop: 10,
   },
-  articleCard: {
-    width: 170,
+
+  /* 9. Travel Inspiration (Full-Bleed Portrait Cards - Frame #189) */
+  inspPortraitCard: {
+    width: 172,
+    height: 268,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...cardShadow,
+  },
+  inspPortraitImg: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  inspBottomScrim: {
+    backgroundColor: 'rgba(12, 18, 24, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  inspOverlayTitle: {
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: '#FFFFFF',
+    fontWeight: '400',
+  },
+
+  /* 10. Stay Up-to-Date (White Rounded Cards - Frame #189) */
+  newsWhiteCard: {
+    width: 172,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ECEAE6',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...cardShadow,
   },
-  articleCardImage: {
+  newsCardImage: {
     width: '100%',
-    height: 108,
+    height: 112,
   },
-  articleCardDetails: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 14,
+  newsCardBody: {
+    padding: 14,
+    minHeight: 112,
   },
-  articleLocation: {
-    fontSize: 11,
-    color: '#718096',
+  newsCardTitle: {
+    fontSize: 15.5,
     fontWeight: '400',
-    marginBottom: 4,
-  },
-  articleTitle: {
-    fontSize: 13.5,
-    fontWeight: '600',
     color: '#1C2024',
-    lineHeight: 18,
+    lineHeight: 21,
   },
-  newsCard: {
-    width: 170,
-  },
-  newsImage: {
-    width: 170,
-    height: 104,
-    borderRadius: 10,
-    backgroundColor: '#E2E8F0',
-  },
-  newsTitle: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#1C2024',
-    marginTop: 8,
-    lineHeight: 17,
-  },
+
+  /* 11. Disclaimer Footer (Frame #189) */
   disclaimerContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 16,
   },
   disclaimerText: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: '#94A3B8',
-    marginBottom: 6,
-  },
-  disclaimerSubtext: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: '#94A3B8',
-    fontWeight: '500',
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: '#2C3034',
   },
 });
