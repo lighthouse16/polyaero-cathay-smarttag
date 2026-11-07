@@ -7,7 +7,6 @@ import {
   ImageBackground,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +58,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           imageStyle={styles.heroBackgroundImage}
           resizeMode="cover"
         >
-          <SafeAreaView style={styles.headerSafeArea}>
+          <View style={styles.headerSafeArea}>
             {/* Top Navigation Row */}
             <View style={styles.headerNavRow}>
               <TouchableOpacity
@@ -133,7 +132,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 </>
               )}
             </View>
-          </SafeAreaView>
+          </View>
         </ImageBackground>
 
         {/* 2. FLIGHT SEARCH CARD (Always floats over Hero Skyline - Frame #71 & WhatsApp Screenshot) */}
@@ -572,7 +571,7 @@ const styles = StyleSheet.create({
   /* 1. Hero Skyline Header */
   heroBackground: {
     width: '100%',
-    height: 225,
+    height: 235,
     justifyContent: 'space-between',
   },
   heroBackgroundImage: {
@@ -582,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 32 : 8,
+    paddingTop: Platform.OS === 'ios' ? 52 : 36,
     backgroundColor: 'rgba(10, 20, 28, 0.28)',
     borderBottomLeftRadius: 56,
   },
@@ -629,7 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 46,
-    paddingHorizontal: 2,
+    paddingHorizontal: 0,
   },
   memberPromptTitle: {
     color: '#FFFFFF',

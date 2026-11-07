@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Modal,
   Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlightBooking } from './CathayTypes';
@@ -428,7 +429,7 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
               imageStyle={styles.heroTailImageStyle}
               resizeMode="cover"
             >
-              <SafeAreaView style={styles.heroSafeArea}>
+              <View style={styles.heroSafeArea}>
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onLongPress={onOpenDevMenu}
@@ -436,7 +437,7 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
                 >
                   <Text style={styles.heroHeading}>Book a trip</Text>
                 </TouchableOpacity>
-              </SafeAreaView>
+              </View>
             </ImageBackground>
           </View>
 
@@ -671,9 +672,10 @@ const styles = StyleSheet.create({
   heroSafeArea: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 52 : 36,
   },
   heroHeadingWrap: {
-    marginTop: 28,
+    marginTop: 20,
   },
   heroHeading: {
     fontSize: 28,
