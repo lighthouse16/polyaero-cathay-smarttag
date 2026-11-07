@@ -9,7 +9,6 @@ import {
   Animated,
   Easing,
   Dimensions,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CathaySplashScreen } from './CathaySplashScreen';
@@ -32,9 +31,6 @@ import {
   INITIAL_USER_PROFILE,
   INITIAL_BOOKING,
 } from './CathayTypes';
-
-const CLOUD_DOCK_BG = require('../../../assets/cathay/cloud_dock_bg.png');
-const DOCK_PAD = 10;
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -178,7 +174,7 @@ export const CathayAppShell: React.FC = () => {
       }),
       Animated.sequence([
         Animated.timing(stretchAnim, {
-          toValue: 1.18,
+          toValue: 1.28,
           duration: 110,
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
@@ -291,9 +287,6 @@ export const CathayAppShell: React.FC = () => {
   }
 
   // 2. MAIN PASSENGER 5-TAB EXPERIENCE
-  const capsuleWidth = Math.max(itemWidth - 18, 44);
-  const capsuleOffset = (itemWidth - capsuleWidth) / 2;
-
   return (
     <View style={styles.root}>
       {/* Active Screen Tab View with Silky Crossfade */}
@@ -344,36 +337,26 @@ export const CathayAppShell: React.FC = () => {
         )}
       </Animated.View>
 
-      {/* FLOATING CLOUD DOCK NAVIGATION BAR (User reference: media_1794038335689_2e8e3627.jpg) */}
+      {/* FLOATING PILL DOCK NAVIGATION BAR (Exact reference: media_1794036763841_00bd8fb8.jpg) */}
       <View style={styles.floatingDockWrap} pointerEvents="box-none">
         <View
-          style={styles.floatingDockCloud}
+          style={styles.floatingDock}
           onLayout={(e) => {
             const width = e.nativeEvent.layout.width;
             if (width > 0) {
-              setItemWidth((width - DOCK_PAD * 2) / TAB_ITEMS.length);
+              const inner = width - 12;
+              setItemWidth(inner / TAB_ITEMS.length);
             }
           }}
         >
-          {/* Cloud body + baked shadow (asset padded 12/8/18pt; no RN shadow => no rectangular halo) */}
-          <Image source={CLOUD_DOCK_BG} style={styles.cloudImage} resizeMode="stretch" />
-
           {/* Liquid Droplet Sliding Capsule (Spring + Elastic Stretch/Squash) */}
           <Animated.View
             style={[
               styles.slidingDropletCapsule,
               {
-                width: capsuleWidth,
-                left: DOCK_PAD + capsuleOffset,
+                width: itemWidth,
                 transform: [
-                  {
-                    // clamp spring overshoot so capsule never leaves dock edge
-                    translateX: translateX.interpolate({
-                      inputRange: [0, Math.max(itemWidth * (TAB_ITEMS.length - 1), 1)],
-                      outputRange: [0, Math.max(itemWidth * (TAB_ITEMS.length - 1), 1)],
-                      extrapolate: 'clamp',
-                    }),
-                  },
+                  { translateX },
                   { scaleX: stretchAnim },
                   { scaleY: squashAnim },
                 ],
@@ -381,36 +364,34 @@ export const CathayAppShell: React.FC = () => {
             ]}
           />
 
-          <View style={styles.dockItemsRow}>
-            {TAB_ITEMS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={styles.dockItem}
-                  onPress={() => setActiveTab(tab.id)}
-                  activeOpacity={0.75}
-                  testID={`tab-${tab.id}`}
+          {TAB_ITEMS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.dockItem}
+                onPress={() => setActiveTab(tab.id)}
+                activeOpacity={0.75}
+                testID={`tab-${tab.id}`}
+              >
+                <Ionicons
+                  name={isActive ? tab.activeIcon : tab.inactiveIcon}
+                  size={21}
+                  color={isActive ? '#195A58' : '#4A5568'}
+                  style={tab.rotate ? { transform: [{ rotate: tab.rotate }] } : undefined}
+                />
+                <Text
+                  style={[
+                    styles.dockLabel,
+                    isActive ? styles.dockLabelActive : styles.dockLabelInactive,
+                  ]}
+                  numberOfLines={1}
                 >
-                  <Ionicons
-                    name={isActive ? tab.activeIcon : tab.inactiveIcon}
-                    size={21}
-                    color={isActive ? '#195A58' : '#4A5568'}
-                    style={tab.rotate ? { transform: [{ rotate: tab.rotate }] } : undefined}
-                  />
-                  <Text
-                    style={[
-                      styles.dockLabel,
-                      isActive ? styles.dockLabelActive : styles.dockLabelInactive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
@@ -595,49 +576,54 @@ const styles = StyleSheet.create({
   },
   floatingDockWrap: {
     position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: Platform.OS === 'ios' ? 14 : 10,
+    left: 14,
+    right: 14,
+    bottom: Platform.OS === 'ios' ? 24 : 16,
     zIndex: 999,
     alignItems: 'center',
   },
-  floatingDockCloud: {
-    width: '100%',
-    height: 84,
-    justifyContent: 'flex-end',
-  },
-  cloudImage: {
-    position: 'absolute',
-    left: -12,
-    right: -12,
-    top: -8,
-    bottom: -18,
-    width: undefined,
-    height: undefined,
-  },
-  dockItemsRow: {
+  floatingDock: {
     flexDirection: 'row',
-    height: 62,
+    height: 68,
     width: '100%',
-    alignItems: 'center',
+    backgroundColor: Platform.select({
+      ios: 'rgba(255, 255, 255, 0.84)',
+      android: 'rgba(255, 255, 255, 0.95)',
+      default: 'rgba(255, 255, 255, 0.88)',
+    }),
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'space-between',
-    paddingHorizontal: DOCK_PAD,
-    paddingBottom: 6,
-    zIndex: 2,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 12,
   },
   slidingDropletCapsule: {
     position: 'absolute',
-    bottom: 10,
-    height: 48,
+    top: 7,
+    left: 6,
+    height: 54,
     backgroundColor: '#DFEDE9',
-    borderRadius: 24,
+    borderRadius: 27,
+    shadowColor: '#195A58',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 2,
     zIndex: 1,
   },
   dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
+    height: 54,
+    borderRadius: 27,
     zIndex: 2,
   },
   dockLabel: {

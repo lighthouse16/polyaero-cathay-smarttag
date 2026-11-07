@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingBottom: 140,
+    paddingBottom: 110,
   },
   contentWrapper: {
     position: 'relative',

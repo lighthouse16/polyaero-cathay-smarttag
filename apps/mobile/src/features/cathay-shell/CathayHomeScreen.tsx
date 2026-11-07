@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   scrollContent: {
-    paddingBottom: 140,
+    paddingBottom: 110,
     width: '100%',
     maxWidth: '100%',
   },
