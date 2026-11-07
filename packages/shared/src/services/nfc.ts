@@ -138,7 +138,7 @@ export class MockNfcService implements INfcService {
     this.isScanning = true;
 
     return new Promise<SmartTagScanResult>((resolve, reject) => {
-      let timer: NodeJS.Timeout | null = null;
+      let timer: ReturnType<typeof setTimeout> | null = null;
 
       const cleanup = () => {
         if (timer) clearTimeout(timer);
@@ -194,7 +194,7 @@ export class MockNfcService implements INfcService {
     this.isScanning = true;
 
     return new Promise<SmartTagWriteResult>((resolve, reject) => {
-      let timer: NodeJS.Timeout | null = null;
+      let timer: ReturnType<typeof setTimeout> | null = null;
 
       const cleanup = () => {
         if (timer) clearTimeout(timer);

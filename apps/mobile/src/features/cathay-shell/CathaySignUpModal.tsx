@@ -54,7 +54,7 @@ export const CathaySignUpModal: React.FC<CathaySignUpModalProps> = ({
   const [countdown, setCountdown] = useState(298); // 4m 58s
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (visible && step === 5 && countdown > 0) {
       timer = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
     }
