@@ -189,26 +189,17 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 
         {/* 5. CONTEXTUAL PLANE WING BANNER (Only when recent search is NKG / Nanjing) */}
         {recentSearch && recentSearch.destination === 'NKG' && (
-          <View style={styles.wingBannerWrapper}>
-            <ImageBackground
+          <TouchableOpacity
+            style={styles.wingBannerWrapper}
+            onPress={onSearchPress}
+            activeOpacity={0.9}
+          >
+            <Image
               source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
               style={styles.wingBannerImage}
-              imageStyle={{ borderRadius: 12 }}
               resizeMode="cover"
-            >
-              <View style={styles.wingBannerContent}>
-                <View style={styles.topPickPill}>
-                  <Text style={styles.topPickPillText}>Top Pick</Text>
-                </View>
-                <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
-                <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
-
-                <TouchableOpacity style={styles.wingBookBtn} onPress={onSearchPress} activeOpacity={0.85}>
-                  <Text style={styles.wingBookBtnText}>Book now</Text>
-                </TouchableOpacity>
-              </View>
-            </ImageBackground>
-          </View>
+            />
+          </TouchableOpacity>
         )}
 
         {/* 6. OUR LATEST OFFERS SECTION */}
@@ -295,7 +286,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (100% authentic photographic cards from frames #183, #184) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic cards - badges are inside the photos) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
@@ -303,9 +294,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <View style={styles.promoBadgePill}>
-                  <Text style={styles.promoBadgeText}>Cardholder exclusive</Text>
-                </View>
+                <Text style={styles.promoCategoryText}>Payment</Text>
                 <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
                 <Text style={styles.promoDateText}>Up to 11% off • 11 Nov 2026</Text>
               </View>
@@ -314,9 +303,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <View style={styles.promoBadgePill}>
-                  <Text style={styles.promoBadgeText}>Flights</Text>
-                </View>
+                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
                 <Text style={styles.promoDateText}>From HKD4,089 • 30 Nov 2026</Text>
               </View>
@@ -325,9 +312,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <View style={styles.promoBadgePill}>
-                  <Text style={styles.promoBadgeText}>Flights</Text>
-                </View>
+                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Student Fare</Text>
                 <Text style={styles.promoDateText}>Up to 10% discount*, extra baggage+</Text>
               </View>
@@ -336,49 +321,12 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <View style={styles.promoBadgePill}>
-                  <Text style={styles.promoBadgeText}>Flights</Text>
-                </View>
+                <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
                 <Text style={styles.promoDateText}>Fly together with special family perks</Text>
               </View>
             </TouchableOpacity>
           </ScrollView>
-        </View>
-
-        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Matching frame #183 in video) */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
-
-          <View style={styles.fourIconsGrid}>
-            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
-              <View style={styles.gridActionIconWrap}>
-                <Ionicons name="bed-outline" size={24} color="#006564" />
-              </View>
-              <Text style={styles.gridActionText}>Book a hotel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
-              <View style={styles.gridActionIconWrap}>
-                <Ionicons name="cube-outline" size={24} color="#006564" />
-              </View>
-              <Text style={styles.gridActionText}>Book a package</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
-              <View style={styles.gridActionIconWrap}>
-                <Ionicons name="shield-checkmark-outline" size={24} color="#006564" />
-              </View>
-              <Text style={styles.gridActionText}>Travel Insurance</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
-              <View style={styles.gridActionIconWrap}>
-                <Ionicons name="car-outline" size={24} color="#006564" />
-              </View>
-              <Text style={styles.gridActionText}>Rent a car</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* 9. TRAVEL INSPIRATION (Matching frame #62, #189 in video) */}
@@ -719,52 +667,18 @@ const styles = StyleSheet.create({
   wingBannerWrapper: {
     marginHorizontal: 16,
     marginTop: 18,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   wingBannerImage: {
     width: '100%',
-    height: 120,
-    justifyContent: 'center',
-  },
-  wingBannerContent: {
-    padding: 14,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    height: 140,
     borderRadius: 12,
-  },
-  topPickPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#006564',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  topPickPillText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  wingBannerHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  wingBannerSub: {
-    fontSize: 13,
-    color: '#E2E8F0',
-    marginTop: 2,
-  },
-  wingBookBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 6,
-  },
-  wingBookBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#006564',
   },
   offersSection: {
     marginTop: 24,
@@ -901,75 +815,31 @@ const styles = StyleSheet.create({
   promoCardDetails: {
     padding: 12,
   },
-  promoBadgePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  promoBadgeText: {
-    fontSize: 10,
-    color: '#475569',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
   promoCategoryText: {
     fontSize: 11,
     color: '#718096',
     fontWeight: '500',
+    marginBottom: 2,
   },
   promoHeadlineText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1C2024',
-    marginTop: 2,
+    lineHeight: 18,
   },
   promoDateText: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#006564',
-    marginTop: 4,
+    marginTop: 6,
     fontWeight: '600',
   },
-  fourIconsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginTop: 14,
-  },
-  gridActionItem: {
-    alignItems: 'center',
-    width: '24%',
-  },
-  gridActionIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EAE6E1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  gridActionText: {
-    fontSize: 11.5,
-    fontWeight: '500',
-    color: '#334155',
-    textAlign: 'center',
-  },
   articleCard: {
-    width: 200,
+    width: 176,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
@@ -985,18 +855,18 @@ const styles = StyleSheet.create({
     color: '#718096',
   },
   articleTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1C2024',
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   newsCard: {
     width: 170,
   },
   newsImage: {
     width: 170,
-    height: 96,
+    height: 104,
     borderRadius: 8,
   },
   newsTitle: {
