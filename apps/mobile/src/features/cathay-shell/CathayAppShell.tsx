@@ -239,7 +239,7 @@ export const CathayAppShell: React.FC = () => {
           <Ionicons
             name={activeTab === 'home' ? 'home' : 'home-outline'}
             size={22}
-            color={activeTab === 'home' ? '#006564' : '#718096'}
+            color={activeTab === 'home' ? '#2E6E6D' : '#52565A'}
           />
           <Text style={[styles.tabLabel, activeTab === 'home' ? styles.tabLabelActive : styles.tabLabelInactive]}>
             Home
@@ -255,7 +255,8 @@ export const CathayAppShell: React.FC = () => {
           <Ionicons
             name={activeTab === 'book' ? 'airplane' : 'airplane-outline'}
             size={22}
-            color={activeTab === 'book' ? '#006564' : '#718096'}
+            color={activeTab === 'book' ? '#2E6E6D' : '#52565A'}
+            style={{ transform: [{ rotate: '-45deg' }] }}
           />
           <Text style={[styles.tabLabel, activeTab === 'book' ? styles.tabLabelActive : styles.tabLabelInactive]}>
             Book
@@ -272,9 +273,8 @@ export const CathayAppShell: React.FC = () => {
             <Ionicons
               name={activeTab === 'trips' ? 'briefcase' : 'briefcase-outline'}
               size={22}
-              color={activeTab === 'trips' ? '#006564' : '#718096'}
+              color={activeTab === 'trips' ? '#2E6E6D' : '#52565A'}
             />
-            {bookings.length > 0 && <View style={styles.tabDotBadge} />}
           </View>
           <Text style={[styles.tabLabel, activeTab === 'trips' ? styles.tabLabelActive : styles.tabLabelInactive]}>
             My trips
@@ -290,7 +290,7 @@ export const CathayAppShell: React.FC = () => {
           <Ionicons
             name={activeTab === 'profile' ? 'person' : 'person-outline'}
             size={22}
-            color={activeTab === 'profile' ? '#006564' : '#718096'}
+            color={activeTab === 'profile' ? '#2E6E6D' : '#52565A'}
           />
           <Text style={[styles.tabLabel, activeTab === 'profile' ? styles.tabLabelActive : styles.tabLabelInactive]}>
             Profile
@@ -306,7 +306,7 @@ export const CathayAppShell: React.FC = () => {
           <Ionicons
             name="grid-outline"
             size={22}
-            color="#718096"
+            color="#52565A"
           />
           <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
             Travel tools
@@ -528,11 +528,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tabLabelActive: {
-    color: '#006564',
+    color: '#2E6E6D',
     fontWeight: '700',
   },
   tabLabelInactive: {
-    color: '#718096',
+    color: '#52565A',
     fontWeight: '400',
   },
   devMenuOverlay: {
