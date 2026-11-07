@@ -7,8 +7,8 @@ import {
   ScrollView,
   ImageBackground,
   SafeAreaView,
-  ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlightBooking } from './CathayTypes';
@@ -17,6 +17,9 @@ interface CathayBookScreenProps {
   onFlightSelected: (booking: FlightBooking) => void;
   onOpenDevMenu?: () => void;
 }
+
+const HERO_TAIL = require('../../../assets/cathay/cathay-hero-tail.png');
+const WINDOW_ARIA = require('../../../assets/cathay/airplane-window-aria.jpg');
 
 export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
   onFlightSelected,
@@ -33,7 +36,7 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [selectedCabinTab, setSelectedCabinTab] = useState<'Economy' | 'Premium Economy' | 'Business'>('Economy');
-  const [selectedDateIdx, setSelectedDateIdx] = useState(1); // Sun 08 Nov
+  const [selectedDateIdx, setSelectedDateIdx] = useState(1);
 
   // Cabin bottom sheet
   const [showCabinSheet, setShowCabinSheet] = useState(false);
@@ -47,14 +50,13 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
 
   const handleTriggerSearch = () => {
     setIsSearching(true);
-    // Simulate real Cathay airplane window loading animation
     setTimeout(() => {
       setIsSearching(false);
       setShowResults(true);
-    }, 2400);
+    }, 1800);
   };
 
-  const handleSelectFlight = (flightNo: string, depTime: string, arrTime: string, dur: string, _price: string) => {
+  const handleSelectFlight = (flightNo: string, depTime: string, arrTime: string, dur: string) => {
     const newBooking: FlightBooking = {
       id: `bk-${flightNo}-${Date.now()}`,
       pnr: '7Y9K2M',
@@ -105,42 +107,34 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* 1. AIRPLANE WINDOW LOADING ANIMATION MODAL */}
+      {/* 1. AIRPLANE WINDOW LOADING ANIMATION MODAL (Authentic Frame #171) */}
       <Modal visible={isSearching} animationType="fade" transparent={false}>
         <SafeAreaView style={styles.loadingSafeArea}>
-          <ImageBackground
-            source={require('../../../assets/cathay/airplane-window-aria.jpg')}
-            style={styles.loadingHeroImage}
-            resizeMode="cover"
-          >
-            <View style={styles.loadingOverlay}>
-              <Text style={styles.loadingHeadline}>Discover the Aria Suite in our Business cabin</Text>
-              <Text style={styles.loadingSub}>Book your flight online now with free 24-hour cancellation</Text>
-            </View>
-          </ImageBackground>
-
-          <View style={styles.loadingRouteBar}>
-            <Text style={styles.routeCodeText}>{origin.code}</Text>
-            <View style={styles.progressLineWrapper}>
-              <View style={styles.flightLine} />
-              <Ionicons name="airplane" size={20} color="#006564" style={styles.planeIconAnimated} />
-            </View>
-            <Text style={styles.routeCodeText}>{dest.code}</Text>
+          <View style={styles.loadingWindowWrap}>
+            <Image
+              source={WINDOW_ARIA}
+              style={styles.loadingWindowImg}
+              resizeMode="contain"
+            />
           </View>
 
-          <View style={styles.loadingFooter}>
-            <ActivityIndicator size="large" color="#006564" />
-            <Text style={styles.searchingText}>
-              Searching flights from <Text style={styles.boldText}>{origin.city}</Text> to <Text style={styles.boldText}>{dest.city}</Text>
-            </Text>
+          <View style={styles.loadingRouteBar}>
+            <View style={styles.loadingRouteLineRow}>
+              <View style={styles.loadingLineActive} />
+              <Ionicons name="airplane" size={20} color="#2E6E6D" style={styles.loadingPlaneIcon} />
+              <View style={styles.loadingLineRemaining} />
+            </View>
+            <View style={styles.loadingAirportCodesRow}>
+              <Text style={styles.loadingOriginCode}>{origin.code}</Text>
+              <Text style={styles.loadingDestCode}>{dest.code}</Text>
+            </View>
           </View>
         </SafeAreaView>
       </Modal>
 
-      {/* 2. FLIGHT SEARCH RESULTS SCREEN */}
+      {/* 2. FLIGHT SEARCH RESULTS SCREEN (Authentic Frame #174) */}
       {showResults && (
         <SafeAreaView style={styles.resultsSafeArea}>
-          {/* Results Top Header */}
           <View style={styles.resultsHeader}>
             <TouchableOpacity onPress={() => setShowResults(false)} style={styles.resultsBackBtn}>
               <Ionicons name="chevron-back" size={24} color="#1C2024" />
@@ -152,285 +146,446 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
           {/* Date Selector Ribbon */}
           <View style={styles.dateRibbon}>
             {[
-              { day: 'Sat, 07 Nov', price: 'HKD5,674' },
-              { day: 'Sun, 08 Nov', price: 'HKD5,674' },
-              { day: 'Mon, 09 Nov', price: 'HKD5,674' },
-              { day: 'Tue, 10 Nov', price: 'HKD5,674' },
-            ].map((item, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.dateRibbonItem, selectedDateIdx === idx && styles.dateRibbonItemActive]}
-                onPress={() => setSelectedDateIdx(idx)}
-              >
-                <Text style={[styles.dateRibbonDay, selectedDateIdx === idx && styles.dateRibbonDayActive]}>{item.day}</Text>
-                <Text style={[styles.dateRibbonPrice, selectedDateIdx === idx && styles.dateRibbonPriceActive]}>{item.price}</Text>
-              </TouchableOpacity>
-            ))}
+              { day: 'Sat, 07 Nov', price: '5,674' },
+              { day: 'Sun, 08 Nov', price: '5,674' },
+              { day: 'Mon, 09 Nov', price: '5,674' },
+              { day: 'Tue, 10 Nov', price: '5,674' },
+            ].map((item, idx) => {
+              const isActive = selectedDateIdx === idx;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.dateRibbonItem, isActive && styles.dateRibbonItemActive]}
+                  onPress={() => setSelectedDateIdx(idx)}
+                >
+                  <Text style={[styles.dateRibbonDay, isActive && styles.dateRibbonDayActive]}>
+                    {item.day}
+                  </Text>
+                  <Text style={[styles.dateRibbonPrice, isActive && styles.dateRibbonPriceActive]}>
+                    HKD<Text style={styles.dateRibbonPriceBold}>{item.price}</Text>
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* Results Count & Filter Row */}
+          {/* 27 Results & Filter Sliders Icon */}
           <View style={styles.filterBar}>
             <Text style={styles.resultsCountText}>27 Results</Text>
-            <TouchableOpacity style={styles.filterButton}>
-              <Ionicons name="options-outline" size={18} color="#006564" />
-              <Text style={styles.filterButtonText}>Filter</Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Ionicons name="options-outline" size={22} color="#195A58" />
             </TouchableOpacity>
           </View>
 
-          {/* Cabin Class Tabs */}
-          <View style={styles.cabinTabsRow}>
-            {[
-              { id: 'Economy', label: 'Economy' },
-              { id: 'Premium Economy', label: 'Premium Econo...' },
-              { id: 'Business', label: 'Business' },
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.id}
-                style={[styles.cabinTabBtn, selectedCabinTab === tab.id && styles.cabinTabBtnActive]}
-                onPress={() => setSelectedCabinTab(tab.id as any)}
+          {/* Unified 3-Column Cabin Selector Box (Frame #174) */}
+          <View style={styles.cabinUnifiedBox}>
+            <TouchableOpacity
+              style={[
+                styles.cabinUnifiedCol,
+                selectedCabinTab === 'Economy' && styles.cabinUnifiedColActive,
+              ]}
+              onPress={() => setSelectedCabinTab('Economy')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.cabinUnifiedTitle,
+                  selectedCabinTab === 'Economy' && styles.cabinUnifiedTextActive,
+                ]}
               >
-                <Text style={[styles.cabinTabLabel, selectedCabinTab === tab.id && styles.cabinTabLabelActive]}>{tab.label}</Text>
-              </TouchableOpacity>
-            ))}
+                Economy
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.cabinUnifiedCol,
+                selectedCabinTab === 'Premium Economy' && styles.cabinUnifiedColActive,
+              ]}
+              onPress={() => setSelectedCabinTab('Premium Economy')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.cabinUnifiedTitle,
+                  selectedCabinTab === 'Premium Economy' && styles.cabinUnifiedTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                Premium Econo...
+              </Text>
+              <Text
+                style={[
+                  styles.cabinUnifiedSubPrice,
+                  selectedCabinTab === 'Premium Economy' && styles.cabinUnifiedTextActive,
+                ]}
+              >
+                +HKD<Text style={{ fontWeight: '700' }}>10,784</Text>
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.cabinUnifiedCol,
+                selectedCabinTab === 'Business' && styles.cabinUnifiedColActive,
+              ]}
+              onPress={() => setSelectedCabinTab('Business')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.cabinUnifiedTitle,
+                  selectedCabinTab === 'Business' && styles.cabinUnifiedTextActive,
+                ]}
+              >
+                Business
+              </Text>
+              <Text
+                style={[
+                  styles.cabinUnifiedSubPrice,
+                  selectedCabinTab === 'Business' && styles.cabinUnifiedTextActive,
+                ]}
+              >
+                +HKD<Text style={{ fontWeight: '700' }}>8,984</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Flight Cards List */}
-          <ScrollView style={styles.flightResultsScroll} contentContainerStyle={styles.flightResultsContent}>
-            {/* CARD 1: NON-STOP CX304 */}
-            <View style={styles.flightCard}>
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.airlineBadge}>
-                  <Text style={styles.flightNumberText}>CX304</Text>
-                  <Text style={styles.nonStopBadge}>Non-stop</Text>
+          {/* 2-Column Split Flight Cards List (Exact Frame #174) */}
+          <ScrollView
+            style={styles.flightResultsScroll}
+            contentContainerStyle={styles.flightResultsContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* CARD 1: CX304 Direct */}
+            <TouchableOpacity
+              style={styles.splitFlightCard}
+              onPress={() => handleSelectFlight('CX304', '19:25', '21:50', '2h 25m')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.splitCardLeft}>
+                <View style={styles.splitTimeRouteRow}>
+                  <View>
+                    <Text style={styles.splitTimeTeal}>19:25</Text>
+                    <Text style={styles.splitAirportCode}>{origin.code}</Text>
+                  </View>
+
+                  <View style={styles.splitDurationMid}>
+                    <Text style={styles.splitDurationText}>2h 25m</Text>
+                    <View style={styles.splitLineRow}>
+                      <Ionicons name="airplane" size={14} color="#1C2024" />
+                      <View style={styles.splitGreyLine} />
+                      <View style={styles.splitEndDot} />
+                    </View>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.splitTimeTeal}>21:50</Text>
+                    <Text style={styles.splitAirportCode}>{dest.code}</Text>
+                  </View>
                 </View>
-                <View style={styles.lowestFareTag}>
-                  <Text style={styles.lowestFareText}>Lowest Fare</Text>
-                </View>
+
+                <Text style={styles.splitFlightNumText}>CX304</Text>
               </View>
 
-              <View style={styles.flightTimingRow}>
-                <View style={styles.timingCol}>
-                  <Text style={styles.timeText}>19:25</Text>
-                  <Text style={styles.codeText}>{origin.code}</Text>
+              <View style={styles.splitCardRight}>
+                <Text style={styles.splitRightTag}>Lowest Fare</Text>
+                <View style={styles.splitRightPriceGroup}>
+                  <Text style={styles.splitRightPrice}>
+                    HKD<Text style={styles.splitRightPriceBold}>5,674</Text>
+                  </Text>
+                  <Text style={styles.splitRightPerAdult}>Per Adult From</Text>
+                </View>
+                <Ionicons name="ellipsis-horizontal" size={18} color="#195A58" />
+              </View>
+            </TouchableOpacity>
+
+            {/* CARD 2: CX332 > CA1503 Transit at PEK */}
+            <TouchableOpacity
+              style={styles.splitFlightCard}
+              onPress={() => handleSelectFlight('CX332', '12:05', '19:55', '7h 50m')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.splitCardLeft}>
+                <View style={styles.mixedCabinPill}>
+                  <Text style={styles.mixedCabinPillText}>Mixed Cabin</Text>
                 </View>
 
-                <View style={styles.flightDurationCol}>
-                  <Text style={styles.durationText}>2h 25m</Text>
-                  <View style={styles.flightPathLine} />
-                  <Ionicons name="airplane" size={14} color="#718096" />
+                <View style={styles.splitTimeRouteRow}>
+                  <View>
+                    <Text style={styles.splitTimeTeal}>12:05</Text>
+                    <Text style={styles.splitAirportCode}>{origin.code}</Text>
+                  </View>
+
+                  <View style={styles.splitDurationMid}>
+                    <Text style={styles.splitDurationText}>7h 50m</Text>
+                    <View style={styles.splitLineRow}>
+                      <Ionicons name="airplane" size={14} color="#1C2024" />
+                      <View style={styles.splitGreyLine} />
+                      <View style={styles.splitStopBlackDot} />
+                      <View style={styles.splitGreyLine} />
+                      <View style={styles.splitEndDot} />
+                    </View>
+                    <Text style={styles.transitLabelText}>
+                      Transit at <Text style={{ fontWeight: '700' }}>PEK</Text>
+                    </Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.splitTimeTeal}>19:55</Text>
+                    <Text style={styles.splitAirportCode}>{dest.code}</Text>
+                  </View>
                 </View>
 
-                <View style={styles.timingColRight}>
-                  <Text style={styles.timeText}>21:50</Text>
-                  <Text style={styles.codeText}>{dest.code}</Text>
-                </View>
+                <Text style={styles.splitFlightNumText}>CX332 &gt; CA1503</Text>
+                <Text style={styles.splitOperatorSub}>
+                  CA1503 operated by <Text style={{ fontWeight: '600' }}>Air China</Text>
+                </Text>
               </View>
 
-              <View style={styles.cardFooterDivider} />
-
-              <View style={styles.cardPriceRow}>
-                <View style={styles.priceMetaCol}>
-                  <Text style={styles.perAdultLabel}>Per Adult From</Text>
-                  <Text style={styles.flightPriceValue}>HKD 5,674</Text>
+              <View style={styles.splitCardRight}>
+                <Text style={styles.splitRightTag}>9 Seats Left</Text>
+                <View style={styles.splitRightPriceGroup}>
+                  <Text style={styles.splitRightPrice}>
+                    HKD<Text style={styles.splitRightPriceBold}>8,914</Text>
+                  </Text>
+                  <Text style={styles.splitRightPerAdult}>Per Adult From</Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.selectFlightBtn}
-                  onPress={() => handleSelectFlight('CX304', '19:25', '21:50', '2h 25m', 'HKD5,674')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.selectFlightBtnText}>Select</Text>
-                </TouchableOpacity>
+                <Ionicons name="ellipsis-horizontal" size={18} color="#195A58" />
               </View>
-            </View>
+            </TouchableOpacity>
 
-            {/* CARD 2: 1-STOP TRANSIT CX332 > CA1503 */}
-            <View style={styles.flightCard}>
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.airlineBadge}>
-                  <Text style={styles.flightNumberText}>CX332 • CA1503</Text>
-                  <Text style={styles.transitBadge}>Transit at PEK</Text>
+            {/* CARD 3: CX336 > CA1819 Transit at PEK */}
+            <TouchableOpacity
+              style={styles.splitFlightCard}
+              onPress={() => handleSelectFlight('CX336', '14:50', '22:50', '8h 0m')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.splitCardLeft}>
+                <View style={styles.mixedCabinPill}>
+                  <Text style={styles.mixedCabinPillText}>Mixed Cabin</Text>
                 </View>
-                <View style={styles.seatsLeftBadge}>
-                  <Text style={styles.seatsLeftText}>9 Seats Left</Text>
+
+                <View style={styles.splitTimeRouteRow}>
+                  <View>
+                    <Text style={styles.splitTimeTeal}>14:50</Text>
+                    <Text style={styles.splitAirportCode}>{origin.code}</Text>
+                  </View>
+
+                  <View style={styles.splitDurationMid}>
+                    <Text style={styles.splitDurationText}>8h 0m</Text>
+                    <View style={styles.splitLineRow}>
+                      <Ionicons name="airplane" size={14} color="#1C2024" />
+                      <View style={styles.splitGreyLine} />
+                      <View style={styles.splitStopBlackDot} />
+                      <View style={styles.splitGreyLine} />
+                      <View style={styles.splitEndDot} />
+                    </View>
+                    <Text style={styles.transitLabelText}>
+                      Transit at <Text style={{ fontWeight: '700' }}>PEK</Text>
+                    </Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.splitTimeTeal}>22:50</Text>
+                    <Text style={styles.splitAirportCode}>{dest.code}</Text>
+                  </View>
                 </View>
+
+                <Text style={styles.splitFlightNumText}>CX336 &gt; CA1819</Text>
+                <Text style={styles.splitOperatorSub}>
+                  CA1819 operated by <Text style={{ fontWeight: '600' }}>Air China</Text>
+                </Text>
               </View>
 
-              <View style={styles.flightTimingRow}>
-                <View style={styles.timingCol}>
-                  <Text style={styles.timeText}>12:05</Text>
-                  <Text style={styles.codeText}>{origin.code}</Text>
+              <View style={styles.splitCardRight}>
+                <Text style={styles.splitRightTag}>1 Seats Left</Text>
+                <View style={styles.splitRightPriceGroup}>
+                  <Text style={styles.splitRightPrice}>
+                    HKD<Text style={styles.splitRightPriceBold}>9,164</Text>
+                  </Text>
+                  <Text style={styles.splitRightPerAdult}>Per Adult From</Text>
                 </View>
-
-                <View style={styles.flightDurationCol}>
-                  <Text style={styles.durationText}>7h 50m</Text>
-                  <View style={styles.flightPathLine} />
-                  <Ionicons name="airplane" size={14} color="#718096" />
-                </View>
-
-                <View style={styles.timingColRight}>
-                  <Text style={styles.timeText}>19:55</Text>
-                  <Text style={styles.codeText}>{dest.code}</Text>
-                </View>
+                <Ionicons name="ellipsis-horizontal" size={18} color="#195A58" />
               </View>
-
-              <Text style={styles.operatorNoteText}>CA1503 operated by Air China</Text>
-
-              <View style={styles.cardFooterDivider} />
-
-              <View style={styles.cardPriceRow}>
-                <View style={styles.priceMetaCol}>
-                  <Text style={styles.perAdultLabel}>Per Adult From</Text>
-                  <Text style={styles.flightPriceValue}>HKD 8,914</Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.selectFlightBtn}
-                  onPress={() => handleSelectFlight('CX332', '12:05', '19:55', '7h 50m', 'HKD8,914')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.selectFlightBtnText}>Select</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
       )}
 
-      {/* 3. MAIN BOOK FORM (Matching Frames #75 - #78) */}
+      {/* 3. MAIN BOOK A TRIP SCREEN (Exact Frame #170) */}
       {!showResults && (
-        <ScrollView style={styles.mainScroll} contentContainerStyle={styles.scrollContent}>
-          {/* Header Hero Area */}
-          <ImageBackground
-            source={require('../../../assets/cathay/cathay-hero-tail.png')}
-            style={styles.heroTailBackground}
-            resizeMode="cover"
-          >
-            <SafeAreaView style={styles.heroSafeArea}>
-              <View style={styles.topNavRow}>
-                <Text style={styles.heroHeading}>Book a trip</Text>
-                <TouchableOpacity onPress={onOpenDevMenu} style={styles.iconBtn}>
-                  <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+        <ScrollView
+          style={styles.mainScroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Tail Image Header */}
+          <View style={styles.heroWrap}>
+            <ImageBackground
+              source={HERO_TAIL}
+              style={styles.heroTailBackground}
+              imageStyle={styles.heroTailImageStyle}
+              resizeMode="cover"
+            >
+              <SafeAreaView style={styles.heroSafeArea}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onLongPress={onOpenDevMenu}
+                  style={styles.heroHeadingWrap}
+                >
+                  <Text style={styles.heroHeading}>Book a trip</Text>
                 </TouchableOpacity>
-              </View>
-            </SafeAreaView>
-          </ImageBackground>
+              </SafeAreaView>
+            </ImageBackground>
+          </View>
 
-          {/* Search Card Container */}
+          {/* Main Floating Search Card */}
           <View style={styles.cardOverlay}>
             <View style={styles.searchFormCard}>
-              {/* Trip Type Segmented Control */}
-              <View style={styles.segmentedRow}>
+              {/* Underline Tab Bar: Return | One way | Multi-city */}
+              <View style={styles.underlineTabRow}>
                 {[
                   { id: 'return', label: 'Return' },
                   { id: 'oneway', label: 'One way' },
                   { id: 'multicity', label: 'Multi-city' },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.segmentBtn, tripType === item.id && styles.segmentBtnActive]}
-                    onPress={() => setTripType(item.id as any)}
-                  >
-                    <Text style={[styles.segmentLabel, tripType === item.id && styles.segmentLabelActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                ].map((item) => {
+                  const isActive = tripType === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.underlineTabBtn}
+                      onPress={() => setTripType(item.id as 'return' | 'oneway' | 'multicity')}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.underlineTabLabel, isActive && styles.underlineTabLabelActive]}>
+                        {item.label}
+                      </Text>
+                      {isActive && <View style={styles.underlineActiveBar} />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              {/* Origin / Destination Row */}
+              {/* Origin / Destination Picker Row */}
               <View style={styles.routePickerRow}>
-                {/* Origin */}
                 <View style={styles.airportCol}>
                   <Text style={styles.airportCodeLabel}>{origin.code}</Text>
                   <Text style={styles.airportCityLabel}>{origin.city}</Text>
                 </View>
 
-                {/* Swap Button */}
-                <TouchableOpacity style={styles.swapBtn} onPress={handleSwapAirports} activeOpacity={0.8}>
-                  <Ionicons name="swap-horizontal" size={20} color="#006564" />
+                <TouchableOpacity
+                  style={styles.swapCircleBtn}
+                  onPress={handleSwapAirports}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="swap-horizontal" size={20} color="#2E6E6D" />
                 </TouchableOpacity>
 
-                {/* Destination */}
                 <View style={styles.airportColRight}>
-                  <Text style={styles.airportCodeLabelRight}>{dest.code}</Text>
-                  <Text style={styles.airportCityLabelRight}>{dest.city}</Text>
+                  <Text style={styles.airportCodeLabel}>{dest.code}</Text>
+                  <Text style={styles.airportCityLabel}>{dest.city}</Text>
                 </View>
               </View>
 
-              {/* Dates Row */}
+              {/* Departing / Returning Dates Row */}
               <View style={styles.datePickerRow}>
                 <View style={styles.dateCol}>
-                  <Text style={styles.dateSubLabel}>Departing on</Text>
-                  <Text style={styles.dateValText}>{departDate}</Text>
+                  <Text style={styles.fieldSmallLabel}>Departing on</Text>
+                  <Text style={styles.fieldValueText}>{departDate}</Text>
                 </View>
 
                 {tripType === 'return' && (
                   <View style={styles.dateColRight}>
-                    <Text style={styles.dateSubLabel}>Returning</Text>
-                    <Text style={styles.dateValText}>{returnDate}</Text>
+                    <Text style={styles.fieldSmallLabel}>Returning</Text>
+                    <Text style={styles.fieldValueText}>{returnDate}</Text>
                   </View>
                 )}
               </View>
 
-              {/* Cabin Class & Passengers Dropdown */}
+              {/* Cabin Class & Passengers Row */}
               <TouchableOpacity
                 style={styles.cabinPickerRow}
                 onPress={() => setShowCabinSheet(true)}
                 activeOpacity={0.8}
               >
                 <View>
-                  <Text style={styles.dateSubLabel}>Cabin class and passengers</Text>
-                  <Text style={styles.cabinValText}>{cabin}</Text>
+                  <Text style={styles.fieldSmallLabel}>Cabin class and passengers</Text>
+                  <Text style={styles.fieldValueText}>{cabin}</Text>
                 </View>
-                <Ionicons name="chevron-down" size={18} color="#718096" />
+                <Ionicons name="chevron-down" size={20} color="#1C2024" />
               </TouchableOpacity>
 
-              {/* Promo Accordion */}
+              {/* Promotion Code & Peach Offer Pills */}
               <View style={styles.promoSection}>
-                <TouchableOpacity style={styles.promoRow} activeOpacity={0.7}>
-                  <Ionicons name="pricetag-outline" size={16} color="#006564" />
-                  <Text style={styles.promoText}>Add a promotion code</Text>
+                <TouchableOpacity style={styles.promoLinkRow} activeOpacity={0.7}>
+                  <Ionicons name="pricetag-outline" size={17} color="#2E6E6D" />
+                  <Text style={styles.promoLinkText}>Add a promotion code</Text>
                 </TouchableOpacity>
 
-                <View style={styles.promoTagsRow}>
-                  <View style={styles.promoPill}>
-                    <Text style={styles.promoPillText}>Double 11 flight offer &gt;</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.promoPillsScroll}
+                >
+                  <View style={styles.peachPromoPill}>
+                    <Text style={styles.peachPromoPillText}>Double 11 flight offer  &gt;</Text>
                   </View>
-                  <View style={styles.promoPill}>
-                    <Text style={styles.promoPillText}>Up to 25% off travel ins...</Text>
+                  <View style={styles.peachPromoPill}>
+                    <Text style={styles.peachPromoPillText}>Up to 25% off travel together</Text>
                   </View>
+                </ScrollView>
+
+                {/* Right-Aligned Redeem & Price Per Adult */}
+                <View style={styles.rightAlignedSummary}>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.redeemMilesText}>Redeem flight with miles</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.indicativePriceLine}>
+                    Price per adult from{' '}
+                    <Text style={styles.priceCurrencyText}>HKD</Text>
+                    <Text style={styles.priceAmountBold}>5,674</Text>
+                  </Text>
                 </View>
-
-                <TouchableOpacity style={styles.redeemMilesRow}>
-                  <Text style={styles.redeemMilesText}>Redeem flight with miles</Text>
-                </TouchableOpacity>
               </View>
 
-              {/* Price Indicator */}
-              <View style={styles.indicativePriceRow}>
-                <Text style={styles.indicativePriceText}>
-                  Price per adult from <Text style={styles.boldText}>HKD5,674</Text>
-                </Text>
-              </View>
-
-              {/* Search Flight Action Button */}
-              <TouchableOpacity style={styles.searchFlightButton} onPress={handleTriggerSearch} activeOpacity={0.85}>
+              {/* Dark Forest Green Search Flight Button */}
+              <TouchableOpacity
+                style={styles.searchFlightButton}
+                onPress={handleTriggerSearch}
+                activeOpacity={0.85}
+              >
                 <Text style={styles.searchFlightButtonText}>Search flight</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Separate Floating Card: Check your favorite flights (Frame #170) */}
+            <TouchableOpacity style={styles.favoriteFlightsCard} activeOpacity={0.8}>
+              <Ionicons name="heart-outline" size={20} color="#1C2024" style={styles.favHeartIcon} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.favCardTitle}>Check your favorite flights</Text>
+                <Text style={styles.favCardSub}>0 available flight</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#1C2024" />
+            </TouchableOpacity>
           </View>
         </ScrollView>
       )}
 
       {/* Cabin Picker Bottom Sheet Modal */}
-      <Modal visible={showCabinSheet} transparent animationType="slide" onRequestClose={() => setShowCabinSheet(false)}>
+      <Modal
+        visible={showCabinSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCabinSheet(false)}
+      >
         <View style={styles.modalBackdrop}>
           <View style={styles.cabinSheetCard}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Cabin class & passengers</Text>
               <TouchableOpacity onPress={() => setShowCabinSheet(false)}>
-                <Ionicons name="close" size={24} color="#718096" />
+                <Ionicons name="close" size={24} color="#52565A" />
               </TouchableOpacity>
             </View>
 
@@ -441,7 +596,9 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
                   style={[styles.sheetCabinPill, cabin.startsWith(c) && styles.sheetCabinPillActive]}
                   onPress={() => setCabin(`${c}, ${adultCount} Adult`)}
                 >
-                  <Text style={[styles.sheetCabinPillText, cabin.startsWith(c) && styles.sheetCabinPillTextActive]}>{c}</Text>
+                  <Text style={[styles.sheetCabinPillText, cabin.startsWith(c) && styles.sheetCabinPillTextActive]}>
+                    {c}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -466,10 +623,10 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
             </View>
 
             <TouchableOpacity
-              style={styles.confirmSheetBtn}
+              style={styles.searchFlightButton}
               onPress={() => setShowCabinSheet(false)}
             >
-              <Text style={styles.confirmSheetBtnText}>Apply</Text>
+              <Text style={styles.searchFlightButtonText}>Apply</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -478,91 +635,106 @@ export const CathayBookScreen: React.FC<CathayBookScreenProps> = ({
   );
 };
 
+const cardShadow = {
+  shadowColor: '#0F172A',
+  shadowOpacity: 0.06,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7F7F5',
   },
   mainScroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 32,
+  },
+
+  /* Hero Header */
+  heroWrap: {
+    width: '100%',
+    height: 270,
+    overflow: 'hidden',
   },
   heroTailBackground: {
     width: '100%',
-    height: 180,
+    height: '100%',
+  },
+  heroTailImageStyle: {
+    borderBottomLeftRadius: 56,
   },
   heroSafeArea: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 22,
   },
-  topNavRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    height: 44,
+  heroHeadingWrap: {
+    marginTop: 28,
   },
   heroHeading: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
-  iconBtn: {
-    padding: 6,
-  },
+
+  /* Floating Card Overlay */
   cardOverlay: {
-    paddingHorizontal: 16,
-    marginTop: -40,
+    paddingHorizontal: 20,
+    marginTop: -150,
   },
   searchFormCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 22,
+    ...cardShadow,
   },
-  segmentedRow: {
+
+  /* Underline Tabs: Return | One way | Multi-city */
+  underlineTabRow: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+    marginBottom: 18,
   },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 6,
+  underlineTabBtn: {
+    paddingBottom: 12,
+    position: 'relative',
   },
-  segmentBtnActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  underlineTabLabel: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#1C2024',
   },
-  segmentLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
+  underlineTabLabelActive: {
+    color: '#195A58',
+    fontWeight: '600',
   },
-  segmentLabelActive: {
-    color: '#006564',
-    fontWeight: '700',
+  underlineActiveBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: 3.5,
+    backgroundColor: '#195A58',
+    borderRadius: 2,
   },
+
+  /* Route Picker Row */
   routePickerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
   airportCol: {
     flex: 1,
@@ -572,40 +744,35 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   airportCodeLabel: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
-    color: '#006564',
+    color: '#2E6E6D',
+    letterSpacing: -0.5,
   },
   airportCityLabel: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#2C3034',
     marginTop: 2,
   },
-  airportCodeLabelRight: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#006564',
-  },
-  airportCityLabelRight: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  swapBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+  swapCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 12,
   },
+
+  /* Date & Cabin Rows */
   datePickerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
   dateCol: {
     flex: 1,
@@ -614,14 +781,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
   },
-  dateSubLabel: {
-    fontSize: 12,
-    color: '#718096',
-    fontWeight: '500',
+  fieldSmallLabel: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    fontWeight: '400',
   },
-  dateValText: {
-    fontSize: 15,
-    fontWeight: '600',
+  fieldValueText: {
+    fontSize: 15.5,
+    fontWeight: '400',
     color: '#1C2024',
     marginTop: 4,
   },
@@ -630,145 +797,163 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
-  cabinValText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1C2024',
-    marginTop: 4,
-  },
+
+  /* Promo & Right-Aligned Price Section */
   promoSection: {
-    paddingVertical: 14,
+    paddingTop: 18,
+    paddingBottom: 14,
   },
-  promoRow: {
+  promoLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 14,
   },
-  promoText: {
-    fontSize: 13,
-    color: '#006564',
-    fontWeight: '500',
+  promoLinkText: {
+    fontSize: 14.5,
+    color: '#2E6E6D',
+    fontWeight: '400',
   },
-  promoTagsRow: {
-    flexDirection: 'row',
+  promoPillsScroll: {
     gap: 8,
-    marginBottom: 12,
+    paddingBottom: 6,
   },
-  promoPill: {
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  peachPromoPill: {
+    backgroundColor: '#FCEEE9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
   },
-  promoPillText: {
-    fontSize: 11,
-    color: '#B45309',
-    fontWeight: '500',
+  peachPromoPillText: {
+    fontSize: 12.5,
+    color: '#9E3E1E',
+    fontWeight: '400',
   },
-  redeemMilesRow: {
-    alignSelf: 'center',
-    marginVertical: 4,
+  rightAlignedSummary: {
+    alignItems: 'flex-end',
+    marginTop: 18,
   },
   redeemMilesText: {
-    fontSize: 13,
-    color: '#006564',
-    fontWeight: '500',
+    fontSize: 14.5,
+    color: '#2E6E6D',
+    fontWeight: '400',
+    marginBottom: 10,
   },
-  indicativePriceRow: {
-    alignItems: 'center',
-    marginVertical: 8,
+  indicativePriceLine: {
+    fontSize: 14,
+    color: '#6B7280',
   },
-  indicativePriceText: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  boldText: {
-    fontWeight: '700',
+  priceCurrencyText: {
+    fontSize: 18,
     color: '#1C2024',
+    fontWeight: '400',
   },
+  priceAmountBold: {
+    fontSize: 18,
+    color: '#1C2024',
+    fontWeight: '700',
+  },
+
+  /* Dark Forest Green Search Flight Button */
   searchFlightButton: {
-    backgroundColor: '#006564',
-    borderRadius: 8,
-    paddingVertical: 14,
+    backgroundColor: '#233D3B',
+    borderRadius: 6,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 6,
   },
   searchFlightButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
   },
+
+  /* Check Your Favorite Flights Card */
+  favoriteFlightsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...cardShadow,
+  },
+  favHeartIcon: {
+    marginRight: 12,
+    marginTop: -14,
+  },
+  favCardTitle: {
+    fontSize: 15.5,
+    fontWeight: '400',
+    color: '#1C2024',
+  },
+  favCardSub: {
+    fontSize: 13.5,
+    color: '#6B7280',
+    marginTop: 3,
+  },
+
+  /* Loading Modal (Frame #171) */
   loadingSafeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
+    paddingVertical: 20,
   },
-  loadingHeroImage: {
+  loadingWindowWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingWindowImg: {
     width: '100%',
-    height: 380,
-    justifyContent: 'flex-start',
-  },
-  loadingOverlay: {
-    padding: 24,
-    paddingTop: 32,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  loadingHeadline: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 28,
-  },
-  loadingSub: {
-    fontSize: 14,
-    color: '#E2E8F0',
-    marginTop: 6,
+    height: '92%',
   },
   loadingRouteBar: {
+    paddingHorizontal: 32,
+    paddingBottom: 24,
+  },
+  loadingRouteLineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    gap: 16,
-    marginVertical: 24,
+    marginBottom: 8,
   },
-  routeCodeText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#006564',
-  },
-  progressLineWrapper: {
-    flex: 1,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flightLine: {
-    width: '100%',
+  loadingLineActive: {
+    flex: 0.45,
     height: 2,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: '#2E6E6D',
   },
-  planeIconAnimated: {
-    position: 'absolute',
+  loadingPlaneIcon: {
+    marginHorizontal: 4,
   },
-  loadingFooter: {
-    alignItems: 'center',
-    paddingBottom: 60,
-    gap: 16,
+  loadingLineRemaining: {
+    flex: 0.55,
+    height: 2,
+    backgroundColor: '#E5E7EB',
   },
-  searchingText: {
-    fontSize: 15,
-    color: '#475569',
+  loadingAirportCodesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
+  loadingOriginCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E6E6D',
+  },
+  loadingDestCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#CBD5E1',
+  },
+
+  /* Results Screen (Frame #174) */
   resultsSafeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F6F7',
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -777,15 +962,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
   },
   resultsBackBtn: {
     padding: 6,
   },
   resultsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 16.5,
+    fontWeight: '400',
     color: '#1C2024',
   },
   headerSpacer: {
@@ -794,244 +977,220 @@ const styles = StyleSheet.create({
   dateRibbon: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   dateRibbonItem: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   dateRibbonItemActive: {
-    borderBottomColor: '#006564',
+    borderBottomColor: '#195A58',
   },
   dateRibbonDay: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#1C2024',
   },
   dateRibbonDayActive: {
-    color: '#006564',
+    color: '#195A58',
     fontWeight: '700',
   },
   dateRibbonPrice: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#1C2024',
     marginTop: 2,
   },
-  dateRibbonPriceActive: {
-    color: '#006564',
+  dateRibbonPriceBold: {
     fontWeight: '700',
+  },
+  dateRibbonPriceActive: {
+    color: '#195A58',
   },
   filterBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   resultsCountText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#1C2024',
   },
-  filterButton: {
+
+  /* Unified 3-Column Cabin Box */
+  cabinUnifiedBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#006564',
-    fontWeight: '600',
-  },
-  cabinTabsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 8,
-  },
-  cabinTabBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 14,
     backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
   },
-  cabinTabBtnActive: {
-    backgroundColor: '#006564',
-    borderColor: '#006564',
+  cabinUnifiedCol: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cabinTabLabel: {
-    fontSize: 13,
-    color: '#475569',
-    fontWeight: '500',
+  cabinUnifiedColActive: {
+    backgroundColor: '#195A58',
   },
-  cabinTabLabelActive: {
+  cabinUnifiedTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1E4E68',
+  },
+  cabinUnifiedSubPrice: {
+    fontSize: 11.5,
+    color: '#1E4E68',
+    marginTop: 2,
+  },
+  cabinUnifiedTextActive: {
     color: '#FFFFFF',
-    fontWeight: '600',
   },
+
+  /* 2-Column Split Flight Cards */
   flightResultsScroll: {
     flex: 1,
   },
   flightResultsContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    gap: 12,
   },
-  flightCard: {
+  splitFlightCard: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+    ...cardShadow,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
+  splitCardLeft: {
+    flex: 1.65,
+    padding: 16,
+    borderRightWidth: 1,
+    borderRightColor: '#EEEEEE',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
-  airlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  flightNumberText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  nonStopBadge: {
-    fontSize: 11,
-    color: '#10B981',
-    fontWeight: '600',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  transitBadge: {
-    fontSize: 11,
-    color: '#F59E0B',
-    fontWeight: '600',
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  lowestFareTag: {
-    backgroundColor: '#E6F4F2',
+  mixedCabinPill: {
+    backgroundColor: '#FCEEE9',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
   },
-  lowestFareText: {
+  mixedCabinPillText: {
     fontSize: 11,
-    color: '#006564',
-    fontWeight: '600',
+    color: '#9E3E1E',
   },
-  seatsLeftBadge: {
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  seatsLeftText: {
-    fontSize: 11,
-    color: '#DC2626',
-    fontWeight: '600',
-  },
-  flightTimingRow: {
+  splitTimeRouteRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 6,
-  },
-  timingCol: {
     alignItems: 'flex-start',
+    marginBottom: 14,
   },
-  timingColRight: {
-    alignItems: 'flex-end',
-  },
-  timeText: {
-    fontSize: 22,
+  splitTimeTeal: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#195A58',
+  },
+  splitAirportCode: {
+    fontSize: 15,
+    color: '#1C2024',
+    marginTop: 4,
+  },
+  splitDurationMid: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  splitDurationText: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  splitLineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  splitGreyLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#D1D5DB',
+  },
+  splitStopBlackDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1C2024',
+  },
+  splitEndDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+  },
+  transitLabelText: {
+    fontSize: 11.5,
+    color: '#1C2024',
+    marginTop: 6,
+  },
+  splitFlightNumText: {
+    fontSize: 12.5,
+    color: '#52565A',
+  },
+  splitOperatorSub: {
+    fontSize: 10.5,
+    color: '#52565A',
+    marginTop: 4,
+  },
+  splitCardRight: {
+    flex: 1,
+    padding: 14,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  splitRightTag: {
+    fontSize: 11.5,
+    color: '#9E3E1E',
+  },
+  splitRightPriceGroup: {
+    alignItems: 'flex-end',
+    marginVertical: 12,
+  },
+  splitRightPrice: {
+    fontSize: 16,
     color: '#1C2024',
   },
-  codeText: {
-    fontSize: 13,
-    color: '#64748B',
+  splitRightPriceBold: {
+    fontWeight: '700',
+  },
+  splitRightPerAdult: {
+    fontSize: 10.5,
+    color: '#6B7280',
     marginTop: 2,
   },
-  flightDurationCol: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  durationText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  flightPathLine: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#CBD5E1',
-    marginBottom: 4,
-  },
-  operatorNoteText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 6,
-    fontStyle: 'italic',
-  },
-  cardFooterDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E2E8F0',
-    marginVertical: 14,
-  },
-  cardPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  priceMetaCol: {},
-  perAdultLabel: {
-    fontSize: 11,
-    color: '#718096',
-  },
-  flightPriceValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1C2024',
-    marginTop: 1,
-  },
-  selectFlightBtn: {
-    backgroundColor: '#006564',
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 6,
-  },
-  selectFlightBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
+  /* Cabin Bottom Sheet */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
   cabinSheetCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     padding: 24,
   },
   sheetHeader: {
@@ -1041,8 +1200,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sheetTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#1C2024',
   },
   sheetCabinOptions: {
@@ -1054,35 +1213,33 @@ const styles = StyleSheet.create({
   sheetCabinPill: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+    borderColor: '#C4C6CA',
+    backgroundColor: '#FFFFFF',
   },
   sheetCabinPillActive: {
-    borderColor: '#006564',
-    backgroundColor: '#E6F4F2',
+    borderColor: '#195A58',
+    backgroundColor: '#EEF5F5',
   },
   sheetCabinPillText: {
     fontSize: 14,
-    color: '#475569',
-    fontWeight: '500',
+    color: '#2C3034',
   },
   sheetCabinPillTextActive: {
-    color: '#006564',
-    fontWeight: '700',
+    color: '#195A58',
+    fontWeight: '600',
   },
   passengerCountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
   },
   paxLabel: {
     fontSize: 15,
-    fontWeight: '600',
     color: '#1C2024',
   },
   counterRow: {
@@ -1095,26 +1252,13 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#C4C6CA',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
   counterVal: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  confirmSheetBtn: {
-    backgroundColor: '#006564',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  confirmSheetBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '600',
+    color: '#1C2024',
   },
 });

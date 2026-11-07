@@ -31,21 +31,22 @@ import {
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
-const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean } => {
+const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean; isBooked?: boolean } => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const screen = params.get('screen');
     const isAuth = params.get('auth') === '1' || params.get('auth') === 'true';
+    const isBooked = params.get('booked') === '1' || params.get('booked') === 'true';
     if (screen) {
       if (['splash', 'language', 'welcome'].includes(screen)) {
-        return { onboarding: screen as OnboardingScreenId, tab: 'home', isAuth };
+        return { onboarding: screen as OnboardingScreenId, tab: 'home', isAuth, isBooked };
       }
       if (['home', 'book', 'trips', 'profile', 'tools'].includes(screen)) {
-        return { onboarding: null, tab: screen as CathayTabId, isAuth };
+        return { onboarding: null, tab: screen as CathayTabId, isAuth, isBooked };
       }
     }
   }
-  return { onboarding: 'splash', tab: 'home', isAuth: false };
+  return { onboarding: 'splash', tab: 'home', isAuth: false, isBooked: false };
 };
 
 export const CathayAppShell: React.FC = () => {
@@ -58,7 +59,10 @@ export const CathayAppShell: React.FC = () => {
     const { isAuth } = getInitialScreenState();
     return isAuth ? { ...INITIAL_USER_PROFILE, isLoggedIn: true } : INITIAL_USER_PROFILE;
   });
-  const [bookings, setBookings] = useState<FlightBooking[]>([INITIAL_BOOKING]);
+  const [bookings, setBookings] = useState<FlightBooking[]>(() => {
+    const { isBooked } = getInitialScreenState();
+    return isBooked ? [INITIAL_BOOKING] : [];
+  });
   const [recentSearch, setRecentSearch] = useState<RecentSearch | null>({
     id: 'rec-01',
     origin: 'HKG',

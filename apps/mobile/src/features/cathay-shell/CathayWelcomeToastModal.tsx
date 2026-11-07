@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   digitalCard: {
-    backgroundColor: '#006564',
+    backgroundColor: '#568B87',
     borderRadius: 12,
     padding: 16,
     height: 130,
@@ -196,15 +196,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   primaryButton: {
-    backgroundColor: '#006564',
-    borderRadius: 8,
-    paddingVertical: 14,
+    backgroundColor: '#233D3B',
+    borderRadius: 4,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15.5,
+    fontWeight: '400',
   },
   notifContainer: {
     flex: 1,

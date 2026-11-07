@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Modal,
   TextInput,
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,9 +28,33 @@ type ModalType =
   | 'info'
   | null;
 
+const TOOL_ICONS: Record<string, ImageSourcePropType> = {
+  boarding_pass: require('../../../assets/cathay/tools/icon_boarding_pass.png'),
+  travel_info: require('../../../assets/cathay/tools/icon_travel_info.png'),
+  timetable: require('../../../assets/cathay/tools/icon_timetable.png'),
+  flight_status: require('../../../assets/cathay/tools/icon_flight_status.png'),
+  rebook: require('../../../assets/cathay/tools/icon_rebook.png'),
+  baggage: require('../../../assets/cathay/tools/icon_baggage.png'),
+  delays: require('../../../assets/cathay/tools/icon_delays.png'),
+  hotel: require('../../../assets/cathay/tools/icon_hotel.png'),
+  package: require('../../../assets/cathay/tools/icon_package.png'),
+  insurance: require('../../../assets/cathay/tools/icon_insurance.png'),
+  car: require('../../../assets/cathay/tools/icon_car.png'),
+  activities: require('../../../assets/cathay/tools/icon_activities.png'),
+  shop: require('../../../assets/cathay/tools/icon_shop.png'),
+  cabin: require('../../../assets/cathay/tools/icon_cabin.png'),
+  inflight: require('../../../assets/cathay/tools/icon_inflight.png'),
+  lounges: require('../../../assets/cathay/tools/icon_lounges.png'),
+  airport: require('../../../assets/cathay/tools/icon_airport.png'),
+  fleet: require('../../../assets/cathay/tools/icon_fleet.png'),
+  passenger: require('../../../assets/cathay/tools/icon_passenger.png'),
+  where_we_fly: require('../../../assets/cathay/tools/icon_where_we_fly.png'),
+  inspiration: require('../../../assets/cathay/tools/icon_inspiration.png'),
+  best_fares: require('../../../assets/cathay/tools/icon_best_fares.png'),
+};
+
 export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = ({
   onClose,
-  onOpenDevMenu,
   onNavigateToTrips,
 }) => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -50,27 +76,20 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Authentic Fullscreen Header with Close Button (Video Frame #102 & #138) */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity
-          onPress={onClose}
-          style={styles.headerBtn}
-          activeOpacity={0.7}
-          testID="btn-close-tools"
-        >
-          <Ionicons name="close" size={26} color="#1C2024" />
-        </TouchableOpacity>
-
-        <View style={styles.headerSpacer} />
-
-        <TouchableOpacity
-          onPress={onOpenDevMenu}
-          style={styles.headerBtn}
-          activeOpacity={0.7}
-          testID="btn-tools-dev"
-        >
-          <Ionicons name="ellipsis-horizontal" size={22} color="#1C2024" />
-        </TouchableOpacity>
+      {/* Sheet Drag Handle + Close Button Header (Exact Video Frames #102 & #138) */}
+      <View style={styles.sheetTopContainer}>
+        <View style={styles.dragHandlePill} />
+        <View style={styles.topHeader}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.headerBtn}
+            activeOpacity={0.7}
+            testID="btn-close-tools"
+          >
+            <Ionicons name="close" size={26} color="#1C2024" />
+          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
+        </View>
       </View>
 
       <ScrollView
@@ -78,22 +97,20 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* SECTION 1: TRAVEL ESSENTIALS (Authentic Video Frames #101, #102) */}
+        {/* SECTION 1: TRAVEL ESSENTIALS (Frames #101, #102) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Travel essentials</Text>
 
           <View style={styles.grid}>
-            {/* 1. Boarding pass */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => onNavigateToTrips?.()}
               activeOpacity={0.7}
             >
-              <Ionicons name="card-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.boarding_pass} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Boarding pass</Text>
             </TouchableOpacity>
 
-            {/* 2. Travel information */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -104,180 +121,167 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="information-circle-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.travel_info} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Travel information</Text>
             </TouchableOpacity>
 
-            {/* 3. Flight timetable */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => setActiveModal('timetable')}
               activeOpacity={0.7}
             >
-              <Ionicons name="calendar-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.timetable} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Flight timetable</Text>
             </TouchableOpacity>
 
-            {/* 4. Flight status */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => setActiveModal('flightStatus')}
               activeOpacity={0.7}
             >
-              <Ionicons name="airplane-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.flight_status} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Flight status</Text>
             </TouchableOpacity>
 
-            {/* 5. Rebook and refund */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => setActiveModal('rebook')}
               activeOpacity={0.7}
             >
-              <Ionicons name="sync-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Rebook and refund</Text>
+              <Image source={TOOL_ICONS.rebook} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Rebook and{'\n'}refund</Text>
             </TouchableOpacity>
 
-            {/* 6. Baggage calculator (PolyAero SmartTag Digital Baggage Hub) */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => setActiveModal('baggageCalc')}
               activeOpacity={0.7}
             >
-              <Ionicons name="briefcase-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Baggage calculator</Text>
+              <Image source={TOOL_ICONS.baggage} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Baggage{'\n'}calculator</Text>
             </TouchableOpacity>
 
-            {/* 7. Delays and cancellations */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() => setActiveModal('delays')}
               activeOpacity={0.7}
             >
-              <Ionicons name="alert-circle-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Delays and cancellations</Text>
+              <Image source={TOOL_ICONS.delays} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Delays and{'\n'}cancellations</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* SECTION 2: PREPARE YOUR TRIP (Authentic Video Frames #101, #102, #138) */}
+        {/* SECTION 2: PREPARE YOUR TRIP (Frames #101, #102, #138) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Prepare your trip</Text>
 
           <View style={styles.grid}>
-            {/* 1. Book a hotel */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Book a hotel',
-                  'Earn up to 3x Asia Miles when booking premium hotels worldwide with our partner Expedia.'
+                  'Earn up to HKD 4 = 1 Asia Mile when booking hotels and stays with Cathay Holidays.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="bed-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.hotel} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Book a hotel</Text>
             </TouchableOpacity>
 
-            {/* 2. Book a package */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Book a package',
-                  'Save with bundled flight and hotel packages with Cathay Holidays. Earn extra bonus miles.'
+                  'Choose two or more items and save on your trip with Cathay Holidays powered by Expedia.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="cube-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.package} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Book a package</Text>
             </TouchableOpacity>
 
-            {/* 3. Travel insurance */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Travel insurance',
-                  'Cathay Rewards Travel Cover: up to HKD 2,000,000 medical expenses and unlimited miles protection.'
+                  'Cathay Rewards Travel Cover: up to HKD 2,000,000 sum insured for Medical Expenses.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="umbrella-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Travel insurance</Text>
+              <Image source={TOOL_ICONS.insurance} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Travel{'\n'}insurance</Text>
             </TouchableOpacity>
 
-            {/* 4. Rent a car */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Rent a car',
-                  'Hertz and Avis car rental with flexible pick-up, free cancellation, and Asia Miles earning.'
+                  'Car rental with flexible pick-up, free cancellation, and Asia Miles earning.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="car-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.car} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Rent a car</Text>
             </TouchableOpacity>
 
-            {/* 5. Book activities */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Book activities',
-                  'Curated tours, theme park tickets, and exclusive local experiences powered by Cathay Holidays.'
+                  'Search things to do, curated tours, and exclusive local experiences.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="compass-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.activities} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Book activities</Text>
             </TouchableOpacity>
 
-            {/* 6. Shop curated picks */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Shop curated picks',
-                  'Cathay Shop: travel essentials, electronics, inflight merchandise, and free delivery in HK.'
+                  'Get ready with ease before you fly. Exclusive offers and curated essentials on Cathay Shop.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="bag-handle-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Shop curated picks</Text>
+              <Image source={TOOL_ICONS.shop} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Shop curated{'\n'}picks</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* SECTION 3: FLYING WITH US (Authentic Video Frames #101, #138) */}
+        {/* SECTION 3: FLYING WITH US (Frames #101, #138) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Flying with us</Text>
 
           <View style={styles.grid}>
-            {/* 1. Cabin classes */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Cabin classes',
-                  'Discover Economy, Premium Economy, Business (Aria Suite), and First Class luxury.'
+                  'Reach greater heights with lie-flat seats, inflight menus, and the Aria Suite on our Boeing 777-300ER.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="layers-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.cabin} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Cabin classes</Text>
             </TouchableOpacity>
 
-            {/* 2. Inflight experience */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -288,11 +292,10 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="tv-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Inflight experience</Text>
+              <Image source={TOOL_ICONS.inflight} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Inflight{'\n'}experience</Text>
             </TouchableOpacity>
 
-            {/* 3. Lounges */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -303,41 +306,38 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="wine-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.lounges} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Lounges</Text>
             </TouchableOpacity>
 
-            {/* 4. Airport information */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Airport information',
-                  'Hong Kong International Airport (HKG) terminal map, check-in desks, security, and baggage reclaim.'
+                  'Hong Kong International Airport (HKG) terminal guides, check-in counters, and transfer information.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="business-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Airport information</Text>
+              <Image source={TOOL_ICONS.airport} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Airport{'\n'}information</Text>
             </TouchableOpacity>
 
-            {/* 5. Aircraft and fleet */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
                 openInfoModal(
                   'Aircraft and fleet',
-                  'Our modern fleet: Airbus A350-900/1000, A321neo, and Boeing 777-300ER with advanced fuel efficiency.'
+                  'Explore our modern fleet including Airbus A350-900/1000, A321neo, and Boeing 777-300ER.'
                 )
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="airplane-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.fleet} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Aircraft and fleet</Text>
             </TouchableOpacity>
 
-            {/* 6. Passenger assistance */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -348,18 +348,17 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="accessibility-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Passenger assistance</Text>
+              <Image source={TOOL_ICONS.passenger} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Passenger{'\n'}assistance</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* SECTION 4: TRAVEL INSPIRATION (Authentic Video Frame #138, #146) */}
+        {/* SECTION 4: TRAVEL INSPIRATION (Frames #138, #146) */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Travel inspiration</Text>
+          <Text style={styles.sectionTitle}>Travel Inspiration</Text>
 
           <View style={styles.grid}>
-            {/* 1. Where we fly */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -370,11 +369,10 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="globe-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.where_we_fly} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Where we fly</Text>
             </TouchableOpacity>
 
-            {/* 2. Inspiration */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -385,11 +383,10 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="sparkles-outline" size={28} color="#1C2024" style={styles.gridIcon} />
+              <Image source={TOOL_ICONS.inspiration} style={styles.toolIconImg} resizeMode="contain" />
               <Text style={styles.gridLabel}>Inspiration</Text>
             </TouchableOpacity>
 
-            {/* 3. Discover the best fares */}
             <TouchableOpacity
               style={styles.gridItem}
               onPress={() =>
@@ -400,14 +397,14 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               }
               activeOpacity={0.7}
             >
-              <Ionicons name="pricetag-outline" size={28} color="#1C2024" style={styles.gridIcon} />
-              <Text style={styles.gridLabel}>Discover the best fares</Text>
+              <Image source={TOOL_ICONS.best_fares} style={styles.toolIconImg} resizeMode="contain" />
+              <Text style={styles.gridLabel}>Discover the best{'\n'}fares</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* MODAL 1: FLIGHT STATUS (Authentic Cathay Video Frame #106) */}
+      {/* MODAL 1: FLIGHT STATUS (Frame #106) */}
       <Modal
         visible={activeModal === 'flightStatus'}
         animationType="slide"
@@ -417,7 +414,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Flight status</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -483,7 +480,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Baggage allowance & SmartTag</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -494,7 +491,6 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               Calculate checked and carry-on baggage allowance for your Cathay Pacific flights, and inspect paired PolyAero SmartTag status.
             </Text>
 
-            {/* Cabin Class Selection */}
             <View style={styles.cabinClassRow}>
               {(['Economy', 'Premium Economy', 'Business'] as const).map((c) => (
                 <TouchableOpacity
@@ -509,10 +505,9 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               ))}
             </View>
 
-            {/* Allowance Summary Card */}
             <View style={styles.allowanceCard}>
               <View style={styles.allowanceRow}>
-                <Ionicons name="bag-outline" size={24} color="#006564" />
+                <Ionicons name="bag-outline" size={24} color="#2E6B69" />
                 <View style={styles.allowanceTextCol}>
                   <Text style={styles.allowanceTitle}>Carry-on baggage</Text>
                   <Text style={styles.allowanceDetail}>
@@ -524,24 +519,21 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               <View style={styles.cardDivider} />
 
               <View style={styles.allowanceRow}>
-                <Ionicons name="briefcase-outline" size={24} color="#006564" />
+                <Ionicons name="briefcase-outline" size={24} color="#2E6B69" />
                 <View style={styles.allowanceTextCol}>
                   <Text style={styles.allowanceTitle}>Checked baggage</Text>
                   <Text style={styles.allowanceDetail}>
                     {cabinClass === 'Business'
                       ? '2 pieces up to 32 kg each (64 kg total)'
-                      : cabinClass === 'Premium Economy'
-                      ? '2 pieces up to 23 kg each (46 kg total)'
                       : '2 pieces up to 23 kg each (46 kg total)'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* PolyAero SmartTag Digital Baggage Hub */}
             <View style={styles.smartTagContainer}>
               <View style={styles.smartTagHeaderBadge}>
-                <Ionicons name="pricetag" size={14} color="#006564" />
+                <Ionicons name="pricetag" size={14} color="#2E6B69" />
                 <Text style={styles.smartTagBadgeText}>POLYAERO DIGITAL BAGGAGE IDENTITY</Text>
               </View>
 
@@ -550,12 +542,11 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
                 Your registered PolyAero SmartTag is connected. IATA 10-digit barcode, routing (HKG ➔ NKG), and weight limits are securely synchronized via NFC.
               </Text>
 
-              {/* Tag Status Pill */}
               <View style={styles.tagStatusRow}>
                 <View style={styles.tagStatusItem}>
                   <Text style={styles.tagStatusLabel}>TAG STATUS</Text>
                   <View style={styles.tagStatusValueRow}>
-                    <Ionicons name="checkmark-circle" size={14} color="#006564" />
+                    <Ionicons name="checkmark-circle" size={14} color="#2E6B69" />
                     <Text style={styles.tagStatusValue}>Active & Linked</Text>
                   </View>
                 </View>
@@ -588,7 +579,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         </SafeAreaView>
       </Modal>
 
-      {/* MODAL 3: FLIGHT TIMETABLE (Video Frame #104) */}
+      {/* MODAL 3: FLIGHT TIMETABLE (Frame #104) */}
       <Modal
         visible={activeModal === 'timetable'}
         animationType="slide"
@@ -598,7 +589,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Flight timetable</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -606,7 +597,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
 
           <View style={styles.modalBody}>
             <Text style={styles.modalExplainer}>
-              View the most up-to-date information about our current and upcoming flights with seats available to book.
+              View the most up-to-date information about our current and upcoming flights with seats available to book for the next year.
             </Text>
 
             <View style={styles.timetableCard}>
@@ -632,7 +623,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Delays and cancellations</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -640,7 +631,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
 
           <View style={styles.modalBody}>
             <View style={styles.statusNoticeBox}>
-              <Ionicons name="checkmark-circle" size={24} color="#006564" />
+              <Ionicons name="checkmark-circle" size={24} color="#2E6B69" />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.statusNoticeTitle}>Operations are normal</Text>
                 <Text style={styles.statusNoticeBody}>
@@ -652,7 +643,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         </SafeAreaView>
       </Modal>
 
-      {/* MODAL 5: REBOOK & REFUND */}
+      {/* MODAL 5: REBOOK & REFUND (Frame #107) */}
       <Modal
         visible={activeModal === 'rebook'}
         animationType="slide"
@@ -662,7 +653,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>Rebook and refund</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -670,7 +661,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
 
           <View style={styles.modalBody}>
             <Text style={styles.modalExplainer}>
-              Enjoy flexibility and options to make changes to your ticket. Date and flight changes can be made for bookings on cathaypacific.com.
+              Enjoy flexibility and options to make changes to your ticket. Date and flight changes can be made for an itinerary involving the same routes.
             </Text>
 
             <TouchableOpacity
@@ -680,7 +671,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
                 onNavigateToTrips?.();
               }}
             >
-              <Text style={styles.cathayPrimaryBtnText}>Manage in My bookings</Text>
+              <Text style={styles.cathayPrimaryBtnText}>Change a booking</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -696,7 +687,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
         <SafeAreaView style={styles.modalSafeArea}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.modalHeaderBtn}>
-              <Ionicons name="close" size={24} color="#1C2024" />
+              <Ionicons name="close" size={26} color="#1C2024" />
             </TouchableOpacity>
             <Text style={styles.modalHeaderTitle}>{modalTitle}</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -722,18 +713,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  sheetTopContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E7EB',
+  },
+  dragHandlePill: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 48,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E8E5DF',
+    paddingHorizontal: 18,
+    height: 44,
   },
   headerBtn: {
-    padding: 6,
+    padding: 4,
   },
   headerSpacer: {
     flex: 1,
@@ -743,19 +745,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 18,
+    paddingTop: 22,
     paddingBottom: 48,
   },
   sectionContainer: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 15.5,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 20,
-    letterSpacing: -0.3,
+    paddingHorizontal: 6,
   },
   grid: {
     flexDirection: 'row',
@@ -767,16 +769,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 4,
   },
-  gridIcon: {
+  toolIconImg: {
+    width: 36,
+    height: 36,
     marginBottom: 10,
   },
   gridLabel: {
-    fontSize: 12,
-    color: '#1C2024',
+    fontSize: 13.5,
+    color: '#2C3034',
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: 16,
-    height: 32,
+    lineHeight: 18,
   },
 
   /* Modals */
@@ -791,14 +794,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E8E5DF',
+    borderBottomColor: '#E5E7EB',
   },
   modalHeaderBtn: {
     padding: 6,
   },
   modalHeaderTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#1C2024',
   },
   modalHeaderSpacer: {
@@ -811,7 +814,7 @@ const styles = StyleSheet.create({
   modalExplainer: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#64748B',
+    color: '#2C3034',
     marginBottom: 20,
   },
   statusInputGroup: {
@@ -819,22 +822,22 @@ const styles = StyleSheet.create({
   },
   statusInputLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
+    fontWeight: '500',
+    color: '#52565A',
     marginBottom: 6,
   },
   statusTextInput: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
+    borderColor: '#C4C6CA',
+    borderRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1E293B',
+    color: '#1C2024',
   },
   cathayPrimaryBtn: {
-    backgroundColor: '#006564',
-    borderRadius: 8,
+    backgroundColor: '#233D3B',
+    borderRadius: 6,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
@@ -842,15 +845,15 @@ const styles = StyleSheet.create({
   },
   cathayPrimaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 15.5,
+    fontWeight: '500',
   },
   flightResultBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F6F7',
     borderRadius: 12,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     marginTop: 10,
   },
   flightResultTop: {
@@ -865,7 +868,7 @@ const styles = StyleSheet.create({
     color: '#1C2024',
   },
   onTimePill: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#E6F4F2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -873,7 +876,7 @@ const styles = StyleSheet.create({
   onTimeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#2E6B69',
   },
   flightResultRoute: {
     flexDirection: 'row',
@@ -887,7 +890,7 @@ const styles = StyleSheet.create({
   },
   flightResultTime: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#52565A',
     marginTop: 2,
   },
   cabinClassRow: {
@@ -899,31 +902,31 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+    borderColor: '#C4C6CA',
+    backgroundColor: '#FFFFFF',
   },
   cabinChoicePillActive: {
-    borderColor: '#006564',
-    backgroundColor: '#E6F4F2',
+    borderColor: '#195A58',
+    backgroundColor: '#195A58',
   },
   cabinChoicePillText: {
     fontSize: 12.5,
-    color: '#475569',
+    color: '#2C3034',
     fontWeight: '500',
     textAlign: 'center',
   },
   cabinChoicePillTextActive: {
-    color: '#006564',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   allowanceCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F6F7',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     marginBottom: 20,
   },
   allowanceRow: {
@@ -942,20 +945,20 @@ const styles = StyleSheet.create({
   },
   allowanceDetail: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#52565A',
     marginTop: 2,
   },
   cardDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#E5E7EB',
     marginVertical: 12,
   },
   smartTagContainer: {
-    backgroundColor: '#E6F4F2',
-    borderRadius: 14,
+    backgroundColor: '#EEF5F5',
+    borderRadius: 12,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#A7D9D3',
+    borderColor: '#D7E6E5',
     marginBottom: 20,
   },
   smartTagHeaderBadge: {
@@ -967,7 +970,7 @@ const styles = StyleSheet.create({
   smartTagBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#006564',
+    color: '#2E6B69',
     letterSpacing: 0.5,
   },
   smartTagTitle: {
@@ -979,12 +982,12 @@ const styles = StyleSheet.create({
   smartTagBody: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#334155',
+    color: '#2C3034',
     marginBottom: 16,
   },
   tagStatusRow: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 10,
+    borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -996,7 +999,7 @@ const styles = StyleSheet.create({
   tagStatusLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#718096',
+    color: '#76777A',
     marginBottom: 4,
   },
   tagStatusValueRow: {
@@ -1010,11 +1013,11 @@ const styles = StyleSheet.create({
     color: '#1C2024',
   },
   timetableCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F6F7',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
   },
   timetableRoute: {
     fontSize: 15,
@@ -1024,26 +1027,26 @@ const styles = StyleSheet.create({
   },
   timetableDetail: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#52565A',
   },
   statusNoticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#EEF5F5',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#D7E6E5',
     borderRadius: 12,
     padding: 16,
   },
   statusNoticeTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#166534',
+    color: '#195A58',
     marginBottom: 4,
   },
   statusNoticeBody: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#14532D',
+    color: '#2C3034',
   },
 });
