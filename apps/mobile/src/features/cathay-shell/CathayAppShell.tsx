@@ -290,6 +290,9 @@ export const CathayAppShell: React.FC = () => {
   }
 
   // 2. MAIN PASSENGER 5-TAB EXPERIENCE
+  const capsuleWidth = Math.max(itemWidth - 12, 48);
+  const capsuleOffset = (itemWidth - capsuleWidth) / 2;
+
   return (
     <View style={styles.root}>
       {/* Active Screen Tab View with Silky Crossfade */}
@@ -360,7 +363,8 @@ export const CathayAppShell: React.FC = () => {
             style={[
               styles.slidingDropletCapsule,
               {
-                width: itemWidth,
+                width: capsuleWidth,
+                left: 6 + capsuleOffset,
                 transform: [
                   { translateX },
                   { scaleX: stretchAnim },
@@ -617,15 +621,9 @@ const styles = StyleSheet.create({
   slidingDropletCapsule: {
     position: 'absolute',
     bottom: 8,
-    left: 6,
     height: 52,
-    backgroundColor: 'rgba(223, 237, 233, 0.92)',
+    backgroundColor: '#DFEDE9',
     borderRadius: 26,
-    shadowColor: '#195A58',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
     zIndex: 1,
   },
   dockItem: {

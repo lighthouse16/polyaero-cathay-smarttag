@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: 140,
   },
 
   /* Hero Header */
@@ -1065,7 +1065,7 @@ const styles = StyleSheet.create({
   },
   flightResultsContent: {
     paddingHorizontal: 20,
-    paddingBottom: 110,
+    paddingBottom: 140,
     gap: 12,
   },
   splitFlightCard: {
