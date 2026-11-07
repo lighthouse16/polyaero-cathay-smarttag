@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
   },
   heroSafeArea: {
     flex: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
   },
   heroHeadingWrap: {
     marginTop: 28,
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     height: 48,
     backgroundColor: '#FFFFFF',
   },

@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     height: 48,
   },
   navButton: {
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,
   },

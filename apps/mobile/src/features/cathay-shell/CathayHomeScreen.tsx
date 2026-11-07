@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   headerSafeArea: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 32 : 8,
     backgroundColor: 'rgba(10, 20, 28, 0.28)',
     borderBottomLeftRadius: 56,
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
 
   /* 2. Search Card */
   searchCardWrapper: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: -36,
   },
   searchCard: {
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
 
   /* 3. Passkey Banner (Frame #71 & #182) */
   passkeyBannerWrapper: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: 16,
   },
   passkeyBanner: {
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
 
   /* 4. Recent Searches (Frame #182) */
   recentSearchesWrapper: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: 28,
   },
   sectionTitleNoPad: {
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   wingBannerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(10, 32, 38, 0.35)',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 20,
     justifyContent: 'space-between',
   },
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: '400',
     color: '#1C2024',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   promoBanner: {
     flexDirection: 'row',
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 16,
     paddingHorizontal: 16,
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginTop: 14,
   },
   flyingSoonTicketIcon: {
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   originIndicatorRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 20,
     marginBottom: 6,
   },
@@ -979,7 +979,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   carouselContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     gap: 14,
     marginTop: 12,
     paddingBottom: 6,
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
 
   /* 11. Disclaimer Footer (Frame #189) */
   disclaimerContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 32,
     paddingBottom: 16,
   },

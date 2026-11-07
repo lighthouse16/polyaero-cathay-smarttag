@@ -1115,7 +1115,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3EFE6',
     borderWidth: 1,
     borderColor: '#E5DFD2',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     marginBottom: 22,
   },
@@ -1142,7 +1142,6 @@ const styles = StyleSheet.create({
     color: '#2C3034',
     marginTop: 6,
     marginBottom: 16,
-    paddingLeft: 28,
   },
   completeProgressRow: {
     flexDirection: 'row',
@@ -1172,12 +1171,12 @@ const styles = StyleSheet.create({
   circularActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 32,
+    paddingHorizontal: 20,
     marginBottom: 28,
   },
   circularActionCol: {
+    flex: 1,
     alignItems: 'center',
-    width: 96,
   },
   circleOutlineBtn: {
     width: 60,
@@ -1210,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   enhancedLeftCol: {
     flex: 1.35,
-    paddingLeft: 16,
+    paddingLeft: 20,
     paddingRight: 12,
     paddingVertical: 20,
     justifyContent: 'space-between',
@@ -1470,7 +1469,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     height: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E7EB',

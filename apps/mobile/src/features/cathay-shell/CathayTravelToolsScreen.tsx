@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     height: 44,
   },
   headerBtn: {
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 48,
   },
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 20,
-    paddingHorizontal: 6,
+    paddingHorizontal: 0,
   },
   grid: {
     flexDirection: 'row',
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     height: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E7EB',
