@@ -187,18 +187,33 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </View>
         )}
 
-        {/* 5. CONTEXTUAL PLANE WING BANNER (Only when recent search is NKG / Nanjing) */}
+        {/* 5. CONTEXTUAL PLANE WING BANNER (Crisp high-res background + native typography) */}
         {recentSearch && recentSearch.destination === 'NKG' && (
           <TouchableOpacity
             style={styles.wingBannerWrapper}
             onPress={onSearchPress}
             activeOpacity={0.9}
           >
-            <Image
+            <ImageBackground
               source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
               style={styles.wingBannerImage}
+              imageStyle={{ borderRadius: 12 }}
               resizeMode="cover"
-            />
+            >
+              <View style={styles.wingBannerOverlay}>
+                <View style={styles.topPickPill}>
+                  <Text style={styles.topPickPillText}>Top Pick</Text>
+                </View>
+                <View>
+                  <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
+                  <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
+                </View>
+
+                <View style={styles.wingBookBtn}>
+                  <Text style={styles.wingBookBtnText}>Book now</Text>
+                </View>
+              </View>
+            </ImageBackground>
           </TouchableOpacity>
         )}
 
@@ -286,13 +301,18 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic cards - badges are inside the photos) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Crisp high-res photography + authentic floating badges) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoImageWrapper}>
+                <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+                <View style={[styles.floatingBadgePill, { backgroundColor: '#854D0E' }]}>
+                  <Text style={styles.floatingBadgeText}>Cardholder exclusive</Text>
+                </View>
+              </View>
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Payment</Text>
                 <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
@@ -301,7 +321,12 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoImageWrapper}>
+                <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+                <View style={[styles.floatingBadgePill, { backgroundColor: '#C2410C' }]}>
+                  <Text style={styles.floatingBadgeText}>Limited-time fare</Text>
+                </View>
+              </View>
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
@@ -310,7 +335,12 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoImageWrapper}>
+                <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+                <View style={[styles.floatingBadgePill, { backgroundColor: '#006564' }]}>
+                  <Text style={styles.floatingBadgeText}>Student exclusive</Text>
+                </View>
+              </View>
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Student Fare</Text>
@@ -319,7 +349,12 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoImageWrapper}>
+                <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+                <View style={[styles.floatingBadgePill, { backgroundColor: '#0369A1' }]}>
+                  <Text style={styles.floatingBadgeText}>Family travel</Text>
+                </View>
+              </View>
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
@@ -671,14 +706,63 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   wingBannerImage: {
     width: '100%',
-    height: 140,
+    height: 148,
+    justifyContent: 'center',
+  },
+  wingBannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 35, 40, 0.45)',
+    padding: 16,
+    justifyContent: 'space-between',
     borderRadius: 12,
+  },
+  topPickPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#006564',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  topPickPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  wingBannerHeading: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  wingBannerSub: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  wingBookBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  wingBookBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#006564',
   },
   offersSection: {
     marginTop: 24,
@@ -810,7 +894,26 @@ const styles = StyleSheet.create({
   },
   promoCardImage: {
     width: '100%',
-    height: 100,
+    height: 108,
+  },
+  promoImageWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 108,
+  },
+  floatingBadgePill: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  floatingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   promoCardDetails: {
     padding: 12,
