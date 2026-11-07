@@ -31,6 +31,48 @@ import {
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
+interface TabItemConfig {
+  id: CathayTabId;
+  label: string;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  inactiveIcon: keyof typeof Ionicons.glyphMap;
+  rotate?: string;
+}
+
+const TAB_ITEMS: TabItemConfig[] = [
+  {
+    id: 'home',
+    label: 'Home',
+    activeIcon: 'home',
+    inactiveIcon: 'home-outline',
+  },
+  {
+    id: 'book',
+    label: 'Book',
+    activeIcon: 'airplane',
+    inactiveIcon: 'airplane-outline',
+    rotate: '-45deg',
+  },
+  {
+    id: 'trips',
+    label: 'My trips',
+    activeIcon: 'briefcase',
+    inactiveIcon: 'briefcase-outline',
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    activeIcon: 'person',
+    inactiveIcon: 'person-outline',
+  },
+  {
+    id: 'tools',
+    label: 'Travel tools',
+    activeIcon: 'grid',
+    inactiveIcon: 'grid-outline',
+  },
+];
+
 const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean; isBooked?: boolean } => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -231,93 +273,39 @@ export const CathayAppShell: React.FC = () => {
         )}
       </View>
 
-      {/* FIXED BOTTOM TAB BAR (5 TABS MATCHING VIDEO) - Hidden when Travel tools fullscreen view is open */}
-      {activeTab !== 'tools' && (
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('home')}
-          activeOpacity={0.8}
-          testID="tab-home"
-        >
-          <Ionicons
-            name={activeTab === 'home' ? 'home' : 'home-outline'}
-            size={22}
-            color={activeTab === 'home' ? '#2E6E6D' : '#52565A'}
-          />
-          <Text style={[styles.tabLabel, activeTab === 'home' ? styles.tabLabelActive : styles.tabLabelInactive]}>
-            Home
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('book')}
-          activeOpacity={0.8}
-          testID="tab-book"
-        >
-          <Ionicons
-            name={activeTab === 'book' ? 'airplane' : 'airplane-outline'}
-            size={22}
-            color={activeTab === 'book' ? '#2E6E6D' : '#52565A'}
-            style={{ transform: [{ rotate: '-45deg' }] }}
-          />
-          <Text style={[styles.tabLabel, activeTab === 'book' ? styles.tabLabelActive : styles.tabLabelInactive]}>
-            Book
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('trips')}
-          activeOpacity={0.8}
-          testID="tab-trips"
-        >
-          <View style={styles.tabIconBadgeWrapper}>
-            <Ionicons
-              name={activeTab === 'trips' ? 'briefcase' : 'briefcase-outline'}
-              size={22}
-              color={activeTab === 'trips' ? '#2E6E6D' : '#52565A'}
-            />
-          </View>
-          <Text style={[styles.tabLabel, activeTab === 'trips' ? styles.tabLabelActive : styles.tabLabelInactive]}>
-            My trips
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('profile')}
-          activeOpacity={0.8}
-          testID="tab-profile"
-        >
-          <Ionicons
-            name={activeTab === 'profile' ? 'person' : 'person-outline'}
-            size={22}
-            color={activeTab === 'profile' ? '#2E6E6D' : '#52565A'}
-          />
-          <Text style={[styles.tabLabel, activeTab === 'profile' ? styles.tabLabelActive : styles.tabLabelInactive]}>
-            Profile
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab('tools')}
-          activeOpacity={0.8}
-          testID="tab-tools"
-        >
-          <Ionicons
-            name="grid-outline"
-            size={22}
-            color="#52565A"
-          />
-          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
-            Travel tools
-          </Text>
-        </TouchableOpacity>
+      {/* FLOATING PILL DOCK NAVIGATION BAR (Exact reference: media_1794036763841_00bd8fb8.jpg) */}
+      <View style={styles.floatingDockWrap} pointerEvents="box-none">
+        <View style={styles.floatingDock}>
+          {TAB_ITEMS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.dockItem, isActive && styles.dockItemActive]}
+                onPress={() => setActiveTab(tab.id)}
+                activeOpacity={0.8}
+                testID={`tab-${tab.id}`}
+              >
+                <Ionicons
+                  name={isActive ? tab.activeIcon : tab.inactiveIcon}
+                  size={21}
+                  color={isActive ? '#195A58' : '#4A5568'}
+                  style={tab.rotate ? { transform: [{ rotate: tab.rotate }] } : undefined}
+                />
+                <Text
+                  style={[
+                    styles.dockLabel,
+                    isActive ? styles.dockLabelActive : styles.dockLabelInactive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
-      )}
 
       {/* Global Modals */}
       <CathaySignUpModal
@@ -498,46 +486,63 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
   },
-  tabBar: {
-    flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-    justifyContent: 'space-around',
+  floatingDockWrap: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: Platform.OS === 'ios' ? 24 : 16,
+    zIndex: 999,
     alignItems: 'center',
-    width: '100%',
   },
-  tabItem: {
+  floatingDock: {
+    flexDirection: 'row',
+    height: 68,
+    width: '100%',
+    backgroundColor: Platform.select({
+      ios: 'rgba(255, 255, 255, 0.84)',
+      android: 'rgba(255, 255, 255, 0.95)',
+      default: 'rgba(255, 255, 255, 0.88)',
+    }),
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    height: 54,
+    borderRadius: 27,
   },
-  tabIconBadgeWrapper: {
-    position: 'relative',
+  dockItemActive: {
+    backgroundColor: '#DFEDE9',
+    shadowColor: '#195A58',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  tabDotBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -4,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#006564',
+  dockLabel: {
+    fontSize: 10.5,
+    marginTop: 2,
+    letterSpacing: -0.1,
   },
-  tabLabel: {
-    fontSize: 10,
-    marginTop: 4,
-  },
-  tabLabelActive: {
-    color: '#2E6E6D',
+  dockLabelActive: {
+    color: '#195A58',
     fontWeight: '700',
   },
-  tabLabelInactive: {
-    color: '#52565A',
-    fontWeight: '400',
+  dockLabelInactive: {
+    color: '#4A5568',
+    fontWeight: '500',
   },
   devMenuOverlay: {
     flex: 1,
