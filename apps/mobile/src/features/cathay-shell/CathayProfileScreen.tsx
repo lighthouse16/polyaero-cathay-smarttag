@@ -73,7 +73,10 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
             </View>
           </View>
         ) : (
-          <>
+          <View style={styles.contentWrapper}>
+            {/* Soft Organic Sage/Mint Wave Background (Exact authentic phone screenshot) */}
+            <View style={styles.topOrganicWave} />
+
             {/* Top discreet dev button in header area */}
             <View style={styles.topBar}>
               <View style={{ flex: 1 }} />
@@ -82,7 +85,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* 1. MEMBER CARD (Authentic Video Frames #94, #99, #100) */}
+            {/* 1. MEMBER CARD (Authentic Screenshot: Green Header + Status Points White Body) */}
             <View style={styles.memberCardContainer}>
               {/* Green Card Header */}
               <View style={styles.memberCardHeader}>
@@ -90,12 +93,9 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
                   <Text style={styles.memberName}>{`${user.familyName} ${user.givenName}`}</Text>
                   <View style={styles.memberIdRow}>
                     <Text style={styles.memberId}>{user.membershipNumber}</Text>
-                    <Ionicons name="copy-outline" size={13} color="rgba(255, 255, 255, 0.75)" style={{ marginLeft: 6 }} />
+                    <Ionicons name="copy-outline" size={14} color="#FFFFFF" style={{ marginLeft: 6 }} />
                   </View>
-                  <View style={styles.tierStatusBadge}>
-                    <View style={styles.tierDot} />
-                    <Text style={styles.tierStatusText}>{user.tierStatus} member</Text>
-                  </View>
+                  <Text style={styles.tierStatusText}>{user.tierStatus} member</Text>
                 </View>
 
                 {/* Digital Card / QR Button */}
@@ -109,11 +109,11 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* White Card Inner Body: Status Points & Asia Miles */}
-              <View style={styles.memberCardBody}>
-                {/* Status Points Row */}
+              {/* White Card Body: Status Points */}
+              <View style={styles.statusPointsCardBody}>
+                {/* Status Points Title Row */}
                 <TouchableOpacity
-                  style={styles.pointsBlock}
+                  style={styles.statusPointsTitleRow}
                   onPress={() =>
                     openInfo(
                       'Status Points',
@@ -122,113 +122,146 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
                   }
                   activeOpacity={0.7}
                 >
-                  <View style={styles.metricHeaderRow}>
-                    <Text style={styles.metricLabel}>Status Points</Text>
-                    <View style={styles.metricValueRow}>
-                      <Text style={styles.metricValue}>{user.statusPoints}</Text>
-                      <Ionicons name="chevron-forward" size={16} color="#718096" />
-                    </View>
-                  </View>
-
-                  {/* Progress Track */}
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: '8%' }]} />
-                  </View>
-
-                  <Text style={styles.pointsProgressTarget}>
-                    {user.pointsToNextTier} more Status Points to reach Silver
-                  </Text>
-                  <Text style={styles.pointsDaysLeft}>
-                    You have 54 day(s) left to earn Status Points
-                  </Text>
+                  <Text style={styles.bronzeSectionLabel}>Status Points</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#1C2024" />
                 </TouchableOpacity>
 
-                <View style={styles.cardInternalDivider} />
+                {/* Big Points Number */}
+                <Text style={styles.bigPointsNumber}>{user.statusPoints}</Text>
 
-                {/* Asia Miles Row */}
-                <TouchableOpacity
-                  style={styles.milesBlock}
-                  onPress={() => setShowTransactionsModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.metricHeaderRow}>
-                    <Text style={styles.metricLabel}>Asia Miles</Text>
-                    <View style={styles.metricValueRow}>
-                      <Text style={styles.asiaMilesCurrencySymbol}>A</Text>
-                      <Text style={styles.metricValue}>{user.asiaMiles.toLocaleString()}</Text>
-                      <Ionicons name="chevron-forward" size={16} color="#718096" />
-                    </View>
+                {/* Progress Track with Milestone Circular Knob */}
+                <View style={styles.progressBarWrapper}>
+                  <View style={styles.progressTrackBar} />
+                  {/* Circular Milestone Knob at right */}
+                  <View style={styles.milestoneKnob}>
+                    <Ionicons name="card" size={13} color="#718096" />
                   </View>
-                </TouchableOpacity>
-              </View>
-            </View>
+                </View>
 
-            {/* 2. YOUR 2027 STATUS PROGRESS SO FAR (Video Frame #94, #150) */}
-            <View style={styles.progress2027Container}>
-              <View style={styles.progress2027HeaderRow}>
-                <Text style={styles.progress2027Title}>Your 2027 Status progress so far</Text>
-                <View style={styles.greenPillBadge}>
-                  <Text style={styles.greenPillText}>Green</Text>
+                {/* Status Target Text */}
+                <Text style={styles.pointsTargetText}>
+                  <Text style={styles.pointsTargetBold}>{user.pointsToNextTier}</Text> more Status Points to reach Silver
+                </Text>
+
+                {/* Cream Pill Banner */}
+                <View style={styles.daysLeftPillBanner}>
+                  <Ionicons name="notifications" size={15} color="#7D6E3F" style={{ marginRight: 8 }} />
+                  <Text style={styles.daysLeftPillText}>You have 54 day(s) left to earn Status Points</Text>
                 </View>
               </View>
             </View>
 
-            {/* 3. COMPLETE YOUR PROFILE NOW (Video Frame #94, #97, #98) */}
+            {/* 2. ASIA MILES CARD (SEPARATE FLOATING CARD - Exact Screenshot) */}
+            <TouchableOpacity
+              style={styles.asiaMilesCard}
+              onPress={() => setShowTransactionsModal(true)}
+              activeOpacity={0.8}
+              testID="card-asia-miles"
+            >
+              <Text style={styles.bronzeSectionLabel}>Asia Miles</Text>
+              <View style={styles.asiaMilesRightCol}>
+                <View style={styles.asiaMilesValueRow}>
+                  <Text style={styles.asiaMilesSymbol}>A</Text>
+                  <Text style={styles.asiaMilesNumber}>{user.asiaMiles.toLocaleString()}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#1C2024" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 3. YOUR 2027 STATUS PROGRESS SO FAR (SEPARATE FLOATING PALE SAGE CARD) */}
+            <TouchableOpacity
+              style={styles.progress2027Card}
+              onPress={() =>
+                openInfo(
+                  '2027 Status progress',
+                  'Your status progress for the 2027 membership year. Maintain your current tier or accumulate points towards upgrading to Silver.'
+                )
+              }
+              activeOpacity={0.8}
+            >
+              <Text style={styles.bronzeSectionLabel}>Your 2027 Status progress so far</Text>
+              <View style={styles.progress2027BottomRow}>
+                <View style={styles.greenBadgeRow}>
+                  <View style={styles.greenMiniCardIcon}>
+                    <Ionicons name="airplane" size={11} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.greenBadgeText}>Green</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#1C2024" />
+              </View>
+            </TouchableOpacity>
+
+            {/* 4. COMPLETE YOUR PROFILE NOW (WARM BEIGE CARD with 1/4 PROGRESS BAR) */}
             <TouchableOpacity
               style={styles.completeProfileCard}
               onPress={() => setShowCompleteProfileModal(true)}
               activeOpacity={0.85}
               testID="btn-complete-profile"
             >
-              <View style={styles.completeProfileIconCol}>
-                <Ionicons name="briefcase-outline" size={22} color="#006564" />
+              <View style={styles.completeProfileTopRow}>
+                <View style={styles.completeProfileTitleRow}>
+                  <Ionicons name="notifications" size={18} color="#7D5B28" style={{ marginRight: 8 }} />
+                  <Text style={styles.completeProfileTitle}>Complete your profile now</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#1C2024" />
               </View>
-              <View style={styles.completeProfileTextCol}>
-                <Text style={styles.completeProfileTitle}>Complete your profile now</Text>
-                <Text style={styles.completeProfileSub}>
-                  Enjoy hassle-free bookings, faster check-in and enhanced account security.
-                </Text>
+
+              <Text style={styles.completeProfileSub}>
+                Enjoy hassle-free bookings, faster check-in and enhanced account security.
+              </Text>
+
+              {/* Progress Bar 1/4 */}
+              <View style={styles.profileProgressBarRow}>
+                <View style={styles.profileProgressTrack}>
+                  <View style={[styles.profileProgressFill, { width: '25%' }]} />
+                </View>
+                <Text style={styles.profileProgressCounter}>1/4</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#718096" />
             </TouchableOpacity>
 
-            {/* 4. THREE ACTION BUTTONS: Edit profile, Transactions, My rewards (Video Frame #96, #97) */}
-            <View style={styles.quickActionsRow}>
+            {/* 5. THREE CIRCULAR ACTION BUTTONS (Exact Screenshot) */}
+            <View style={styles.circularActionsRow}>
               {/* Button 1: Edit profile */}
               <TouchableOpacity
-                style={styles.quickActionItem}
+                style={styles.circularActionItem}
                 onPress={() => setShowSettingsModal(true)}
                 activeOpacity={0.7}
                 testID="btn-edit-profile"
               >
-                <Ionicons name="create-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
-                <Text style={styles.quickActionLabel}>Edit profile</Text>
+                <View style={styles.actionCircleButton}>
+                  <Ionicons name="person-outline" size={26} color="#1C2024" />
+                </View>
+                <Text style={styles.actionCircleLabel}>Edit profile</Text>
               </TouchableOpacity>
 
               {/* Button 2: Transactions */}
               <TouchableOpacity
-                style={styles.quickActionItem}
+                style={styles.circularActionItem}
                 onPress={() => setShowTransactionsModal(true)}
                 activeOpacity={0.7}
                 testID="btn-transactions"
               >
-                <Ionicons name="receipt-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
-                <Text style={styles.quickActionLabel}>Transactions</Text>
+                <View style={styles.actionCircleButton}>
+                  <Ionicons name="receipt-outline" size={26} color="#1C2024" />
+                </View>
+                <Text style={styles.actionCircleLabel}>Transactions</Text>
               </TouchableOpacity>
 
               {/* Button 3: My rewards */}
               <TouchableOpacity
-                style={styles.quickActionItem}
+                style={styles.circularActionItem}
                 onPress={() => setShowRewardsModal(true)}
                 activeOpacity={0.7}
                 testID="btn-my-rewards"
               >
-                <Ionicons name="gift-outline" size={26} color="#1C2024" style={styles.quickActionIcon} />
-                <Text style={styles.quickActionLabel}>My rewards</Text>
+                <View style={styles.actionCircleButton}>
+                  <Ionicons name="ticket-outline" size={26} color="#1C2024" />
+                </View>
+                <Text style={styles.actionCircleLabel}>My rewards</Text>
               </TouchableOpacity>
             </View>
 
-            {/* 5. ENHANCED MEMBERSHIP PROMO CARD (Video Frame #96, #97, #155) */}
+            {/* 6. ENHANCED MEMBERSHIP PROMO CARD (Video Frames #96, #97, #155) */}
             <View style={styles.enhancedCard}>
               <Text style={styles.enhancedCardTag}>Starting January 2027</Text>
               <Text style={styles.enhancedCardTitle}>Enhanced membership</Text>
@@ -248,7 +281,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* 6. MY BENEFITS SECTION (Video Frame #96, #163) */}
+            {/* 7. MY BENEFITS SECTION (Video Frames #96, #163) */}
             <View style={styles.benefitsSection}>
               <View style={styles.benefitsHeaderRow}>
                 <Text style={styles.benefitsSectionTitle}>My benefits</Text>
@@ -301,7 +334,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
             >
               <Text style={styles.signOutBtnText}>Sign out</Text>
             </TouchableOpacity>
-          </>
+          </View>
         )}
       </ScrollView>
 
@@ -322,7 +355,6 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
           </View>
 
           <View style={styles.modalBodyCentered}>
-            {/* Authentic Cathay Digital Member Card View */}
             <View style={styles.digitalCardShell}>
               <View style={styles.digitalCardTop}>
                 <Text style={styles.digitalCardLogo}>CATHAY</Text>
@@ -344,14 +376,12 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
                 </View>
               </View>
 
-              {/* QR Barcode placeholder matching video */}
               <View style={styles.qrCodeContainer}>
                 <Ionicons name="qr-code" size={140} color="#1C2024" />
                 <Text style={styles.qrCodeCaption}>Scan at boarding gate or lounge reception</Text>
               </View>
             </View>
 
-            {/* Apple Wallet action button matching frame #99 */}
             <TouchableOpacity
               style={styles.appleWalletBtn}
               onPress={() => setShowMemberCardModal(false)}
@@ -501,7 +531,6 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
               It may take several months for miles to be credited to your account. For more details, please visit our FAQs.
             </Text>
 
-            {/* Credit Card promotion box */}
             <View style={styles.creditCardPromoBox}>
               <Ionicons name="card-outline" size={28} color="#006564" />
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -512,7 +541,6 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Upcoming statement */}
             <View style={styles.upcomingStatementBox}>
               <View style={styles.upcomingStatementTop}>
                 <Text style={styles.upcomingStatementTitle}>Upcoming in next statement (Pending)</Text>
@@ -526,7 +554,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
         </SafeAreaView>
       </Modal>
 
-      {/* MODAL 5: MY REWARDS (Authentic Video Frame #161, #163) */}
+      {/* MODAL 5: MY REWARDS (Authentic Video Frames #161, #163) */}
       <Modal
         visible={showRewardsModal}
         animationType="slide"
@@ -601,21 +629,38 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F8F6',
   },
   mainScroll: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F8F6',
   },
   scrollContent: {
     paddingBottom: 40,
   },
+  contentWrapper: {
+    position: 'relative',
+  },
+
+  /* Soft Organic Sage/Mint Wave Background */
+  topOrganicWave: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    backgroundColor: '#D7E5E4',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
+
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 6,
+    zIndex: 10,
   },
   topDevBtn: {
     padding: 6,
@@ -675,20 +720,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* 1. Member Card Container */
+  /* 1. Member Card */
   memberCardContainer: {
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D8D4CC',
-    marginBottom: 16,
+    borderColor: '#E8E6DF',
+    marginBottom: 12,
+    zIndex: 10,
   },
   memberCardHeader: {
-    backgroundColor: '#2E6C64',
+    backgroundColor: '#1C5B58',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 22,
+    paddingBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -697,200 +744,270 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberName: {
-    fontSize: 21,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '400',
     color: '#FFFFFF',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   memberIdRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
   memberId: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
-  tierStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  tierDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#86EFAC',
-    marginRight: 6,
+    fontSize: 13.5,
+    color: '#FFFFFF',
+    fontWeight: '400',
+    letterSpacing: 0.3,
   },
   tierStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '400',
     color: '#FFFFFF',
+    marginTop: 18,
   },
   qrButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  memberCardBody: {
+
+  /* Status Points White Card Body */
+  statusPointsCardBody: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
   },
-  pointsBlock: {
-    paddingVertical: 4,
-  },
-  metricHeaderRow: {
+  statusPointsTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
-  metricLabel: {
+  bronzeSectionLabel: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  metricValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: '#E8E5DF',
-    borderRadius: 3,
-    marginVertical: 10,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#006564',
-    borderRadius: 3,
-  },
-  pointsProgressTarget: {
-    fontSize: 13,
     fontWeight: '600',
+    color: '#7D6E3F',
+  },
+  bigPointsNumber: {
+    fontSize: 32,
+    fontWeight: '400',
     color: '#1C2024',
+    marginBottom: 10,
   },
-  pointsDaysLeft: {
-    fontSize: 11.5,
-    color: '#718096',
-    marginTop: 3,
+  progressBarWrapper: {
+    height: 32,
+    justifyContent: 'center',
+    position: 'relative',
+    marginVertical: 4,
   },
-  cardInternalDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E8E5DF',
-    marginVertical: 14,
+  progressTrackBar: {
+    height: 4,
+    backgroundColor: '#F0F0EE',
+    borderRadius: 2,
+    width: '100%',
   },
-  milesBlock: {
-    paddingVertical: 4,
-  },
-  asiaMilesCurrencySymbol: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#006564',
-    marginRight: 2,
-  },
-
-  /* 2. 2027 Status Progress */
-  progress2027Container: {
-    marginHorizontal: 16,
-    marginBottom: 14,
+  milestoneKnob: {
+    position: 'absolute',
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
-    borderColor: '#E8E5DF',
+    borderColor: '#DCD9D0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  progress2027HeaderRow: {
+  pointsTargetText: {
+    fontSize: 13.5,
+    color: '#1C2024',
+    marginTop: 8,
+  },
+  pointsTargetBold: {
+    fontWeight: '700',
+    color: '#1C2024',
+  },
+  daysLeftPillBanner: {
+    backgroundColor: '#F6EFE1',
+    borderRadius: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  daysLeftPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#7D6E3F',
+  },
+
+  /* 2. Asia Miles Card (Separate Floating Card) */
+  asiaMilesCard: {
+    marginHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEA',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  progress2027Title: {
-    fontSize: 14,
-    fontWeight: '600',
+  asiaMilesRightCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  asiaMilesValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  asiaMilesSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginRight: 4,
+  },
+  asiaMilesNumber: {
+    fontSize: 24,
+    fontWeight: '400',
     color: '#1C2024',
   },
-  greenPillBadge: {
-    backgroundColor: '#E6F4F2',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+
+  /* 3. 2027 Status Progress Card (Pale Mint/Sage) */
+  progress2027Card: {
+    marginHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: '#F0F7F6',
+    borderWidth: 1,
+    borderColor: '#E2EFEF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  greenPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#006564',
+  progress2027BottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  greenBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  greenMiniCardIcon: {
+    width: 24,
+    height: 16,
+    borderRadius: 3,
+    backgroundColor: '#2E7173',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  greenBadgeText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1C2024',
   },
 
-  /* 3. Complete Profile Banner */
+  /* 4. Complete Profile Card (Warm Cream) */
   completeProfileCard: {
     marginHorizontal: 16,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    backgroundColor: '#FAF3E7',
     borderWidth: 1,
-    borderColor: '#E8E5DF',
+    borderColor: '#F0E5D0',
+    padding: 18,
+    marginBottom: 24,
+  },
+  completeProfileTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  completeProfileTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  completeProfileIconCol: {
-    marginRight: 14,
-  },
-  completeProfileTextCol: {
-    flex: 1,
-  },
   completeProfileTitle: {
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '700',
     color: '#1C2024',
   },
   completeProfileSub: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: '#4A5568',
+    marginTop: 6,
+    marginBottom: 14,
+    paddingLeft: 26,
+  },
+  profileProgressBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 26,
+  },
+  profileProgressTrack: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  profileProgressFill: {
+    height: '100%',
+    backgroundColor: '#2E7173',
+    borderRadius: 3,
+  },
+  profileProgressCounter: {
     fontSize: 12,
-    lineHeight: 16,
-    color: '#64748B',
-    marginTop: 3,
+    fontWeight: '600',
+    color: '#718096',
+    marginLeft: 12,
   },
 
-  /* 4. Three Quick Action Buttons */
-  quickActionsRow: {
+  /* 5. Three Circular Action Buttons */
+  circularActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginHorizontal: 16,
-    marginBottom: 24,
-    paddingVertical: 6,
+    marginBottom: 28,
   },
-  quickActionItem: {
+  circularActionItem: {
     alignItems: 'center',
     width: '30%',
   },
-  quickActionIcon: {
-    marginBottom: 6,
+  actionCircleButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DCD9D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
-  quickActionLabel: {
+  actionCircleLabel: {
     fontSize: 12,
     color: '#1C2024',
     fontWeight: '500',
     textAlign: 'center',
   },
 
-  /* 5. Enhanced Membership Promo Card */
+  /* 6. Enhanced Membership Promo Card */
   enhancedCard: {
     marginHorizontal: 16,
     marginBottom: 24,
-    backgroundColor: '#F7F6F3',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
@@ -922,7 +1039,7 @@ const styles = StyleSheet.create({
     color: '#006564',
   },
 
-  /* 6. My Benefits Section */
+  /* 7. My Benefits Section */
   benefitsSection: {
     marginHorizontal: 16,
     marginBottom: 28,
@@ -1066,7 +1183,7 @@ const styles = StyleSheet.create({
   digitalCardShell: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#2E6C64',
+    backgroundColor: '#1C5B58',
     borderRadius: 16,
     padding: 22,
     marginBottom: 24,
