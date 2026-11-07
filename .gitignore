@@ -46,3 +46,6 @@ docs/reference-screenshots/
 docs/references/raw/
 docs/visual-qa/*
 !docs/visual-qa/run_qa.py
+!docs/visual-qa/verify_screens.py
+*.mp4
+docs/*.mp4

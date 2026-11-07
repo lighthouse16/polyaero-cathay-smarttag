@@ -5,124 +5,44 @@ import {
   Text,
   Image,
   ImageBackground,
-  ScrollView,
   TouchableOpacity,
+  ScrollView,
   SafeAreaView,
   Platform,
-  Modal,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { UserAuthProfile, RecentSearch } from './CathayTypes';
 
-export interface CathayHomeScreenProps {
-  onOpenDevMenu?: () => void;
+interface CathayHomeScreenProps {
+  user: UserAuthProfile;
+  recentSearch?: RecentSearch | null;
   onSearchPress?: () => void;
   onOffersPress?: () => void;
+  onOpenSignIn?: () => void;
+  onOpenMessageCentre?: () => void;
+  onOpenDevMenu?: () => void;
 }
-
-interface DestinationOffer {
-  id: string;
-  city: string;
-  cabin: string;
-  currency: string;
-  price: string;
-  image: any;
-}
-
-const DESTINATION_OFFERS: DestinationOffer[] = [
-  {
-    id: 'nanjing',
-    city: 'Nanjing',
-    cabin: 'Economy',
-    currency: 'HKD',
-    price: '3,030',
-    image: require('../../../assets/cathay/dest-nanjing.png'),
-  },
-  {
-    id: 'beijing',
-    city: 'Beijing',
-    cabin: 'Economy',
-    currency: 'HKD',
-    price: '3,670',
-    image: require('../../../assets/cathay/dest-beijing.png'),
-  },
-  {
-    id: 'seoul',
-    city: 'Seoul',
-    cabin: 'Economy',
-    currency: 'HKD',
-    price: '2,450',
-    image: require('../../../assets/cathay/dest-seoul.png'),
-  },
-];
 
 export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
-  onOpenDevMenu,
+  user,
+  recentSearch,
   onSearchPress,
   onOffersPress,
+  onOpenSignIn,
+  onOpenMessageCentre,
+  onOpenDevMenu,
 }) => {
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 2800);
-  };
-
-  const handleTabPress = (tabName: string) => {
-    if (tabName === 'Home') return;
-    if (tabName === 'My trips') {
-      showToast('My trips pending reference in Phase 1B. SmartTag prototype is available in Dev Menu.');
-    } else {
-      showToast(`${tabName} screen is pending reference in Phase 1B.`);
-    }
-  };
+  const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(true);
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-
-      {/* Subtle Feedback Banner for Non-Implemented Features */}
-      {toastMessage && (
-        <View style={styles.toastContainer}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      )}
-
-      {/* Non-Functional Auth Demo Dialog */}
-      <Modal
-        visible={showAuthModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAuthModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Authentication Notice</Text>
-            <Text style={styles.modalBody}>
-              Member sign in and registration require Cathay Pacific identity integration.
-              In this hackathon prototype, passenger flows run in guest mode.
-            </Text>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowAuthModal(false)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.modalCloseText}>Continue as Guest</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
       <ScrollView
         style={styles.mainScroll}
         contentContainerStyle={styles.scrollContent}
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Header Area with Clean Photographic Skyline Background */}
+        {/* 1. HERO HEADER AREA WITH SKYLINE PHOTOGRAPHY */}
         <ImageBackground
           source={require('../../../assets/cathay/cathay-hero-skyline.png')}
           style={styles.heroBackground}
@@ -131,7 +51,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           <SafeAreaView style={styles.headerSafeArea}>
             {/* Top Navigation Row */}
             <View style={styles.headerNavRow}>
-              {/* Invisible secret trigger zone for dev menu */}
+              {/* Secret trigger zone for dev menu */}
               <TouchableOpacity
                 style={styles.headerSpacer}
                 onLongPress={onOpenDevMenu}
@@ -153,7 +73,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <TouchableOpacity
                   style={styles.iconButton}
                   activeOpacity={0.7}
-                  onPress={() => showToast('No new notifications.')}
+                  onPress={onOpenMessageCentre}
                   accessibilityLabel="Notifications"
                 >
                   <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
@@ -171,29 +91,60 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
               </View>
             </View>
 
-            {/* Member Prompt Banner */}
+            {/* Member Prompt Banner / Greeting (Matching Video frame #71 vs frame #59) */}
             <View style={styles.memberPromptRow}>
-              <Text style={styles.memberPromptTitle}>Become a Cathay member</Text>
-
-              <TouchableOpacity
-                style={styles.signInButton}
-                onPress={() => setShowAuthModal(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.signInButtonText}>Sign in / Sign up</Text>
-              </TouchableOpacity>
+              {user.isLoggedIn ? (
+                <View style={styles.memberGreetingCol}>
+                  <Text style={styles.memberGreetingTitle}>Hello {user.title} {user.familyName}</Text>
+                  <View style={styles.memberMilesRow}>
+                    <Ionicons name="ticket-outline" size={14} color="#FFFFFF" />
+                    <Text style={styles.memberMilesText}>A {user.asiaMiles}</Text>
+                    <Text style={styles.memberDotSeparator}>|</Text>
+                    <Text style={styles.memberStatusPointsText}>Status Points {user.statusPoints}</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.memberPromptTitle}>Become a Cathay member</Text>
+                  <TouchableOpacity
+                    style={styles.signInButton}
+                    onPress={onOpenSignIn}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.signInButtonText}>Sign in / Sign up</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </SafeAreaView>
         </ImageBackground>
 
-        {/* Flight Search Card (Floats over hero) */}
+        {/* 2. PASSKEY BANNER (Matching video frame #71 / #182) */}
+        {user.isLoggedIn && showPasskeyPrompt && (
+          <View style={styles.passkeyBannerWrapper}>
+            <View style={styles.passkeyBanner}>
+              <View style={styles.passkeyIconWrap}>
+                <Ionicons name="key" size={16} color="#006564" />
+              </View>
+              <View style={styles.passkeyTextCol}>
+                <Text style={styles.passkeyTitle}>Want to stay signed in?</Text>
+                <Text style={styles.passkeySub}>Create a passkey now for a safer, easier way to sign in.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowPasskeyPrompt(false)} style={styles.passkeyCloseBtn}>
+                <Ionicons name="close" size={18} color="#718096" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* 3. FLIGHT SEARCH CARD (Floats over hero) */}
         <View style={styles.searchCardWrapper}>
           <View style={styles.searchCard}>
             <Text style={styles.searchCardTitle}>Where can we take you?</Text>
 
             <TouchableOpacity
               style={styles.routeSelectorRow}
-              onPress={onSearchPress || (() => showToast('Flight booking flow scheduled for Phase 1B.'))}
+              onPress={onSearchPress}
               activeOpacity={0.85}
               testID="flight-search-selector"
             >
@@ -219,14 +170,53 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </View>
         </View>
 
-        {/* Our Latest Offers Section */}
+        {/* 4. RECENT SEARCHES CARD (Matching video frame #182) */}
+        {recentSearch && (
+          <View style={styles.recentSearchesWrapper}>
+            <Text style={styles.recentSectionTitle}>Recent searches</Text>
+            <TouchableOpacity style={styles.recentSearchCard} onPress={onSearchPress} activeOpacity={0.85}>
+              <View style={styles.recentPlaneCircle}>
+                <Ionicons name="airplane" size={16} color="#006564" />
+              </View>
+              <View style={styles.recentTextCol}>
+                <Text style={styles.recentDatesText}>{recentSearch.dates}</Text>
+                <Text style={styles.recentRouteText}>{recentSearch.origin} to {recentSearch.destination}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#718096" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 5. CONTEXTUAL PLANE WING BANNER (Matching video frame #182) */}
+        <View style={styles.wingBannerWrapper}>
+          <ImageBackground
+            source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
+            style={styles.wingBannerImage}
+            imageStyle={{ borderRadius: 12 }}
+            resizeMode="cover"
+          >
+            <View style={styles.wingBannerContent}>
+              <View style={styles.topPickPill}>
+                <Text style={styles.topPickPillText}>Top Pick</Text>
+              </View>
+              <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
+              <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
+
+              <TouchableOpacity style={styles.wingBookBtn} onPress={onSearchPress} activeOpacity={0.85}>
+                <Text style={styles.wingBookBtnText}>Book now</Text>
+              </TouchableOpacity>
+            </View>
+          </ImageBackground>
+        </View>
+
+        {/* 6. OUR LATEST OFFERS SECTION */}
         <View style={styles.offersSection}>
           <Text style={styles.sectionTitle}>Our latest offers</Text>
 
           {/* Promo Callout Card (Accurate #DDE7E6 surface) */}
           <TouchableOpacity
             style={styles.promoBanner}
-            onPress={onOffersPress || (() => showToast('Promotions browser scheduled for Phase 1B.'))}
+            onPress={onOffersPress || onSearchPress}
             activeOpacity={0.85}
             testID="promo-callout-banner"
           >
@@ -254,84 +244,178 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             style={styles.carouselScrollView}
             contentContainerStyle={styles.carouselContainer}
           >
-            {DESTINATION_OFFERS.map((offer) => (
-              <TouchableOpacity
-                key={offer.id}
-                style={styles.destinationCard}
-                activeOpacity={0.9}
-                onPress={() => showToast(`Selected destination: ${offer.city}`)}
-              >
-                <Image source={offer.image} style={styles.destinationImage} resizeMode="cover" />
-                <View style={styles.destinationDetails}>
-                  <Text style={styles.destinationCity}>{offer.city}</Text>
-                  <Text style={styles.destinationCabin}>{offer.cabin}</Text>
+            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/dest-nanjing.png')} style={styles.destinationImage} resizeMode="cover" />
+              <View style={styles.destinationDetails}>
+                <Text style={styles.destinationCity}>Nanjing</Text>
+                <Text style={styles.destinationCabin}>Economy</Text>
+                <Text style={styles.priceLabel}>from</Text>
+                <Text style={styles.priceValue}>HKD 3,030</Text>
+              </View>
+            </TouchableOpacity>
 
-                  <Text style={styles.priceLabel}>from</Text>
-                  <Text style={styles.priceValue}>
-                    {offer.currency}
-                    {offer.price}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/dest-beijing.png')} style={styles.destinationImage} resizeMode="cover" />
+              <View style={styles.destinationDetails}>
+                <Text style={styles.destinationCity}>Beijing</Text>
+                <Text style={styles.destinationCabin}>Economy</Text>
+                <Text style={styles.priceLabel}>from</Text>
+                <Text style={styles.priceValue}>HKD 3,670</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/dest-seoul.png')} style={styles.destinationImage} resizeMode="cover" />
+              <View style={styles.destinationDetails}>
+                <Text style={styles.destinationCity}>Seoul</Text>
+                <Text style={styles.destinationCabin}>Economy</Text>
+                <Text style={styles.priceLabel}>from</Text>
+                <Text style={styles.priceValue}>HKD 2,710</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.destinationCard} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/dest-kaohsiung.jpg')} style={styles.destinationImage} resizeMode="cover" />
+              <View style={styles.destinationDetails}>
+                <Text style={styles.destinationCity}>Kaohsiung</Text>
+                <Text style={styles.destinationCabin}>Economy</Text>
+                <Text style={styles.priceLabel}>from</Text>
+                <Text style={styles.priceValue}>HKD 1,892</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.destinationCard, styles.exploreCard]} activeOpacity={0.9} onPress={onSearchPress}>
+              <View style={styles.exploreInner}>
+                <Ionicons name="compass-outline" size={32} color="#006564" />
+                <Text style={styles.exploreTitle}>Explore all 24 lowest fare destinations</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* Padding for Bottom Nav Bar */}
-        <View style={styles.bottomSpacer} />
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Matching frames #61, #183 in video) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
+            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoCardDetails}>
+                <Text style={styles.promoCategoryText}>Payment</Text>
+                <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
+                <Text style={styles.promoDateText}>Up to 11% off • 11 Nov 2026</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
+              <View style={[styles.promoCardImage, { backgroundColor: '#1E3A8A', alignItems: 'center', justifyContent: 'center' }]}>
+                <Ionicons name="airplane" size={36} color="#FFFFFF" />
+              </View>
+              <View style={styles.promoCardDetails}>
+                <Text style={styles.promoCategoryText}>Flights</Text>
+                <Text style={styles.promoHeadlineText}>Explore Almaty direct</Text>
+                <Text style={styles.promoDateText}>From HKD4,089 • 30 Nov 2026</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
+              <View style={[styles.promoCardImage, { backgroundColor: '#006564', alignItems: 'center', justifyContent: 'center' }]}>
+                <Ionicons name="school-outline" size={36} color="#FFFFFF" />
+              </View>
+              <View style={styles.promoCardDetails}>
+                <Text style={styles.promoCategoryText}>Flights</Text>
+                <Text style={styles.promoHeadlineText}>Student Fare</Text>
+                <Text style={styles.promoDateText}>Up to 10% discount + extra bag</Text>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Matching frame #62 in video) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
+
+          <View style={styles.fourIconsGrid}>
+            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
+              <View style={styles.gridActionIconWrap}>
+                <Ionicons name="bed-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.gridActionText}>Book hotel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
+              <View style={styles.gridActionIconWrap}>
+                <Ionicons name="cube-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.gridActionText}>Book package</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
+              <View style={styles.gridActionIconWrap}>
+                <Ionicons name="shield-checkmark-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.gridActionText}>Travel Insurance</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
+              <View style={styles.gridActionIconWrap}>
+                <Ionicons name="car-outline" size={24} color="#006564" />
+              </View>
+              <Text style={styles.gridActionText}>Rent a car</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 9. TRAVEL INSPIRATION (Matching frame #62, #189 in video) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Travel inspiration</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-macao.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>Macao (Macau) • Travel</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>Cool Macao: where to find music, art and film</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-queensland.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>Queensland • Travel</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>The best of Queensland's dinosaurs</Text>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* 10. STAY UP-TO-DATE (Matching frame #62, #190 in video) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Stay up-to-date</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-80th-popup.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>Explore our 80th anniversary pop-up at the airport</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-80th-collection.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>The 80th anniversary premium collection unveiled</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* 11. DISCLAIMER FOOTER (Matching frame #190 in video) */}
+        <View style={styles.disclaimerContainer}>
+          <Text style={styles.disclaimerText}>
+            All fares displayed include taxes and carrier-imposed surcharges. All fares, government taxes and fees, and surcharges are subject to change at any time.
+          </Text>
+          <Text style={styles.disclaimerText}>
+            PolyAero Hackathon Concept Prototype • Cathay SmartTag Baggage Platform
+          </Text>
+        </View>
       </ScrollView>
-
-      {/* Fixed Bottom Tab Bar (Home is locked active; other tabs show status notice) */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tabItem}
-          activeOpacity={0.8}
-          testID="tab-home"
-        >
-          <Ionicons name="home" size={22} color="#006564" />
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => handleTabPress('Book')}
-          activeOpacity={0.8}
-          testID="tab-book"
-        >
-          <Ionicons name="airplane-outline" size={22} color="#718096" />
-          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Book</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => handleTabPress('My trips')}
-          activeOpacity={0.8}
-          testID="tab-trips"
-        >
-          <Ionicons name="briefcase-outline" size={22} color="#718096" />
-          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>My trips</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => handleTabPress('Profile')}
-          activeOpacity={0.8}
-          testID="tab-profile"
-        >
-          <Ionicons name="person-outline" size={22} color="#718096" />
-          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Profile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => handleTabPress('Travel tools')}
-          activeOpacity={0.8}
-          testID="tab-tools"
-        >
-          <Ionicons name="grid-outline" size={22} color="#718096" />
-          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>Travel tools</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -344,69 +428,6 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
   },
-  toastContainer: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 36,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    zIndex: 999,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  toastText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1C2024',
-    marginBottom: 10,
-  },
-  modalBody: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#4A5568',
-    marginBottom: 20,
-  },
-  modalCloseButton: {
-    backgroundColor: '#006564',
-    borderRadius: 6,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
   mainScroll: {
     flex: 1,
     width: '100%',
@@ -414,15 +435,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
     width: '100%',
     maxWidth: '100%',
-  },
-  carouselScrollView: {
-    width: '100%',
-    maxWidth: '100%',
-    flexGrow: 0,
-    flexShrink: 1,
   },
   heroBackground: {
     width: '100%',
@@ -486,6 +501,32 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: -0.2,
   },
+  memberGreetingCol: {},
+  memberGreetingTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  memberMilesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  memberMilesText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  memberDotSeparator: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+  },
+  memberStatusPointsText: {
+    color: '#D1EAE7',
+    fontSize: 13,
+  },
   signInButton: {
     borderWidth: 1,
     borderColor: '#FFFFFF',
@@ -498,6 +539,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '500',
+  },
+  passkeyBannerWrapper: {
+    paddingHorizontal: 16,
+    marginTop: -20,
+    marginBottom: 10,
+  },
+  passkeyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  passkeyIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E6F4F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  passkeyTextCol: {
+    flex: 1,
+  },
+  passkeyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1C2024',
+  },
+  passkeySub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  passkeyCloseBtn: {
+    padding: 6,
   },
   searchCardWrapper: {
     marginHorizontal: 16,
@@ -575,6 +657,99 @@ const styles = StyleSheet.create({
     color: '#4A5568',
     marginTop: 2,
   },
+  recentSearchesWrapper: {
+    marginHorizontal: 16,
+    marginTop: 16,
+  },
+  recentSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  recentSearchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  recentPlaneCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E6F4F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  recentTextCol: {
+    flex: 1,
+  },
+  recentDatesText: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  recentRouteText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#006564',
+    marginTop: 1,
+  },
+  wingBannerWrapper: {
+    marginHorizontal: 16,
+    marginTop: 18,
+  },
+  wingBannerImage: {
+    width: '100%',
+    height: 120,
+    justifyContent: 'center',
+  },
+  wingBannerContent: {
+    padding: 14,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+  },
+  topPickPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#006564',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  topPickPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  wingBannerHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  wingBannerSub: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    marginTop: 2,
+  },
+  wingBookBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  wingBookBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#006564',
+  },
   offersSection: {
     marginTop: 24,
     width: '100%',
@@ -605,7 +780,7 @@ const styles = StyleSheet.create({
   promoText: {
     fontSize: 13.5,
     lineHeight: 18,
-    color: '#1A202C',
+    color: '#1A2024',
   },
   promoBold: {
     fontWeight: '700',
@@ -623,9 +798,16 @@ const styles = StyleSheet.create({
     color: '#006564',
     fontWeight: '600',
   },
+  carouselScrollView: {
+    width: '100%',
+    maxWidth: '100%',
+    flexGrow: 0,
+    flexShrink: 1,
+  },
   carouselContainer: {
     paddingHorizontal: 16,
     gap: 14,
+    marginTop: 10,
   },
   destinationCard: {
     width: 154,
@@ -666,36 +848,137 @@ const styles = StyleSheet.create({
     color: '#1C2024',
     marginTop: 1,
   },
-  bottomSpacer: {
-    height: 70,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
+  exploreCard: {
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F7F6',
   },
-  tabLabel: {
-    fontSize: 10,
-    marginTop: 4,
+  exploreInner: {
+    alignItems: 'center',
+    padding: 18,
+    gap: 8,
   },
-  tabLabelActive: {
+  exploreTitle: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#006564',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  sectionContainer: {
+    marginTop: 28,
+  },
+  promoCardItem: {
+    width: 170,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  promoCardImage: {
+    width: '100%',
+    height: 100,
+  },
+  promoCardDetails: {
+    padding: 12,
+  },
+  promoCategoryText: {
+    fontSize: 11,
+    color: '#718096',
+    fontWeight: '500',
+  },
+  promoHeadlineText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1C2024',
+    marginTop: 2,
+  },
+  promoDateText: {
+    fontSize: 11,
+    color: '#006564',
+    marginTop: 4,
     fontWeight: '600',
   },
-  tabLabelInactive: {
+  fourIconsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 14,
+  },
+  gridActionItem: {
+    alignItems: 'center',
+    width: '24%',
+  },
+  gridActionIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  gridActionText: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: '#334155',
+    textAlign: 'center',
+  },
+  articleCard: {
+    width: 200,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  articleCardImage: {
+    width: '100%',
+    height: 110,
+  },
+  articleCardDetails: {
+    padding: 12,
+  },
+  articleLocation: {
+    fontSize: 11,
     color: '#718096',
-    fontWeight: '400',
+  },
+  articleTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#1C2024',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  newsCard: {
+    width: 170,
+  },
+  newsImage: {
+    width: 170,
+    height: 96,
+    borderRadius: 8,
+  },
+  newsTitle: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1C2024',
+    marginTop: 6,
+    lineHeight: 17,
+  },
+  disclaimerContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 36,
+    paddingBottom: 20,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#94A3B8',
+    marginBottom: 6,
   },
 });

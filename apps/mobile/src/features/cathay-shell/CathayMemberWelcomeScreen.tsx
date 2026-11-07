@@ -12,10 +12,14 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 interface CathayMemberWelcomeScreenProps {
+  onSignUp?: () => void;
+  onSignIn?: () => void;
   onContinueAsGuest?: () => void;
 }
 
 export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps> = ({
+  onSignUp,
+  onSignIn,
   onContinueAsGuest,
 }) => {
   const [authNoticeType, setAuthNoticeType] = useState<'signin' | 'signup' | null>(null);
@@ -106,7 +110,7 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
             <View style={styles.actionsContainer}>
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => setAuthNoticeType('signup')}
+                onPress={() => (onSignUp ? onSignUp() : setAuthNoticeType('signup'))}
                 activeOpacity={0.85}
                 testID="welcome-signup-button"
               >
@@ -115,7 +119,7 @@ export const CathayMemberWelcomeScreen: React.FC<CathayMemberWelcomeScreenProps>
 
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => setAuthNoticeType('signin')}
+                onPress={() => (onSignIn ? onSignIn() : setAuthNoticeType('signin'))}
                 activeOpacity={0.7}
                 testID="welcome-signin-button"
               >
