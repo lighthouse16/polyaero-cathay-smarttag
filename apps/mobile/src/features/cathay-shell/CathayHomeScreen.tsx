@@ -33,6 +33,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
   onOpenDevMenu,
 }) => {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(true);
+  const hasPasskeyBanner = Boolean(user.isLoggedIn && showPasskeyPrompt);
 
   return (
     <View style={styles.container}>
@@ -137,8 +138,8 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </View>
         )}
 
-        {/* 3. FLIGHT SEARCH CARD (Floats over hero) */}
-        <View style={styles.searchCardWrapper}>
+        {/* 3. FLIGHT SEARCH CARD (Floats over hero or sits below passkey banner) */}
+        <View style={[styles.searchCardWrapper, hasPasskeyBanner && styles.searchCardWrapperWithPasskey]}>
           <View style={styles.searchCard}>
             <Text style={styles.searchCardTitle}>Where can we take you?</Text>
 
@@ -644,9 +645,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   passkeyBannerWrapper: {
-    paddingHorizontal: 16,
-    marginTop: -20,
-    marginBottom: 10,
+    marginHorizontal: 16,
+    marginTop: -24,
   },
   passkeyBanner: {
     flexDirection: 'row',
@@ -687,6 +687,9 @@ const styles = StyleSheet.create({
   searchCardWrapper: {
     marginHorizontal: 16,
     marginTop: -32,
+  },
+  searchCardWrapperWithPasskey: {
+    marginTop: 12,
   },
   searchCard: {
     backgroundColor: '#FFFFFF',
