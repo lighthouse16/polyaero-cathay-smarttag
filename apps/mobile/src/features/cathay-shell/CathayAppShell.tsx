@@ -216,13 +216,15 @@ export const CathayAppShell: React.FC = () => {
 
         {activeTab === 'tools' && (
           <CathayTravelToolsScreen
+            onClose={() => setActiveTab('home')}
             onOpenDevMenu={() => setIsDevMenuVisible(true)}
             onNavigateToTrips={() => setActiveTab('trips')}
           />
         )}
       </View>
 
-      {/* FIXED BOTTOM TAB BAR (5 TABS MATCHING VIDEO) */}
+      {/* FIXED BOTTOM TAB BAR (5 TABS MATCHING VIDEO) - Hidden when Travel tools fullscreen view is open */}
+      {activeTab !== 'tools' && (
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={styles.tabItem}
@@ -298,15 +300,16 @@ export const CathayAppShell: React.FC = () => {
           testID="tab-tools"
         >
           <Ionicons
-            name={activeTab === 'tools' ? 'grid' : 'grid-outline'}
+            name="grid-outline"
             size={22}
-            color={activeTab === 'tools' ? '#006564' : '#718096'}
+            color="#718096"
           />
-          <Text style={[styles.tabLabel, activeTab === 'tools' ? styles.tabLabelActive : styles.tabLabelInactive]}>
+          <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
             Travel tools
           </Text>
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Global Modals */}
       <CathaySignUpModal
