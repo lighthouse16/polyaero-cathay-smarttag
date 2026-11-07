@@ -1,13 +1,5 @@
 /**
- * Screen 04 — SmartTag Ready (Matches Design 04 Mockup)
- *
- * Sections:
- *   - Header: Back arrow + centered "SmartTag ready"
- *   - Positive confirmation circle + heading + short supporting explanation
- *     - Physical hardware verified write vs. Demo simulation clearly distinguished
- *   - "Tag details" card (Bag ID CX880123456, Route HKG → NRT, Flight CX548, Status Awaiting bag-drop)
- *   - Airport instructions mint box (1. Attach SmartTag, 2. Scan boarding pass, 3. Place bag on belt)
- *   - Primary CTA: "View baggage journey" + Secondary link "Back to My bookings"
+ * Screen 04 — SmartTag Ready (Matches Design 04 Mockup & Cathay Design System)
  */
 
 import React from 'react';
@@ -15,6 +7,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   Platform,
 } from 'react-native';
@@ -22,16 +15,17 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   CATHAY_BG,
   CATHAY_JADE,
-  CATHAY_JADE_DARK,
+  CATHAY_MINT_BADGE,
   CATHAY_MINT_SURFACE,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
-  CathayCard,
   CathayPrimaryButton,
   CathayScreenHeader,
-  CathaySecondaryButton,
+  ICON_STEP_BELT,
+  ICON_STEP_QR,
+  ICON_STEP_TAG,
   InlineNotice,
-  SuitcaseWithTagGlyph,
+  SmartTagIdentityCard,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, useSmartTagStore } from '../store';
 
@@ -74,8 +68,6 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
     );
   }
 
-  const { flight } = itinerary;
-
   return (
     <View style={styles.root}>
       <CathayScreenHeader
@@ -89,7 +81,7 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Positive Confirmation Block (Exact Design 04) */}
+        {/* Top Positive Confirmation Block */}
         <View style={styles.heroCheckSection}>
           <View style={styles.checkCircle}>
             <Ionicons name="checkmark" size={30} color={CATHAY_JADE} />
@@ -101,54 +93,18 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
           </Text>
         </View>
 
-        {/* Tag Details Card (Matches Design 04 rows) */}
-        <CathayCard style={styles.tagDetailsCard}>
-          <View style={styles.cardHeadingRow}>
-            <SuitcaseWithTagGlyph size="sm" />
-            <Text style={styles.cardHeadingText}>Tag details</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Bag ID</Text>
-            <Text style={styles.detailValue}>{bag.displayBagCode}</Text>
-          </View>
-
-          <View style={styles.hairline} />
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Route</Text>
-            <Text style={styles.detailValue}>
-              {flight.origin} → {flight.destination}
-            </Text>
-          </View>
-
-          <View style={styles.hairline} />
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Flight</Text>
-            <Text style={styles.detailValue}>{flight.flightNumber}</Text>
-          </View>
-
-          <View style={styles.hairline} />
-
-          <View style={[styles.detailRow, { paddingBottom: 4 }]}>
-            <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValue}>Awaiting bag-drop</Text>
-          </View>
-
-          {/* Compact technical footnote distinguishing SmartTag device ID from journey Bag ID */}
-          <View style={styles.identityFootnote}>
-            <Text style={styles.identityFootnoteText}>
-              SmartTag ID: {bag.smartTagCode} • IATA LP: {bag.baggage.tagNumber}
-            </Text>
-          </View>
-        </CathayCard>
+        {/* Tag Details Card (Shared Foundation Component) */}
+        <SmartTagIdentityCard variant="ready" itinerary={itinerary} bag={bag} />
 
         {/* Airport Next Steps Mint Box (Exact Design 04) */}
         <View style={styles.stepsMintCard}>
           <View style={styles.stepRow}>
             <View style={styles.stepIconCol}>
-              <Ionicons name="pricetag-outline" size={20} color={CATHAY_JADE_DARK} />
+              <Image
+                source={ICON_STEP_TAG}
+                style={styles.stepIconImg}
+                resizeMode="contain"
+              />
             </View>
             <View style={styles.stepDivider} />
             <Text style={styles.stepText}>1. Attach SmartTag to your luggage</Text>
@@ -156,7 +112,11 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
 
           <View style={styles.stepRow}>
             <View style={styles.stepIconCol}>
-              <Ionicons name="qr-code-outline" size={20} color={CATHAY_JADE_DARK} />
+              <Image
+                source={ICON_STEP_QR}
+                style={styles.stepIconImg}
+                resizeMode="contain"
+              />
             </View>
             <View style={styles.stepDivider} />
             <Text style={styles.stepText}>
@@ -166,15 +126,11 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
 
           <View style={styles.stepRow}>
             <View style={styles.stepIconCol}>
-              {/* Custom bag-on-conveyor-belt icon matching Design 04 step 3 */}
-              <View style={styles.beltGlyphWrap}>
-                <View style={styles.beltBagBox} />
-                <View style={styles.beltBaseTrack}>
-                  <View style={styles.beltDot} />
-                  <View style={styles.beltDot} />
-                  <View style={styles.beltDot} />
-                </View>
-              </View>
+              <Image
+                source={ICON_STEP_BELT}
+                style={styles.stepIconImg}
+                resizeMode="contain"
+              />
             </View>
             <View style={styles.stepDivider} />
             <Text style={styles.stepText}>
@@ -194,13 +150,6 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
           }
           testID="btn-ready-view-journey"
         />
-
-        <CathaySecondaryButton
-          label="Back to My bookings"
-          variant="link"
-          onPress={() => smartTagController.navigateTo('bookings')}
-          testID="btn-ready-back-bookings"
-        />
       </ScrollView>
     </View>
   );
@@ -217,22 +166,22 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 116,
-    gap: 11,
+    paddingTop: 10,
+    paddingBottom: 118,
+    gap: 13,
   },
   heroCheckSection: {
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
   checkCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#DCECE8',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: CATHAY_MINT_BADGE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   heroTitle: {
     fontSize: 21,
@@ -243,64 +192,17 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 14,
-    lineHeight: 19,
+    lineHeight: 20,
     color: CATHAY_TEXT_SECONDARY,
     textAlign: 'center',
-    marginTop: 4,
-  },
-  simPillWrap: {
-    marginTop: 6,
-  },
-  tagDetailsCard: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-  },
-  cardHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 6,
-  },
-  cardHeadingText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 9,
-  },
-  detailLabel: {
-    fontSize: 14.5,
-    color: '#4B5259',
-  },
-  detailValue: {
-    fontSize: 14.5,
-    fontWeight: '600',
-    color: CATHAY_JADE,
-  },
-  hairline: {
-    height: 1,
-    backgroundColor: '#ECEEEF',
-  },
-  identityFootnote: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  identityFootnoteText: {
-    fontSize: 11.5,
-    color: '#6B7280',
+    marginTop: 5,
   },
   stepsMintCard: {
     backgroundColor: CATHAY_MINT_SURFACE,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 13,
+    paddingVertical: 15,
+    gap: 14,
   },
   stepRow: {
     flexDirection: 'row',
@@ -310,6 +212,10 @@ const styles = StyleSheet.create({
     width: 30,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stepIconImg: {
+    width: 24,
+    height: 22,
   },
   stepDivider: {
     width: 1,
@@ -322,32 +228,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2B3035',
     fontWeight: '400',
-  },
-  beltGlyphWrap: {
-    alignItems: 'center',
-  },
-  beltBagBox: {
-    width: 12,
-    height: 9,
-    borderWidth: 1.5,
-    borderColor: CATHAY_JADE_DARK,
-    borderRadius: 2,
-    marginBottom: 1,
-  },
-  beltBaseTrack: {
-    width: 20,
-    height: 6,
-    borderRadius: 3,
-    borderWidth: 1.4,
-    borderColor: CATHAY_JADE_DARK,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-  },
-  beltDot: {
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: CATHAY_JADE_DARK,
   },
 });

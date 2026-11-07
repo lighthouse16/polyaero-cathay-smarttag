@@ -529,9 +529,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 16.5,
+    fontWeight: '500',
     color: CATHAY_TEXT_PRIMARY,
+    letterSpacing: -0.2,
   },
   headerSpacer: {
     width: 36,
@@ -554,9 +555,9 @@ const styles = StyleSheet.create({
     borderBottomColor: CATHAY_JADE,
   },
   tabLabel: {
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: '400',
-    color: '#5A6168',
+    color: '#52565A',
   },
   tabLabelActive: {
     color: CATHAY_JADE,
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
     backgroundColor: CATHAY_BG,
   },
   scrollContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 120,
   },
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
   },
 
   bookingsList: {
-    gap: 18,
+    gap: 16,
   },
   cardSectionDivider: {
     height: 1,
@@ -602,14 +603,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   smartTagTitle: {
-    fontSize: 17.5,
-    fontWeight: '700',
+    fontSize: 16.5,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
   smartTagDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: CATHAY_TEXT_SECONDARY,
   },
   entryBadgeRow: {

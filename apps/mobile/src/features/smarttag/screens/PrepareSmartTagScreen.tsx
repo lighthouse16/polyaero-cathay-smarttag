@@ -1,12 +1,5 @@
 /**
- * Screen 02 — Prepare SmartTag (Matches Design 02 Mockup)
- *
- * Sections:
- *   - Header: Back arrow + centered "Prepare SmartTag"
- *   - Section A: Shared `FlightSummaryCard` (Fri 21 Nov 2026 | Booking reference 8K3F7D | HKG → NRT | CX548 | 1 passenger)
- *   - Section B: `BaggageDetailsCard` (Number of bags, SmartTag ID ST-2048, Check-in status pill)
- *   - Section C: "Before you continue" requirements & interactive confirmation controls
- *   - Primary CTA: "Continue" (disabled or displays actionable feedback when declarations are incomplete)
+ * Screen 02 — Prepare SmartTag (Matches Design 02 Mockup & Cathay Design System)
  */
 
 import React, { useState } from 'react';
@@ -14,11 +7,11 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import {
   DEFAULT_DECLARATIONS,
   SmartTagDeclarations,
@@ -28,13 +21,15 @@ import {
   BaggageDetailsCard,
   CATHAY_BG,
   CATHAY_BORDER,
-  CATHAY_JADE,
   CATHAY_MINT_SURFACE,
   CATHAY_TEXT_PRIMARY,
   CathayCard,
   CathayPrimaryButton,
   CathayScreenHeader,
   FlightSummaryCard,
+  ICON_REQ_KIOSK,
+  ICON_REQ_TAG,
+  ICON_REQ_WARNING,
   InlineNotice,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
@@ -81,7 +76,7 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
           <InlineNotice
             tone="warning"
             title="No upcoming booking selected"
-            message="Load the CX548 demo itinerary in My bookings before preparing a SmartTag."
+            message="Please select an upcoming flight in My bookings before preparing your SmartTag."
             actionLabel="Back to My bookings"
             onAction={() => smartTagController.navigateTo('bookings')}
           />
@@ -94,15 +89,8 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     primaryBag?.setupState === 'SIMULATED_WRITE_COMPLETED' ||
     primaryBag?.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED';
 
-  const syncStatusLabel =
-    primaryBag?.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED'
-      ? 'Synced'
-      : primaryBag?.setupState === 'SIMULATED_WRITE_COMPLETED'
-        ? 'Simulated'
-        : 'Not yet synced';
-
-  const syncStatusTone =
-    isSynced ? 'jade' : 'neutral';
+  const syncStatusLabel = isSynced ? 'Synced' : 'Not yet synced';
+  const syncStatusTone = isSynced ? 'jade' : 'neutral';
 
   const toggleDeclaration = (key: keyof SmartTagDeclarations) => {
     setFeedbackError(null);
@@ -120,7 +108,7 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
   const handleContinue = () => {
     if (itinerary.checkInReadiness !== 'DEMO_CHECK_IN_COMPLETED') {
       setFeedbackError(
-        'Check-in prerequisite is pending. Tap "Complete demo check-in" below before continuing.'
+        'Online check-in is required before generating your digital baggage tag.'
       );
       return;
     }
@@ -199,8 +187,8 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
           <InlineNotice
             tone="warning"
             title="Check-in prerequisite required"
-            message="Complete or simulate flight check-in before generating a baggage identity."
-            actionLabel="Complete demo check-in"
+            message="Complete flight check-in before generating a baggage identity."
+            actionLabel="Complete check-in"
             onAction={() => {
               smartTagRepository.setCheckInReadiness(
                 itinerary.id,
@@ -211,7 +199,7 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
           />
         )}
 
-        {/* Section C: Before you continue (Exact Design 02 layout + interactive confirmation) */}
+        {/* Section C: Before you continue */}
         <CathayCard style={styles.beforeCard}>
           <Text style={styles.beforeHeading}>Before you continue</Text>
 
@@ -228,10 +216,10 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
                 !declarations.dangerousGoodsDeclared && styles.reqIconCircleUnchecked,
               ]}
             >
-              <Ionicons
-                name="warning-outline"
-                size={19}
-                color={declarations.dangerousGoodsDeclared ? CATHAY_JADE : '#9CA3AF'}
+              <Image
+                source={ICON_REQ_WARNING}
+                style={styles.reqIconImg}
+                resizeMode="contain"
               />
             </View>
             <Text style={styles.reqText}>
@@ -255,10 +243,11 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
                   styles.reqIconCircleUnchecked,
               ]}
             >
-              {/* Custom Kiosk / Self Bag-Drop Outline Icon matching Design 02 */}
-              <View style={styles.kioskGlyph}>
-                <View style={styles.kioskBagMini} />
-              </View>
+              <Image
+                source={ICON_REQ_KIOSK}
+                style={styles.reqIconImg}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.reqText}>Use at Cathay self bag-drop</Text>
           </TouchableOpacity>
@@ -278,10 +267,10 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
                 !declarations.tagSecuredToLuggage && styles.reqIconCircleUnchecked,
               ]}
             >
-              <Ionicons
-                name="pricetag-outline"
-                size={18}
-                color={declarations.tagSecuredToLuggage ? CATHAY_JADE : '#9CA3AF'}
+              <Image
+                source={ICON_REQ_TAG}
+                style={styles.reqIconImg}
+                resizeMode="contain"
               />
             </View>
             <Text style={styles.reqText}>
@@ -330,7 +319,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 18,
     paddingTop: 10,
-    paddingBottom: 116,
+    paddingBottom: 118,
     gap: 11,
   },
   emptyWrap: {
@@ -338,47 +327,36 @@ const styles = StyleSheet.create({
   },
   beforeCard: {
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   beforeHeading: {
     fontSize: 16.5,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 6,
+    marginBottom: 8,
+    letterSpacing: -0.2,
   },
   reqRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    paddingVertical: 8,
+    gap: 14,
+    paddingVertical: 9,
   },
   reqIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: CATHAY_MINT_SURFACE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reqIconCircleUnchecked: {
-    backgroundColor: '#F3F4F6',
-    opacity: 0.65,
+    backgroundColor: '#F2F4F5',
+    opacity: 0.55,
   },
-  kioskGlyph: {
-    width: 15,
-    height: 19,
-    borderWidth: 1.6,
-    borderColor: CATHAY_JADE,
-    borderRadius: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kioskBagMini: {
-    width: 7,
-    height: 7,
-    borderWidth: 1.3,
-    borderColor: CATHAY_JADE,
-    borderRadius: 1,
+  reqIconImg: {
+    width: 21,
+    height: 22,
   },
   reqText: {
     flex: 1,

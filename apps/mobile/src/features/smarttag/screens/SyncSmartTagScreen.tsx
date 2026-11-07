@@ -1,14 +1,5 @@
 /**
- * Screen 03 — Sync SmartTag (Matches Design 03 Mockup)
- *
- * Sections:
- *   - Header: Back arrow + centered "Sync SmartTag"
- *   - Secondary flight summary sub-bar: "CX548  |  HKG to NRT"
- *   - Section A: Minimal phone-to-tag NFC illustration + "Hold your phone near the SmartTag"
- *   - Section B: "What will be written" card (Route, Flight, Bag ID CX880123456, Status Ready for bag-drop)
- *     + optional collapsible 2.9" 296×128 monochrome E-ink barcode preview
- *   - Section C: Primary CTA "Start NFC sync" + Secondary link "Use demo simulation"
- *   - 11-state NFC sync machine with honest separation between physical hardware and demo simulation
+ * Screen 03 — Sync SmartTag (Matches Design 03 Mockup & Cathay Design System)
  */
 
 import React, { useState } from 'react';
@@ -16,6 +7,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   Linking,
@@ -34,10 +26,12 @@ import {
   CATHAY_BG,
   CATHAY_BORDER,
   CATHAY_JADE,
+  CATHAY_JADE_LIGHT,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
   CathayScreenHeader,
+  ICON_PLANE_TAKEOFF,
   InlineNotice,
   NfcPhoneToTagIllustration,
   SmartTagIdentityCard,
@@ -92,7 +86,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     );
   }
 
-  // Ensure bag is prepared if user deep-linked directly to Sync
   const ensurePreparedBag = () => {
     if (activeBag.setupState === 'UNREGISTERED') {
       const { bags: prepared } = smartTagRepository.prepareBagsForItinerary({
@@ -164,14 +157,13 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         onLongPressTitle={onOpenDevMenu}
       />
 
-      {/* Secondary Flight Summary Sub-Header: CX548 | HKG to NRT (Exact Design 03) */}
+      {/* Secondary Flight Summary Sub-Bar */}
       <View style={styles.flightSubBar}>
         <View style={styles.flightSubLeft}>
-          <Ionicons
-            name="airplane-outline"
-            size={15}
-            color="#5A6168"
-            style={{ transform: [{ rotate: '-25deg' }] }}
+          <Image
+            source={ICON_PLANE_TAKEOFF}
+            style={styles.takeoffIcon}
+            resizeMode="contain"
           />
           <Text style={styles.flightSubCode}>{flight.flightNumber}</Text>
         </View>
@@ -186,7 +178,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Multi-bag switcher when passenger selected >1 checked bag */}
         {bags.length > 1 && (
           <View style={styles.bagTabsRow}>
             {bags.map((b) => {
@@ -195,9 +186,12 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
                 <TouchableOpacity
                   key={b.id}
                   style={[styles.bagTabChip, selected && styles.bagTabChipActive]}
-                  onPress={() =>
-                    smartTagRepository.setActiveContext(itinerary.id, b.id)
-                  }
+                  onPress={() => {
+                    setMachineState('IDLE');
+                    setStatusMessage(NFC_STATE_MESSAGES.IDLE);
+                    setFailure(null);
+                    smartTagRepository.setActiveContext(itinerary.id, b.id);
+                  }}
                 >
                   <Text
                     style={[
@@ -233,7 +227,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           onCancel={handleCancelScan}
         />
 
-        {/* Actionable Error / Unsupported Hardware Notice */}
+        {/* Actionable Error Notice */}
         {failure && (
           <InlineNotice
             tone={machineState === 'UNSUPPORTED' ? 'warning' : 'danger'}
@@ -254,7 +248,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           />
         )}
 
-        {/* Section B: What will be written (Exact Design 03 Card) */}
+        {/* Section B: What will be written */}
         <SmartTagIdentityCard
           variant="preview"
           itinerary={itinerary}
@@ -262,22 +256,16 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           showMonochromeEinkPreview={showEinkPreview}
         />
 
-        <TouchableOpacity
-          style={styles.togglePreviewRow}
-          onPress={() => setShowEinkPreview((p) => !p)}
-          activeOpacity={0.75}
-        >
-          <Ionicons
-            name={showEinkPreview ? 'eye-off-outline' : 'barcode-outline'}
-            size={15}
-            color={CATHAY_JADE}
-          />
-          <Text style={styles.togglePreviewText}>
-            {showEinkPreview
-              ? 'Hide 2.9" E-ink monochrome barcode preview'
-              : `Preview 2.9" E-ink monochrome label (${activeBag.smartTagCode})`}
-          </Text>
-        </TouchableOpacity>
+        {showEinkPreview && (
+          <TouchableOpacity
+            style={styles.togglePreviewRow}
+            onPress={() => setShowEinkPreview(false)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="eye-off-outline" size={15} color={CATHAY_JADE} />
+            <Text style={styles.togglePreviewText}>Hide E-ink display preview</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Section C: Primary Action */}
         <CathayPrimaryButton
@@ -301,7 +289,7 @@ const styles = StyleSheet.create({
   flightSubBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingVertical: 11,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -310,7 +298,11 @@ const styles = StyleSheet.create({
   flightSubLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
+  },
+  takeoffIcon: {
+    width: 17,
+    height: 13,
   },
   flightSubCode: {
     fontSize: 14,
@@ -326,7 +318,7 @@ const styles = StyleSheet.create({
   flightSubRoute: {
     fontSize: 14.5,
     fontWeight: '700',
-    color: CATHAY_JADE,
+    color: CATHAY_JADE_LIGHT,
   },
   scroll: {
     flex: 1,
@@ -335,7 +327,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 120,
-    gap: 12,
+    gap: 13,
   },
   emptyWrap: {
     padding: 20,
@@ -367,7 +359,7 @@ const styles = StyleSheet.create({
   instructionBlock: {
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingTop: 4,
+    paddingTop: 2,
     paddingBottom: 2,
   },
   instructionHeading: {

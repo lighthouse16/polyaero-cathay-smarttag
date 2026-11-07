@@ -1,8 +1,8 @@
 /**
- * Screen 05 — Baggage Journey (Matches Design 05 Mockup)
+ * Screen 05 — Baggage Journey (Matches Design 05 Mockup & Cathay Design System)
  *
  * Sections:
- *   - Header: Back arrow + centered "Baggage journey"
+ *   - Header: Back chevron + centered "Baggage journey"
  *   - Summary Card: Bag ID CX880123456 + "In journey" badge, HKG → NRT, CX548
  *   - Chronological Handling Timeline:
  *       1. Tag synced — Completed at home
@@ -11,9 +11,7 @@
  *       4. Arrived in Tokyo — NRT • Awaiting collection
  *       5. Collected — Not yet completed
  *   - Active Recovery Case status card (when a baggage issue has been reported)
- *   - "Need help?" cream support card with "Report a baggage issue" outline CTA
- *   - Compact Demo Milestone Simulator bar so hackathon judges can inspect
- *     Awaiting drop / Accepted / Loaded / Arrived in Tokyo / Collected / Delayed states
+ *   - "Need help?" warm sand support card with "Report a baggage issue" outline CTA
  */
 
 import React from 'react';
@@ -33,6 +31,7 @@ import {
   CATHAY_JADE,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
+  CATHAY_WARM_BORDER,
   CATHAY_WARM_CREAM,
   CathayCard,
   CathayScreenHeader,
@@ -112,7 +111,6 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Multi-bag selector if >1 bag configured */}
         {bags.length > 1 && (
           <View style={styles.bagSelectorRow}>
             {bags.map((b) => {
@@ -139,7 +137,7 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
           </View>
         )}
 
-        {/* Summary Card (Exact Design 05: Bag ID CX880123456 + "In journey" badge, HKG → NRT, CX548) */}
+        {/* Summary Card */}
         <FlightSummaryCard
           itinerary={itinerary}
           showPassengerCount={false}
@@ -150,10 +148,10 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
           }}
         />
 
-        {/* Chronological Handling Timeline (Exact Design 05) */}
+        {/* Chronological Handling Timeline */}
         <BaggageJourneyTimeline items={journeyView.items} />
 
-        {/* Active Recovery Case Status Card (shown after submitting Screen 06) */}
+        {/* Active Recovery Case Status Card */}
         {recovery && (
           <CathayCard style={styles.recoveryStatusCard}>
             <View style={styles.recoveryHeaderRow}>
@@ -177,7 +175,6 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
               Reported issue: {recovery.passengerDescription}
             </Text>
 
-            {/* Staff Portal recovery progression simulator */}
             <View style={styles.recoverySimRow}>
               {RECOVERY_STEPS.map((step) => {
                 const active = recovery.recoveryCase.status === step.status;
@@ -210,10 +207,10 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
           </CathayCard>
         )}
 
-        {/* Need help? Cream Support Box (Exact Design 05) */}
+        {/* Need help? Warm Sand Support Card (Matches CathayProfileScreen completeProfileCard) */}
         <View style={styles.needHelpCard}>
           <View style={styles.needHelpHeaderRow}>
-            <Ionicons name="headset-outline" size={22} color={CATHAY_JADE} />
+            <Ionicons name="headset-outline" size={20} color="#1E2328" />
             <View style={{ flex: 1 }}>
               <Text style={styles.needHelpTitle}>Need help?</Text>
               <Text style={styles.needHelpSub}>
@@ -251,9 +248,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 116,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 118,
     gap: 12,
   },
   bagSelectorRow: {
@@ -262,11 +259,11 @@ const styles = StyleSheet.create({
   },
   bagChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingVertical: 7,
+    borderRadius: 4,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D5DCDF',
+    borderColor: '#C4C6CA',
   },
   bagChipActive: {
     backgroundColor: CATHAY_JADE,
@@ -274,8 +271,8 @@ const styles = StyleSheet.create({
   },
   bagChipText: {
     fontSize: 12.5,
-    fontWeight: '600',
-    color: '#3B4148',
+    fontWeight: '500',
+    color: '#2C3034',
   },
   bagChipTextActive: {
     color: '#FFFFFF',
@@ -283,31 +280,33 @@ const styles = StyleSheet.create({
   needHelpCard: {
     backgroundColor: CATHAY_WARM_CREAM,
     borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
     borderWidth: 1,
-    borderColor: '#F2EBD9',
+    borderColor: CATHAY_WARM_BORDER,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     gap: 14,
   },
   needHelpHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
   },
   needHelpTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E2328',
   },
   needHelpSub: {
     fontSize: 13.5,
     lineHeight: 19,
-    color: CATHAY_TEXT_SECONDARY,
+    color: '#2C3034',
     marginTop: 3,
   },
   recoveryStatusCard: {
-    padding: 16,
-    borderColor: '#D7E6E3',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: CATHAY_JADE,
   },
   recoveryHeaderRow: {
     flexDirection: 'row',
@@ -317,20 +316,20 @@ const styles = StyleSheet.create({
   },
   recoveryCaseEyebrow: {
     fontSize: 10.5,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontWeight: '500',
+    color: CATHAY_TEXT_SECONDARY,
     letterSpacing: 0.4,
   },
   recoveryCaseNum: {
     fontSize: 16,
-    fontWeight: '700',
-    color: CATHAY_JADE,
+    fontWeight: '600',
+    color: CATHAY_TEXT_PRIMARY,
     marginTop: 2,
   },
   recoveryDetailText: {
     fontSize: 13.5,
-    fontWeight: '600',
-    color: CATHAY_TEXT_PRIMARY,
+    fontWeight: '500',
+    color: CATHAY_JADE,
   },
   recoverySubNote: {
     fontSize: 12.5,
@@ -342,60 +341,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ECEEEF',
   },
   recoveryStepChip: {
     paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
   },
   recoveryStepChipActive: {
     backgroundColor: CATHAY_JADE,
+    borderColor: CATHAY_JADE,
   },
   recoveryStepChipText: {
     fontSize: 11.5,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '500',
+    color: '#2C3034',
   },
   recoveryStepChipTextActive: {
     color: '#FFFFFF',
-  },
-  demoFooterWrap: {
-    alignItems: 'center',
-    paddingTop: 2,
-  },
-  demoToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-  },
-  demoToggleText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  demoChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  demoChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  demoChipText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#374151',
   },
 });

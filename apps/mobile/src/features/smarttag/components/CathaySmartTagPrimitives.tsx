@@ -1,19 +1,9 @@
 /**
  * PolyAero Cathay SmartTag — Reusable UI Foundation Components (Phase 2)
  *
- * Implements the restrained Cathay design language from the five approved mockups:
- *   - `CathayScreenHeader`
- *   - `CathayPrimaryButton`
- *   - `CathaySecondaryButton`
- *   - `CathayCard`
- *   - `FlightSummaryCard`
- *   - `BaggageDetailsCard`
- *   - `StatusBadge`
- *   - `SmartTagIdentityCard`
- *   - `BaggageJourneyTimeline`
- *   - `SmartTagProgressIndicator`
- *   - `InlineNotice`
- *   - `SuitcaseWithTagGlyph` & `NfcPhoneToTagIllustration`
+ * Uses authentic Cathay Pacific design tokens and extracted high-resolution
+ * artwork assets (`icon-suitcase-tag.png`, `illustration-nfc-sync.png`,
+ * `icon-plane-takeoff.png`, `icon-req-*.png`, `icon-step-*.png`).
  */
 
 import React from 'react';
@@ -21,6 +11,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   TouchableOpacity,
   ActivityIndicator,
   Platform,
@@ -36,19 +27,32 @@ import {
   encodeInterleaved2Of5,
 } from '@polyaero/shared';
 
+const BRUSHWING_WHITE = require('../../../../assets/cathay/cathay-brushwing-white.png');
+export const ICON_SUITCASE_TAG = require('../../../../assets/cathay/smarttag/icon-suitcase-tag.png');
+export const ICON_PLANE_TAKEOFF = require('../../../../assets/cathay/smarttag/icon-plane-takeoff.png');
+export const ILLUSTRATION_NFC_SYNC = require('../../../../assets/cathay/smarttag/illustration-nfc-sync.png');
+export const ICON_REQ_WARNING = require('../../../../assets/cathay/smarttag/icon-req-warning.png');
+export const ICON_REQ_KIOSK = require('../../../../assets/cathay/smarttag/icon-req-kiosk.png');
+export const ICON_REQ_TAG = require('../../../../assets/cathay/smarttag/icon-req-tag.png');
+export const ICON_STEP_TAG = require('../../../../assets/cathay/smarttag/icon-step-tag.png');
+export const ICON_STEP_QR = require('../../../../assets/cathay/smarttag/icon-step-qr.png');
+export const ICON_STEP_BELT = require('../../../../assets/cathay/smarttag/icon-step-belt.png');
+
 // ---------------------------------------------------------------------------
-// Palette Constants (Matched to Design 01–05 Mockups)
+// Authentic Cathay Pacific Design System Tokens
 // ---------------------------------------------------------------------------
 
-export const CATHAY_JADE = '#1C6258';
+export const CATHAY_JADE = '#195A58';
+export const CATHAY_JADE_LIGHT = '#1C6258';
 export const CATHAY_JADE_DARK = '#164E46';
-export const CATHAY_MINT_SURFACE = '#E6F1EE';
+export const CATHAY_MINT_SURFACE = '#EAF3F2';
 export const CATHAY_MINT_BADGE = '#DCECE8';
-export const CATHAY_WARM_CREAM = '#FBF7EF';
-export const CATHAY_BG = '#F7F8F7';
-export const CATHAY_TEXT_PRIMARY = '#181C1F';
-export const CATHAY_TEXT_SECONDARY = '#5A6168';
-export const CATHAY_TEXT_MUTED = '#767E85';
+export const CATHAY_WARM_CREAM = '#FAF5EA';
+export const CATHAY_WARM_BORDER = '#EDE4D3';
+export const CATHAY_BG = '#F6F7F7';
+export const CATHAY_TEXT_PRIMARY = '#1C2024';
+export const CATHAY_TEXT_SECONDARY = '#52565A';
+export const CATHAY_TEXT_MUTED = '#76777A';
 export const CATHAY_BORDER = '#ECEEEF';
 
 export const cardShadowStyle: ViewStyle = {
@@ -190,7 +194,7 @@ export const CathaySecondaryButton: React.FC<CathaySecondaryButtonProps> = ({
         testID={testID}
       >
         <Text style={styles.rowChevronText}>{label}</Text>
-        <Ionicons name="chevron-forward" size={18} color="#374151" />
+        <Ionicons name="chevron-forward" size={18} color="#2C3034" />
       </TouchableOpacity>
     );
   }
@@ -238,23 +242,23 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     tone === 'jade'
       ? CATHAY_MINT_BADGE
       : tone === 'amber'
-        ? '#FEF3C7'
+        ? '#F4EFE4'
         : tone === 'red'
-          ? '#FEE2E2'
+          ? '#FDE8E8'
           : '#EFEFEF';
   const fg =
     tone === 'jade'
       ? CATHAY_JADE
       : tone === 'amber'
-        ? '#92400E'
+        ? '#785D2A'
         : tone === 'red'
-          ? '#991B1B'
-          : '#374151';
+          ? '#9B1C1C'
+          : '#3B4148';
 
   return (
     <View style={[styles.badgePill, { backgroundColor: bg }]}>
       {showClockIcon && (
-        <Ionicons name="time-outline" size={14} color={fg} style={styles.badgeIcon} />
+        <Ionicons name="time-outline" size={13.5} color={fg} style={styles.badgeIcon} />
       )}
       <Text style={[styles.badgeText, { color: fg }]}>{label}</Text>
     </View>
@@ -262,17 +266,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Custom Suitcase-with-Luggage-Tag Glyph (Matches Design 01, 02, 04)
+// Authentic Suitcase-with-SmartTag Icon Tile (Cropped High-Res Vector Asset)
 // ---------------------------------------------------------------------------
 
 export const SuitcaseWithTagGlyph: React.FC<{ size?: 'lg' | 'sm' }> = ({
   size = 'lg',
 }) => {
   const boxSize = size === 'lg' ? 68 : 44;
-  const bodyW = size === 'lg' ? 30 : 21;
-  const bodyH = size === 'lg' ? 34 : 24;
-  const handleW = size === 'lg' ? 14 : 10;
-  const handleH = size === 'lg' ? 6 : 4;
+  const imgW = size === 'lg' ? 38 : 26;
+  const imgH = size === 'lg' ? 40 : 27;
 
   return (
     <View
@@ -285,61 +287,11 @@ export const SuitcaseWithTagGlyph: React.FC<{ size?: 'lg' | 'sm' }> = ({
         },
       ]}
     >
-      {/* Top luggage handle */}
-      <View
-        style={{
-          width: handleW,
-          height: handleH,
-          borderTopLeftRadius: 3,
-          borderTopRightRadius: 3,
-          borderWidth: 1.8,
-          borderBottomWidth: 0,
-          borderColor: CATHAY_JADE_DARK,
-          marginBottom: -1,
-        }}
+      <Image
+        source={ICON_SUITCASE_TAG}
+        style={{ width: imgW, height: imgH }}
+        resizeMode="contain"
       />
-      {/* Suitcase body */}
-      <View
-        style={{
-          width: bodyW,
-          height: bodyH,
-          borderRadius: 5,
-          borderWidth: 1.8,
-          borderColor: CATHAY_JADE_DARK,
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          paddingRight: size === 'lg' ? 4 : 2,
-        }}
-      >
-        {/* Hanging SmartTag luggage tag inside suitcase outline */}
-        <View
-          style={{
-            width: size === 'lg' ? 11 : 8,
-            height: size === 'lg' ? 16 : 11,
-            borderRadius: 2,
-            borderWidth: 1.5,
-            borderColor: CATHAY_JADE_DARK,
-            backgroundColor: CATHAY_MINT_SURFACE,
-            transform: [{ rotate: '-14deg' }],
-            alignItems: 'center',
-            paddingTop: 2,
-          }}
-        >
-          <View
-            style={{
-              width: 2.5,
-              height: 2.5,
-              borderRadius: 1.5,
-              backgroundColor: CATHAY_JADE_DARK,
-            }}
-          />
-        </View>
-      </View>
-      {/* Tiny wheels */}
-      <View style={{ flexDirection: 'row', width: bodyW - 8, justifyContent: 'space-between', marginTop: 1 }}>
-        <View style={{ width: 3, height: 2, backgroundColor: CATHAY_JADE_DARK, borderRadius: 1 }} />
-        <View style={{ width: 3, height: 2, backgroundColor: CATHAY_JADE_DARK, borderRadius: 1 }} />
-      </View>
     </View>
   );
 };
@@ -350,7 +302,6 @@ export const SuitcaseWithTagGlyph: React.FC<{ size?: 'lg' | 'sm' }> = ({
 
 export interface FlightSummaryCardProps {
   itinerary: PassengerItinerary;
-  /** Optional header override for Journey screen (shows Bag ID + StatusBadge instead of Date + PNR) */
   bagHeader?: {
     displayBagCode: string;
     statusLabel: string;
@@ -370,7 +321,6 @@ export const FlightSummaryCard: React.FC<FlightSummaryCardProps> = ({
 
   return (
     <CathayCard style={styles.flightCard}>
-      {/* Top metadata row: Either Date + Booking ref (Design 01/02) or Bag ID + Status pill (Design 05) */}
       {bagHeader ? (
         <View style={styles.flightTopMetaRow}>
           <Text style={styles.bagHeaderLabel}>
@@ -411,24 +361,24 @@ export const FlightSummaryCard: React.FC<FlightSummaryCardProps> = ({
       {/* Flight number & passenger count row */}
       <View style={styles.flightMetaSubRow}>
         <View style={styles.flightMetaItem}>
-          <Ionicons
-            name="airplane-outline"
-            size={15}
-            color="#5A6168"
-            style={{ transform: [{ rotate: '-25deg' }] }}
+          <Image
+            source={ICON_PLANE_TAKEOFF}
+            style={styles.takeoffPlaneIcon}
+            resizeMode="contain"
           />
           <Text style={styles.flightMetaText}>{flight.flightNumber}</Text>
         </View>
 
-        <View style={styles.verticalDivider} />
-
         {showPassengerCount && (
-          <View style={styles.flightMetaItem}>
-            <Ionicons name="person-outline" size={15} color="#5A6168" />
-            <Text style={styles.flightMetaText}>
-              {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}
-            </Text>
-          </View>
+          <>
+            <View style={styles.verticalDivider} />
+            <View style={styles.flightMetaItem}>
+              <Ionicons name="person-outline" size={15} color={CATHAY_TEXT_SECONDARY} />
+              <Text style={styles.flightMetaText}>
+                {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}
+              </Text>
+            </View>
+          </>
         )}
       </View>
 
@@ -477,10 +427,10 @@ export const BaggageDetailsCard: React.FC<BaggageDetailsCardProps> = ({
       >
         <Text style={styles.detailLabel}>Number of bags</Text>
         <View style={styles.detailValueRight}>
-          <Text style={styles.detailValueJade}>
+          <Text style={styles.detailValueInteractive}>
             {bagCount} {bagCount === 1 ? 'checked bag' : 'checked bags'}
           </Text>
-          <Ionicons name="chevron-forward" size={16} color="#374151" />
+          <Ionicons name="chevron-forward" size={16} color="#2C3034" />
         </View>
       </TouchableOpacity>
 
@@ -498,7 +448,7 @@ export const BaggageDetailsCard: React.FC<BaggageDetailsCardProps> = ({
         testID="row-smarttag-id"
       >
         <Text style={styles.detailLabel}>SmartTag ID</Text>
-        <Text style={styles.detailValueJade}>
+        <Text style={styles.detailValueInteractive}>
           {bagCount === 1
             ? selectedSmartTagCode
             : ownedTags
@@ -524,74 +474,19 @@ export const BaggageDetailsCard: React.FC<BaggageDetailsCardProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// 8. NfcPhoneToTagIllustration (Design 03 — Sync SmartTag Section A)
+// 8. NfcPhoneToTagIllustration (Design 03 — Authentic High-Res Artwork)
 // ---------------------------------------------------------------------------
 
 export const NfcPhoneToTagIllustration: React.FC<{
   activeState: NfcSyncMachineState;
-}> = ({ activeState }) => {
-  const isPulsing =
-    activeState === 'SCANNING' ||
-    activeState === 'TAG_DETECTED' ||
-    activeState === 'WRITING' ||
-    activeState === 'VERIFYING';
-
+}> = () => {
   return (
     <View style={styles.illustrationBanner}>
-      <View style={styles.illustrationStage}>
-        {/* Tilted Smartphone Outline */}
-        <View style={styles.phoneWrap}>
-          <View style={styles.phoneBody}>
-            <View style={styles.phoneNotch} />
-            <Ionicons
-              name="airplane"
-              size={20}
-              color={CATHAY_JADE}
-              style={{ transform: [{ rotate: '-35deg' }] }}
-            />
-          </View>
-          <View style={styles.illustrationShadowOval} />
-        </View>
-
-        {/* NFC Wave Arcs */}
-        <View style={styles.nfcWavesWrap}>
-          <View
-            style={[
-              styles.nfcArc,
-              styles.nfcArcSmall,
-              isPulsing && styles.nfcArcActive,
-            ]}
-          />
-          <View
-            style={[
-              styles.nfcArc,
-              styles.nfcArcMedium,
-              isPulsing && styles.nfcArcActive,
-            ]}
-          />
-          <View
-            style={[
-              styles.nfcArc,
-              styles.nfcArcLarge,
-              isPulsing && styles.nfcArcActive,
-            ]}
-          />
-        </View>
-
-        {/* Physical SmartTag E-ink Enclosure */}
-        <View style={styles.tagEnclosureWrap}>
-          <View style={styles.tagEnclosureBody}>
-            <View style={styles.tagHoleDot} />
-            <Ionicons
-              name="airplane"
-              size={17}
-              color={CATHAY_JADE}
-              style={{ transform: [{ rotate: '-35deg' }] }}
-            />
-          </View>
-          <View style={styles.illustrationShadowOval} />
-        </View>
-      </View>
+      <Image
+        source={ILLUSTRATION_NFC_SYNC}
+        style={styles.illustrationHeroImg}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -623,9 +518,7 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
     const statusText =
       bag.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED'
         ? 'Verified on SmartTag'
-        : bag.setupState === 'SIMULATED_WRITE_COMPLETED'
-          ? 'Simulated — Ready for bag-drop'
-          : 'Ready for bag-drop';
+        : 'Ready for bag-drop';
 
     return (
       <CathayCard style={styles.sectionCard}>
@@ -633,15 +526,14 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
 
         <View style={styles.previewRow}>
           <View style={styles.previewRowLeft}>
-            <Ionicons
-              name="airplane-outline"
-              size={16}
-              color="#5A6168"
-              style={{ transform: [{ rotate: '-25deg' }] }}
+            <Image
+              source={ICON_PLANE_TAKEOFF}
+              style={styles.takeoffPlaneIcon}
+              resizeMode="contain"
             />
             <Text style={styles.detailLabel}>Route</Text>
           </View>
-          <Text style={styles.detailValueJade}>
+          <Text style={styles.detailValueInteractive}>
             {flight.origin} → {flight.destination}
           </Text>
         </View>
@@ -650,45 +542,52 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
 
         <View style={styles.previewRow}>
           <View style={styles.previewRowLeft}>
-            <Ionicons name="ticket-outline" size={16} color="#5A6168" />
+            <Ionicons name="ticket-outline" size={16} color={CATHAY_TEXT_SECONDARY} />
             <Text style={styles.detailLabel}>Flight</Text>
           </View>
-          <Text style={styles.detailValueJade}>{flight.flightNumber}</Text>
+          <Text style={styles.detailValueInteractive}>{flight.flightNumber}</Text>
         </View>
 
         <View style={styles.hairline} />
 
         <View style={styles.previewRow}>
           <View style={styles.previewRowLeft}>
-            <Ionicons name="briefcase-outline" size={16} color="#5A6168" />
+            <Ionicons name="briefcase-outline" size={16} color={CATHAY_TEXT_SECONDARY} />
             <Text style={styles.detailLabel}>Bag ID</Text>
           </View>
-          <Text style={styles.detailValueJade}>{bag.displayBagCode}</Text>
+          <Text style={styles.detailValueInteractive}>{bag.displayBagCode}</Text>
         </View>
 
         <View style={styles.hairline} />
 
         <View style={[styles.previewRow, { paddingBottom: showMonochromeEinkPreview ? 10 : 2 }]}>
           <View style={styles.previewRowLeft}>
-            <Ionicons name="checkbox-outline" size={16} color="#5A6168" />
+            <Ionicons name="checkbox-outline" size={16} color={CATHAY_TEXT_SECONDARY} />
             <Text style={styles.detailLabel}>Status</Text>
           </View>
-          <Text style={styles.detailValueJade}>{statusText}</Text>
+          <Text style={styles.detailValueInteractive}>{statusText}</Text>
         </View>
 
         {showMonochromeEinkPreview && (
           <View style={styles.einkPreviewBox}>
             <View style={styles.einkMetaTopRow}>
               <Text style={styles.einkMetaLabel}>
-                2.9&quot; E-INK MONOCHROME PREVIEW (296×128)
+                E-INK DISPLAY PREVIEW (296×128)
               </Text>
               <Text style={styles.einkMetaLabel}>{bag.smartTagCode}</Text>
             </View>
             <View style={styles.einkScreenFrame}>
               <View style={styles.einkRouteBar}>
-                <Text style={styles.einkRouteStrong}>
-                  {flight.origin} → {flight.destination}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Image
+                    source={BRUSHWING_WHITE}
+                    style={{ width: 13, height: 13, tintColor: '#111111' }}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.einkRouteStrong}>
+                    {flight.origin} → {flight.destination}
+                  </Text>
+                </View>
                 <Text style={styles.einkFlightStrong}>{flight.flightNumber}</Text>
               </View>
               <View style={styles.barcodeRow}>
@@ -696,7 +595,7 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
                   <View
                     key={idx}
                     style={{
-                      height: 26,
+                      height: 28,
                       flex: m.widthUnits,
                       backgroundColor: m.isBar ? '#111111' : 'transparent',
                     }}
@@ -704,7 +603,7 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
                 ))}
               </View>
               <Text style={styles.einkLicenseDigits}>
-                IATA LP {bag.baggage.tagNumber} • {bag.displayBagCode}
+                {bag.baggage.tagNumber}  •  {bag.displayBagCode}
               </Text>
             </View>
           </View>
@@ -712,12 +611,6 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
       </CathayCard>
     );
   }
-
-  // Variant: 'ready' (Design 04 — Tag details card)
-  const writeStatusLabel =
-    bag.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED'
-      ? 'Awaiting bag-drop'
-      : 'Awaiting bag-drop';
 
   return (
     <CathayCard style={styles.sectionCard}>
@@ -728,14 +621,14 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
 
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Bag ID</Text>
-        <Text style={styles.detailValueJade}>{bag.displayBagCode}</Text>
+        <Text style={styles.detailValueInteractive}>{bag.displayBagCode}</Text>
       </View>
 
       <View style={styles.hairline} />
 
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Route</Text>
-        <Text style={styles.detailValueJade}>
+        <Text style={styles.detailValueInteractive}>
           {flight.origin} → {flight.destination}
         </Text>
       </View>
@@ -744,23 +637,14 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
 
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Flight</Text>
-        <Text style={styles.detailValueJade}>{flight.flightNumber}</Text>
-      </View>
-
-      <View style={styles.hairline} />
-
-      <View style={styles.detailRow}>
-        <Text style={styles.detailLabel}>SmartTag ID</Text>
-        <Text style={styles.detailValueJade}>
-          {bag.smartTagCode} ({bag.baggage.tagNumber})
-        </Text>
+        <Text style={styles.detailValueInteractive}>{flight.flightNumber}</Text>
       </View>
 
       <View style={styles.hairline} />
 
       <View style={[styles.detailRow, { paddingBottom: 2 }]}>
         <Text style={styles.detailLabel}>Status</Text>
-        <Text style={styles.detailValueJade}>{writeStatusLabel}</Text>
+        <Text style={styles.detailValueInteractive}>Awaiting bag-drop</Text>
       </View>
     </CathayCard>
   );
@@ -791,7 +675,7 @@ export const SmartTagProgressIndicator: React.FC<{
       ? CATHAY_MINT_SURFACE
       : state === 'FAILED' || state === 'UNSUPPORTED'
         ? '#FEF2F2'
-        : '#F3F6F5';
+        : CATHAY_MINT_SURFACE;
 
   const toneColor =
     state === 'SUCCESS'
@@ -850,7 +734,6 @@ export const BaggageJourneyTimeline: React.FC<{
 
         return (
           <View key={item.key} style={styles.timelineRow}>
-            {/* Left indicator column */}
             <View style={styles.timelineNodeCol}>
               {isDone ? (
                 <View style={styles.nodeCircleDone}>
@@ -878,8 +761,12 @@ export const BaggageJourneyTimeline: React.FC<{
               )}
             </View>
 
-            {/* Right content column */}
-            <View style={[styles.timelineContentCol, isLast && { borderBottomWidth: 0 }]}>
+            <View
+              style={[
+                styles.timelineContentCol,
+                isLast && { borderBottomWidth: 0, paddingBottom: 4, marginBottom: 0 },
+              ]}
+            >
               <Text style={styles.timelineTitle}>{item.title}</Text>
               <Text
                 style={[
@@ -921,24 +808,20 @@ export const InlineNotice: React.FC<{
   const bg =
     tone === 'danger'
       ? '#FEF2F2'
-      : tone === 'warning'
-        ? '#FFFBEB'
-        : tone === 'demo'
-          ? CATHAY_WARM_CREAM
-          : CATHAY_MINT_SURFACE;
+      : tone === 'warning' || tone === 'demo'
+        ? CATHAY_WARM_CREAM
+        : CATHAY_MINT_SURFACE;
   const border =
     tone === 'danger'
       ? '#FECACA'
-      : tone === 'warning'
-        ? '#FDE68A'
-        : tone === 'demo'
-          ? '#EFE6D5'
-          : '#CFE3DE';
+      : tone === 'warning' || tone === 'demo'
+        ? CATHAY_WARM_BORDER
+        : '#D0E6E4';
   const iconColor =
     tone === 'danger'
       ? '#B91C1C'
-      : tone === 'warning'
-        ? '#B45309'
+      : tone === 'warning' || tone === 'demo'
+        ? '#785D2A'
         : CATHAY_JADE;
 
   return (
@@ -985,11 +868,11 @@ export const InlineNotice: React.FC<{
 
 const styles = StyleSheet.create({
   headerWrap: {
-    height: 50,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
   },
   headerBackBtn: {
@@ -997,7 +880,7 @@ const styles = StyleSheet.create({
     height: 38,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingLeft: 4,
+    paddingLeft: 2,
   },
   headerSideSpacer: {
     width: 38,
@@ -1010,19 +893,19 @@ const styles = StyleSheet.create({
   },
 
   primaryBtn: {
-    backgroundColor: CATHAY_JADE,
-    borderRadius: 10,
+    backgroundColor: CATHAY_JADE_LIGHT,
+    borderRadius: 8,
     paddingVertical: 15,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryBtnDisabled: {
-    opacity: 0.48,
+    opacity: 0.45,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '600',
     letterSpacing: -0.1,
   },
@@ -1031,7 +914,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#A7B8B5',
-    borderRadius: 8,
+    borderRadius: 6,
     paddingVertical: 13,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -1039,18 +922,18 @@ const styles = StyleSheet.create({
   },
   outlineBtnText: {
     color: CATHAY_JADE,
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: '600',
   },
 
   linkBtn: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   linkBtnText: {
     color: CATHAY_JADE,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '500',
   },
 
@@ -1099,7 +982,7 @@ const styles = StyleSheet.create({
 
   flightCard: {
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   flightTopMetaRow: {
     flexDirection: 'row',
@@ -1123,14 +1006,14 @@ const styles = StyleSheet.create({
   bookingRefValue: {
     fontSize: 13.5,
     fontWeight: '700',
-    color: CATHAY_JADE,
+    color: CATHAY_JADE_LIGHT,
   },
   bagHeaderLabel: {
     fontSize: 14,
     color: '#2B3035',
   },
   bagHeaderCode: {
-    fontWeight: '600',
+    fontWeight: '500',
     color: CATHAY_TEXT_PRIMARY,
   },
 
@@ -1151,7 +1034,7 @@ const styles = StyleSheet.create({
   airportIataText: {
     fontSize: 28,
     fontWeight: '700',
-    color: CATHAY_JADE,
+    color: CATHAY_JADE_LIGHT,
     letterSpacing: -0.4,
   },
   airportCityText: {
@@ -1185,6 +1068,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
+  takeoffPlaneIcon: {
+    width: 17,
+    height: 13,
+  },
   flightMetaText: {
     fontSize: 13.5,
     color: '#3B4148',
@@ -1198,7 +1085,7 @@ const styles = StyleSheet.create({
 
   sectionCard: {
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   cardIconHeadingRow: {
     flexDirection: 'row',
@@ -1210,24 +1097,26 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
+    letterSpacing: -0.2,
   },
   previewCardHeading: {
     fontSize: 16.5,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 9,
+    paddingVertical: 10,
   },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 9,
+    paddingVertical: 9.5,
   },
   previewRowLeft: {
     flexDirection: 'row',
@@ -1237,16 +1126,22 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 14.5,
     color: '#4B5259',
+    fontWeight: '400',
   },
   detailValueRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  detailValueJade: {
+  detailValuePrimary: {
     fontSize: 14.5,
     fontWeight: '600',
-    color: CATHAY_JADE,
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  detailValueInteractive: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: CATHAY_JADE_LIGHT,
   },
   hairline: {
     height: 1,
@@ -1256,103 +1151,20 @@ const styles = StyleSheet.create({
   illustrationBanner: {
     backgroundColor: CATHAY_MINT_SURFACE,
     borderRadius: 14,
-    height: 166,
+    height: 168,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    overflow: 'hidden',
   },
-  illustrationStage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  phoneWrap: {
-    alignItems: 'center',
-  },
-  phoneBody: {
-    width: 66,
-    height: 118,
-    borderRadius: 13,
-    borderWidth: 2.5,
-    borderColor: CATHAY_JADE_DARK,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '12deg' }],
-  },
-  phoneNotch: {
-    position: 'absolute',
-    top: 7,
-    width: 20,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: CATHAY_JADE_DARK,
-  },
-  nfcWavesWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginHorizontal: 2,
-  },
-  nfcArc: {
-    borderRightWidth: 2.5,
-    borderTopWidth: 2.5,
-    borderBottomWidth: 2.5,
-    borderLeftWidth: 0,
-    borderColor: '#8FB9B2',
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  nfcArcSmall: {
-    width: 6,
-    height: 16,
-  },
-  nfcArcMedium: {
-    width: 8,
-    height: 26,
-  },
-  nfcArcLarge: {
-    width: 10,
-    height: 36,
-  },
-  nfcArcActive: {
-    borderColor: CATHAY_JADE,
-  },
-  tagEnclosureWrap: {
-    alignItems: 'center',
-  },
-  tagEnclosureBody: {
-    width: 86,
-    height: 58,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: CATHAY_JADE_DARK,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  tagHoleDot: {
-    position: 'absolute',
-    top: 7,
-    right: 8,
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#8FB9B2',
-  },
-  illustrationShadowOval: {
-    width: 56,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(22, 78, 70, 0.10)',
-    marginTop: 10,
+  illustrationHeroImg: {
+    width: 268,
+    height: 150,
   },
 
   einkPreviewBox: {
-    marginTop: 6,
-    paddingTop: 10,
+    marginTop: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: CATHAY_BORDER,
   },
@@ -1363,26 +1175,26 @@ const styles = StyleSheet.create({
   },
   einkMetaLabel: {
     fontSize: 10.5,
-    fontWeight: '600',
+    fontWeight: '500',
     color: CATHAY_TEXT_MUTED,
     letterSpacing: 0.3,
   },
   einkScreenFrame: {
-    backgroundColor: '#F3F2EE',
+    backgroundColor: '#F4F3EE',
     borderWidth: 1.5,
-    borderColor: '#2B3035',
+    borderColor: '#2C3034',
     borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   einkRouteBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#2B3035',
-    paddingBottom: 4,
-    marginBottom: 6,
+    borderBottomColor: '#2C3034',
+    paddingBottom: 6,
+    marginBottom: 8,
   },
   einkRouteStrong: {
     fontSize: 13,
@@ -1397,15 +1209,16 @@ const styles = StyleSheet.create({
   barcodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 26,
+    height: 28,
     marginVertical: 2,
   },
   einkLicenseDigits: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     color: '#111111',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 5,
+    letterSpacing: 0.4,
   },
 
   progressStrip: {
@@ -1414,8 +1227,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 10,
-    marginTop: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D0E6E4',
   },
   progressLeft: {
     flexDirection: 'row',
@@ -1425,13 +1239,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 13.5,
-    fontWeight: '600',
-  },
-  progressSimBadge: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#92400E',
-    marginTop: 2,
+    fontWeight: '500',
   },
   cancelScanLink: {
     paddingHorizontal: 8,
@@ -1459,7 +1267,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: CATHAY_JADE,
+    backgroundColor: CATHAY_JADE_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1478,7 +1286,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: CATHAY_JADE,
+    borderColor: CATHAY_JADE_LIGHT,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1488,7 +1296,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: CATHAY_JADE,
+    backgroundColor: CATHAY_JADE_LIGHT,
   },
   nodeCirclePending: {
     width: 22,
@@ -1506,7 +1314,7 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   timelineConnectorActive: {
-    backgroundColor: CATHAY_JADE,
+    backgroundColor: CATHAY_JADE_LIGHT,
   },
   timelineContentCol: {
     flex: 1,
@@ -1528,34 +1336,33 @@ const styles = StyleSheet.create({
   },
 
   noticeBox: {
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginTop: 10,
   },
   noticeTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 9,
+    gap: 10,
   },
   noticeTitle: {
     fontSize: 13.5,
-    fontWeight: '700',
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 2,
   },
   noticeText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#374151',
+    color: '#2C3034',
   },
   noticeActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     marginTop: 10,
-    marginLeft: 27,
+    marginLeft: 28,
   },
   noticeActionBtn: {
     backgroundColor: CATHAY_JADE,
