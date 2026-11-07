@@ -301,7 +301,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout: crisp image -> headline -> offer details) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout: image -> headline -> date (#718096) -> price/offer (#006564)) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
@@ -309,77 +309,108 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
-                <Text style={styles.promoDateText}>Up to 11% off • 11 Nov 2026</Text>
+                <Text style={styles.promoHeadlineText} numberOfLines={2}>Double 11 flight offer</Text>
+                <View style={styles.promoDateRow}>
+                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
+                  <Text style={styles.promoDateText}>11 Nov 2026</Text>
+                </View>
+                <Text style={styles.promoOfferText}>Up to 11% off</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
-                <Text style={styles.promoDateText}>From HKD4,089 • 30 Nov 2026</Text>
+                <Text style={styles.promoHeadlineText} numberOfLines={2}>Explore Almaty's wonders with direct flights</Text>
+                <View style={styles.promoDateRow}>
+                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
+                  <Text style={styles.promoDateText}>30 Nov 2026</Text>
+                </View>
+                <Text style={styles.promoOfferText}>From HKD 4,089</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText}>Student Fare</Text>
-                <Text style={styles.promoDateText}>Up to 10% discount*, extra baggage+</Text>
+                <Text style={styles.promoHeadlineText} numberOfLines={2}>Student Fare</Text>
+                <View style={styles.promoDateRow}>
+                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
+                  <Text style={styles.promoDateText}>31 Dec 2026</Text>
+                </View>
+                <Text style={styles.promoOfferText}>Up to 10% discount*</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
-                <Text style={styles.promoDateText}>Fly together with special family perks</Text>
+                <Text style={styles.promoHeadlineText} numberOfLines={2}>Family Premium pass</Text>
+                <View style={styles.promoDateRow}>
+                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
+                  <Text style={styles.promoDateText}>15 Dec 2026</Text>
+                </View>
+                <Text style={styles.promoOfferText}>Special family perks</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-offers.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoHeadlineText}>Special offers</Text>
-                <Text style={styles.promoDateText}>Help you plan your next journey</Text>
+                <Text style={styles.promoHeadlineText} numberOfLines={2}>Special offers</Text>
+                <View style={styles.promoDateRow}>
+                  <Ionicons name="calendar-outline" size={12} color="#718096" style={styles.promoDateIcon} />
+                  <Text style={styles.promoDateText}>Limited time</Text>
+                </View>
+                <Text style={styles.promoOfferText}>Plan your next journey</Text>
               </View>
             </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Authentic 4-item circular row matching video frame #183) */}
+        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Authentic carousel with charcoal icons matching video frames #62 & #183) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
-          <View style={styles.moreWaysRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.moreWaysScrollContainer}
+          >
             <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
               <View style={styles.moreWaysCircle}>
-                <Ionicons name="bed-outline" size={24} color="#006564" />
+                <Ionicons name="bed-outline" size={26} color="#1C2024" />
               </View>
               <Text style={styles.moreWaysLabel}>Book a hotel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
               <View style={styles.moreWaysCircle}>
-                <Ionicons name="cube-outline" size={24} color="#006564" />
+                <Ionicons name="briefcase-outline" size={25} color="#1C2024" />
               </View>
               <Text style={styles.moreWaysLabel}>Book a package</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
               <View style={styles.moreWaysCircle}>
-                <Ionicons name="shield-checkmark-outline" size={24} color="#006564" />
+                <Ionicons name="umbrella-outline" size={26} color="#1C2024" />
               </View>
               <Text style={styles.moreWaysLabel}>Travel Insurance</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
               <View style={styles.moreWaysCircle}>
-                <Ionicons name="car-outline" size={24} color="#006564" />
+                <Ionicons name="car-outline" size={26} color="#1C2024" />
               </View>
               <Text style={styles.moreWaysLabel}>Rent a car</Text>
             </TouchableOpacity>
-          </View>
+
+            <TouchableOpacity style={styles.moreWaysItem} activeOpacity={0.7} onPress={onSearchPress}>
+              <View style={styles.moreWaysCircle}>
+                <Ionicons name="cart-outline" size={25} color="#1C2024" />
+              </View>
+              <Text style={styles.moreWaysLabel}>Cathay Shop</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         {/* 9. TRAVEL INSPIRATION (Authentic editorial carousel matching video frames #184-#188) */}
@@ -982,30 +1013,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1C2024',
     lineHeight: 18,
+    minHeight: 36,
+  },
+  promoDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  promoDateIcon: {
+    marginRight: 4,
   },
   promoDateText: {
     fontSize: 11.5,
-    color: '#006564',
-    marginTop: 6,
-    fontWeight: '600',
+    color: '#718096',
+    fontWeight: '400',
   },
-  moreWaysRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  promoOfferText: {
+    fontSize: 13.5,
+    color: '#006564',
+    marginTop: 4,
+    fontWeight: '700',
+  },
+  moreWaysScrollContainer: {
     paddingHorizontal: 16,
+    gap: 16,
     marginTop: 16,
   },
   moreWaysItem: {
     alignItems: 'center',
-    width: 78,
+    width: 80,
   },
   moreWaysCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EAE6E1',
+    borderColor: '#E8E5DF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
@@ -1015,12 +1059,12 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   moreWaysLabel: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '500',
     color: '#1C2024',
     textAlign: 'center',
     marginTop: 8,
-    lineHeight: 15,
+    lineHeight: 16,
   },
   articleCard: {
     width: 170,
