@@ -187,27 +187,29 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </View>
         )}
 
-        {/* 5. CONTEXTUAL PLANE WING BANNER (Matching video frame #182) */}
-        <View style={styles.wingBannerWrapper}>
-          <ImageBackground
-            source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
-            style={styles.wingBannerImage}
-            imageStyle={{ borderRadius: 12 }}
-            resizeMode="cover"
-          >
-            <View style={styles.wingBannerContent}>
-              <View style={styles.topPickPill}>
-                <Text style={styles.topPickPillText}>Top Pick</Text>
-              </View>
-              <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
-              <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
+        {/* 5. CONTEXTUAL PLANE WING BANNER (Only when recent search is NKG / Nanjing) */}
+        {recentSearch && recentSearch.destination === 'NKG' && (
+          <View style={styles.wingBannerWrapper}>
+            <ImageBackground
+              source={require('../../../assets/cathay/banner-wing-nanjing.jpg')}
+              style={styles.wingBannerImage}
+              imageStyle={{ borderRadius: 12 }}
+              resizeMode="cover"
+            >
+              <View style={styles.wingBannerContent}>
+                <View style={styles.topPickPill}>
+                  <Text style={styles.topPickPillText}>Top Pick</Text>
+                </View>
+                <Text style={styles.wingBannerHeading}>Nanjing on your mind?</Text>
+                <Text style={styles.wingBannerSub}>Pick it up at HKD5,674</Text>
 
-              <TouchableOpacity style={styles.wingBookBtn} onPress={onSearchPress} activeOpacity={0.85}>
-                <Text style={styles.wingBookBtnText}>Book now</Text>
-              </TouchableOpacity>
-            </View>
-          </ImageBackground>
-        </View>
+                <TouchableOpacity style={styles.wingBookBtn} onPress={onSearchPress} activeOpacity={0.85}>
+                  <Text style={styles.wingBookBtnText}>Book now</Text>
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          </View>
+        )}
 
         {/* 6. OUR LATEST OFFERS SECTION */}
         <View style={styles.offersSection}>
@@ -293,7 +295,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Matching frames #61, #183 in video) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (100% authentic photographic cards from frames #183, #184) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
@@ -301,37 +303,50 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
               <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Payment</Text>
+                <View style={styles.promoBadgePill}>
+                  <Text style={styles.promoBadgeText}>Cardholder exclusive</Text>
+                </View>
                 <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
                 <Text style={styles.promoDateText}>Up to 11% off • 11 Nov 2026</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={[styles.promoCardImage, { backgroundColor: '#1E3A8A', alignItems: 'center', justifyContent: 'center' }]}>
-                <Ionicons name="airplane" size={36} color="#FFFFFF" />
-              </View>
+              <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
-                <Text style={styles.promoHeadlineText}>Explore Almaty direct</Text>
+                <View style={styles.promoBadgePill}>
+                  <Text style={styles.promoBadgeText}>Flights</Text>
+                </View>
+                <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
                 <Text style={styles.promoDateText}>From HKD4,089 • 30 Nov 2026</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={[styles.promoCardImage, { backgroundColor: '#006564', alignItems: 'center', justifyContent: 'center' }]}>
-                <Ionicons name="school-outline" size={36} color="#FFFFFF" />
-              </View>
+              <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
-                <Text style={styles.promoCategoryText}>Flights</Text>
+                <View style={styles.promoBadgePill}>
+                  <Text style={styles.promoBadgeText}>Flights</Text>
+                </View>
                 <Text style={styles.promoHeadlineText}>Student Fare</Text>
-                <Text style={styles.promoDateText}>Up to 10% discount + extra bag</Text>
+                <Text style={styles.promoDateText}>Up to 10% discount*, extra baggage+</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoCardDetails}>
+                <View style={styles.promoBadgePill}>
+                  <Text style={styles.promoBadgeText}>Flights</Text>
+                </View>
+                <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
+                <Text style={styles.promoDateText}>Fly together with special family perks</Text>
               </View>
             </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Matching frame #62 in video) */}
+        {/* 8. MORE WAYS TO EARN AND REDEEM MILES (Matching frame #183 in video) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>More ways to earn and redeem miles</Text>
 
@@ -340,14 +355,14 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
               <View style={styles.gridActionIconWrap}>
                 <Ionicons name="bed-outline" size={24} color="#006564" />
               </View>
-              <Text style={styles.gridActionText}>Book hotel</Text>
+              <Text style={styles.gridActionText}>Book a hotel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
               <View style={styles.gridActionIconWrap}>
                 <Ionicons name="cube-outline" size={24} color="#006564" />
               </View>
-              <Text style={styles.gridActionText}>Book package</Text>
+              <Text style={styles.gridActionText}>Book a package</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.gridActionItem} activeOpacity={0.7}>
@@ -411,8 +426,8 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           <Text style={styles.disclaimerText}>
             All fares displayed include taxes and carrier-imposed surcharges. All fares, government taxes and fees, and surcharges are subject to change at any time.
           </Text>
-          <Text style={styles.disclaimerText}>
-            PolyAero Hackathon Concept Prototype • Cathay SmartTag Baggage Platform
+          <Text style={styles.disclaimerSubtext}>
+            Cathay Pacific Airways Limited 國泰航空有限公司
           </Text>
         </View>
       </ScrollView>
@@ -423,13 +438,14 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9F8F6',
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
   },
   mainScroll: {
     flex: 1,
+    backgroundColor: '#F9F8F6',
     width: '100%',
     maxWidth: '100%',
     overflow: 'hidden',
@@ -885,6 +901,20 @@ const styles = StyleSheet.create({
   promoCardDetails: {
     padding: 12,
   },
+  promoBadgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  promoBadgeText: {
+    fontSize: 10,
+    color: '#475569',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
   promoCategoryText: {
     fontSize: 11,
     color: '#718096',
@@ -916,10 +946,16 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAE6E1',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   gridActionText: {
     fontSize: 11.5,
@@ -980,5 +1016,11 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: '#94A3B8',
     marginBottom: 6,
+  },
+  disclaimerSubtext: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
