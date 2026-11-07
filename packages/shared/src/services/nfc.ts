@@ -57,6 +57,19 @@ export class NfcOperationInProgressError extends NfcError {
   }
 }
 
+export class NfcWrongTagError extends NfcError {
+  constructor(
+    public readonly expectedUid: string,
+    public readonly detectedUid: string
+  ) {
+    super(
+      `Detected tag UID ${detectedUid} does not match expected SmartTag ${expectedUid}.`,
+      'NFC_WRONG_TAG'
+    );
+    this.name = 'NfcWrongTagError';
+  }
+}
+
 export interface SmartTagPayload {
   tagUid: string;
   baggageTagNumber: string; // 10-digit IATA license plate
@@ -75,6 +88,8 @@ export interface SmartTagWriteResult {
   bytesWritten: number;
   timestamp: string;
   isMockSimulation: boolean;
+  /** True only when a native driver verified the E-ink display buffer readback after RF write. */
+  verifiedReadback?: boolean;
 }
 
 export interface SmartTagScanResult {
@@ -227,6 +242,7 @@ export class MockNfcService implements INfcService {
           bytesWritten: 4736, // 296x128 1-bit E-ink display buffer size
           timestamp: writeTimestamp,
           isMockSimulation: true,
+          verifiedReadback: false,
         });
       }, 300);
     });
