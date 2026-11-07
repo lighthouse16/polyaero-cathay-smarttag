@@ -301,18 +301,13 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
           </ScrollView>
         </View>
 
-        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Crisp high-res photography + authentic floating badges) */}
+        {/* 7. DISCOVER FANTASTIC PROMOTIONS (Authentic layout - clean image + category, title, date) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Discover fantastic promotions</Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselContainer}>
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={styles.promoImageWrapper}>
-                <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-                <View style={[styles.floatingBadgePill, { backgroundColor: '#854D0E' }]}>
-                  <Text style={styles.floatingBadgeText}>Cardholder exclusive</Text>
-                </View>
-              </View>
+              <Image source={require('../../../assets/cathay/promo-double11.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Payment</Text>
                 <Text style={styles.promoHeadlineText}>Double 11 flight offer</Text>
@@ -321,12 +316,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={styles.promoImageWrapper}>
-                <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-                <View style={[styles.floatingBadgePill, { backgroundColor: '#C2410C' }]}>
-                  <Text style={styles.floatingBadgeText}>Limited-time fare</Text>
-                </View>
-              </View>
+              <Image source={require('../../../assets/cathay/promo-almaty.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Explore Almaty's wonders with direct flights</Text>
@@ -335,12 +325,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={styles.promoImageWrapper}>
-                <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-                <View style={[styles.floatingBadgePill, { backgroundColor: '#006564' }]}>
-                  <Text style={styles.floatingBadgeText}>Student exclusive</Text>
-                </View>
-              </View>
+              <Image source={require('../../../assets/cathay/promo-student.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Student Fare</Text>
@@ -349,22 +334,26 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
-              <View style={styles.promoImageWrapper}>
-                <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
-                <View style={[styles.floatingBadgePill, { backgroundColor: '#0369A1' }]}>
-                  <Text style={styles.floatingBadgeText}>Family travel</Text>
-                </View>
-              </View>
+              <Image source={require('../../../assets/cathay/promo-family.jpg')} style={styles.promoCardImage} resizeMode="cover" />
               <View style={styles.promoCardDetails}>
                 <Text style={styles.promoCategoryText}>Flights</Text>
                 <Text style={styles.promoHeadlineText}>Family Premium pass</Text>
                 <Text style={styles.promoDateText}>Fly together with special family perks</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.promoCardItem} activeOpacity={0.9} onPress={onSearchPress}>
+              <Image source={require('../../../assets/cathay/promo-offers.jpg')} style={styles.promoCardImage} resizeMode="cover" />
+              <View style={styles.promoCardDetails}>
+                <Text style={styles.promoCategoryText}>Flights</Text>
+                <Text style={styles.promoHeadlineText}>Special offers</Text>
+                <Text style={styles.promoDateText}>Help you plan your next journey</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 9. TRAVEL INSPIRATION (Matching frame #62, #189 in video) */}
+        {/* 8. TRAVEL INSPIRATION (4 authentic listings with crisp editorial photography) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Travel inspiration</Text>
 
@@ -384,10 +373,26 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
                 <Text style={styles.articleTitle} numberOfLines={2}>The best of Queensland's dinosaurs</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-asia-christmas.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>Asia • Culture</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>Unique Christmas celebrations across Asia</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.articleCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/insp-asia-concerts.jpg')} style={styles.articleCardImage} resizeMode="cover" />
+              <View style={styles.articleCardDetails}>
+                <Text style={styles.articleLocation}>Asia • Events</Text>
+                <Text style={styles.articleTitle} numberOfLines={2}>The best concerts to catch in Asia in 2026</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 10. STAY UP-TO-DATE (Matching frame #62, #190 in video) */}
+        {/* 9. STAY UP-TO-DATE (4 authentic listings with crisp news cards) */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Stay up-to-date</Text>
 
@@ -401,13 +406,26 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
               <Image source={require('../../../assets/cathay/news-80th-collection.jpg')} style={styles.newsImage} resizeMode="cover" />
               <Text style={styles.newsTitle} numberOfLines={2}>The 80th anniversary premium collection unveiled</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-lounge.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>Experience the newly refreshed The Pier lounge</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.newsCard} activeOpacity={0.9}>
+              <Image source={require('../../../assets/cathay/news-fleet.jpg')} style={styles.newsImage} resizeMode="cover" />
+              <Text style={styles.newsTitle} numberOfLines={2}>Welcoming our next-generation A321neo fleet</Text>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* 11. DISCLAIMER FOOTER (Matching frame #190 in video) */}
+        {/* 10. DISCLAIMER FOOTER (Matching authentic copy from frames #189, #195) */}
         <View style={styles.disclaimerContainer}>
           <Text style={styles.disclaimerText}>
             All fares displayed include taxes and carrier-imposed surcharges. All fares, government taxes and fees, and surcharges are subject to change at any time.
+          </Text>
+          <Text style={styles.disclaimerText}>
+            For ticket cancellations, where applicable, the Hong Kong Passenger Security Charge, the Hong Kong Air Passenger Departure Tax, and the Hong Kong International Airport Construction Fee will be refunded without any administrative fees.
           </Text>
           <Text style={styles.disclaimerSubtext}>
             Cathay Pacific Airways Limited 國泰航空有限公司
@@ -895,25 +913,6 @@ const styles = StyleSheet.create({
   promoCardImage: {
     width: '100%',
     height: 108,
-  },
-  promoImageWrapper: {
-    position: 'relative',
-    width: '100%',
-    height: 108,
-  },
-  floatingBadgePill: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  floatingBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.2,
   },
   promoCardDetails: {
     padding: 12,
