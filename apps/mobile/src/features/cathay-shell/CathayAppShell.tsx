@@ -9,7 +9,7 @@ import {
   Animated,
   Easing,
   Dimensions,
-  ImageBackground,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CathaySplashScreen } from './CathaySplashScreen';
@@ -34,6 +34,7 @@ import {
 } from './CathayTypes';
 
 const CLOUD_DOCK_BG = require('../../../assets/cathay/cloud_dock_bg.png');
+const DOCK_PAD = 10;
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -177,7 +178,7 @@ export const CathayAppShell: React.FC = () => {
       }),
       Animated.sequence([
         Animated.timing(stretchAnim, {
-          toValue: 1.28,
+          toValue: 1.18,
           duration: 110,
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
@@ -290,7 +291,7 @@ export const CathayAppShell: React.FC = () => {
   }
 
   // 2. MAIN PASSENGER 5-TAB EXPERIENCE
-  const capsuleWidth = Math.max(itemWidth - 12, 48);
+  const capsuleWidth = Math.max(itemWidth - 18, 44);
   const capsuleOffset = (itemWidth - capsuleWidth) / 2;
 
   return (
@@ -345,28 +346,34 @@ export const CathayAppShell: React.FC = () => {
 
       {/* FLOATING CLOUD DOCK NAVIGATION BAR (User reference: media_1794038335689_2e8e3627.jpg) */}
       <View style={styles.floatingDockWrap} pointerEvents="box-none">
-        <ImageBackground
-          source={CLOUD_DOCK_BG}
+        <View
           style={styles.floatingDockCloud}
-          imageStyle={styles.cloudImageStyle}
-          resizeMode="stretch"
           onLayout={(e) => {
             const width = e.nativeEvent.layout.width;
             if (width > 0) {
-              const inner = width - 12;
-              setItemWidth(inner / TAB_ITEMS.length);
+              setItemWidth((width - DOCK_PAD * 2) / TAB_ITEMS.length);
             }
           }}
         >
+          {/* Cloud body + baked shadow (asset padded 12/8/18pt; no RN shadow => no rectangular halo) */}
+          <Image source={CLOUD_DOCK_BG} style={styles.cloudImage} resizeMode="stretch" />
+
           {/* Liquid Droplet Sliding Capsule (Spring + Elastic Stretch/Squash) */}
           <Animated.View
             style={[
               styles.slidingDropletCapsule,
               {
                 width: capsuleWidth,
-                left: 6 + capsuleOffset,
+                left: DOCK_PAD + capsuleOffset,
                 transform: [
-                  { translateX },
+                  {
+                    // clamp spring overshoot so capsule never leaves dock edge
+                    translateX: translateX.interpolate({
+                      inputRange: [0, Math.max(itemWidth * (TAB_ITEMS.length - 1), 1)],
+                      outputRange: [0, Math.max(itemWidth * (TAB_ITEMS.length - 1), 1)],
+                      extrapolate: 'clamp',
+                    }),
+                  },
                   { scaleX: stretchAnim },
                   { scaleY: squashAnim },
                 ],
@@ -404,7 +411,7 @@ export const CathayAppShell: React.FC = () => {
               );
             })}
           </View>
-        </ImageBackground>
+        </View>
       </View>
 
       {/* Global Modals */}
@@ -596,42 +603,41 @@ const styles = StyleSheet.create({
   },
   floatingDockCloud: {
     width: '100%',
-    height: 88,
+    height: 84,
     justifyContent: 'flex-end',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    elevation: 12,
   },
-  cloudImageStyle: {
-    width: '100%',
-    height: '100%',
+  cloudImage: {
+    position: 'absolute',
+    left: -12,
+    right: -12,
+    top: -8,
+    bottom: -18,
+    width: undefined,
+    height: undefined,
   },
   dockItemsRow: {
     flexDirection: 'row',
-    height: 58,
+    height: 62,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    paddingBottom: 4,
+    paddingHorizontal: DOCK_PAD,
+    paddingBottom: 6,
     zIndex: 2,
   },
   slidingDropletCapsule: {
     position: 'absolute',
-    bottom: 8,
-    height: 52,
+    bottom: 10,
+    height: 48,
     backgroundColor: '#DFEDE9',
-    borderRadius: 26,
+    borderRadius: 24,
     zIndex: 1,
   },
   dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
-    borderRadius: 26,
+    height: 48,
     zIndex: 2,
   },
   dockLabel: {
