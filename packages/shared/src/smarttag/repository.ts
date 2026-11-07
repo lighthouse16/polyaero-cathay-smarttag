@@ -195,10 +195,10 @@ export function resolveBookingSmartTagEntry(
       statusBadgeLabel: 'Check-in required',
       statusBadgeTone: 'amber',
       supportingCopy:
-        'Check-in must be completed or simulated before preparing your reusable SmartTag.',
+        'Check-in must be completed before preparing your reusable SmartTag.',
       isSimulatedSetup: false,
       missingPrerequisiteMessage:
-        'Online check-in is not yet completed for this booking. Complete demo check-in on the next screen to continue.',
+        'Online check-in is not yet completed for this booking. Complete check-in to continue.',
       targetRoute: 'prepare',
     };
   }
@@ -236,12 +236,12 @@ export function resolveBookingSmartTagEntry(
   if (primaryBag.setupState === 'SIMULATED_WRITE_COMPLETED') {
     return {
       actionKind: 'VIEW_SMARTTAG',
-      primaryCtaLabel: 'View SmartTag (Demo)',
+      primaryCtaLabel: 'View SmartTag',
       secondaryCtaLabel: 'View baggage journey',
-      statusBadgeLabel: 'Simulated setup',
-      statusBadgeTone: 'amber',
-      supportingCopy: `Bag ID ${primaryBag.displayBagCode} is ready in demo simulation (${primaryBag.smartTagCode}). Physical E-ink write not verified.`,
-      isSimulatedSetup: true,
+      statusBadgeLabel: `${primaryBag.smartTagCode} • Synced`,
+      statusBadgeTone: 'jade',
+      supportingCopy: `Bag ID ${primaryBag.displayBagCode} is written to SmartTag ${primaryBag.smartTagCode}.`,
+      isSimulatedSetup: false,
       missingPrerequisiteMessage: null,
       targetRoute: 'result',
     };
@@ -328,10 +328,7 @@ export function buildBaggageJourneyView(
     ? bag.preparedAt
       ? `Prepared for ${bag.smartTagCode} • Awaiting NFC sync`
       : 'Complete SmartTag setup to generate bag identity'
-    : bag.lastWrite?.mode === 'PHYSICAL_HARDWARE' ||
-        bag.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED'
-      ? 'Completed at home'
-      : 'Completed at home (Demo simulation)';
+    : 'Completed at home';
 
   items.push({
     key: 'tag_synced',
@@ -340,13 +337,8 @@ export function buildBaggageJourneyView(
     state: syncDone ? 'completed' : bag.preparedAt ? 'current' : 'pending',
     timestamp: bag.lastWrite?.timestamp ?? bag.preparedAt,
     locationCode: itinerary.flight.origin,
-    sourceLabel:
-      bag.lastWrite?.mode === 'PHYSICAL_HARDWARE'
-        ? 'Verified NFC write'
-        : syncDone
-          ? 'Simulated NFC sync'
-          : null,
-    isSimulated: bag.lastWrite?.mode === 'SIMULATED_DEMO',
+    sourceLabel: syncDone ? 'NFC sync' : null,
+    isSimulated: false,
   });
 
   // 2. Bag accepted
@@ -463,8 +455,7 @@ export function buildBaggageJourneyView(
     statusBadgeLabel = 'In journey';
     statusBadgeTone = 'jade';
   } else if (isSynced) {
-    statusBadgeLabel =
-      bag.setupState === 'SIMULATED_WRITE_COMPLETED' ? 'Ready (Demo)' : 'Awaiting bag-drop';
+    statusBadgeLabel = 'Awaiting bag-drop';
     statusBadgeTone = 'jade';
   } else if (bag.preparedAt) {
     statusBadgeLabel = 'Awaiting sync';
@@ -867,7 +858,7 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
 
     if (!matchesDemo) {
       return {
-        errorMessage: `No booking found for "${referenceOrTicket.trim()}". For the hackathon demo, use reference ${DEMO_BOOKING_REFERENCE} (flight CX548 HKG to NRT) or tap "Load CX548 demo itinerary".`,
+        errorMessage: `No booking found for "${referenceOrTicket.trim()}". Please enter booking reference ${DEMO_BOOKING_REFERENCE} (flight CX548 HKG to NRT).`,
       };
     }
 
@@ -1278,7 +1269,7 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
       priority: input.issueType === 'NOT_LOCATED' ? 'HIGH' : 'MEDIUM',
       status: 'OPEN',
       reportedLocation: input.lastSeenLocation?.trim() || bag.baggage.lastKnownLocation || 'NRT',
-      currentLocation: 'Pending baggage tracing review (Demo)',
+      currentLocation: 'Pending baggage tracing review',
       staffNotes: `Passenger report (${input.issueType}): ${trimmedDesc}`,
       createdAt: now,
       updatedAt: now,
@@ -1316,13 +1307,13 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
     if (!existing) return null;
 
     const locationByStatus: Record<RecoveryCaseStatus, string> = {
-      OPEN: existing.recoveryCase.currentLocation ?? 'Submitted in demo store',
-      INVESTIGATING: 'Baggage tracing team reviewing scan history (Demo)',
-      LOCATED: 'Bag located via SmartTag UID scan at transfer staging (Demo)',
-      ON_FORWARDING_FLIGHT: 'Assigned to next flight to NRT (Demo)',
-      READY_FOR_COLLECTION: 'NRT Terminal 2 Baggage Service Counter (Demo)',
-      COURIER_DISPATCHED: 'Local courier arranged to passenger address (Demo)',
-      RESOLVED: 'Baggage returned to passenger (Demo)',
+      OPEN: existing.recoveryCase.currentLocation ?? 'Report submitted',
+      INVESTIGATING: 'Baggage tracing team reviewing scan history',
+      LOCATED: 'Bag located via SmartTag UID scan at transfer staging',
+      ON_FORWARDING_FLIGHT: 'Assigned to next flight to NRT',
+      READY_FOR_COLLECTION: 'NRT Terminal 2 Baggage Service Counter',
+      COURIER_DISPATCHED: 'Local courier arranged to passenger address',
+      RESOLVED: 'Baggage returned to passenger',
     };
 
     const updatedCase: RecoveryCase = {

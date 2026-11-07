@@ -121,13 +121,6 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
     );
   }
 
-  const handleLoadDemoItinerary = () => {
-    smartTagRepository.addDemoItinerary();
-    onAddBooking(INITIAL_BOOKING);
-    setInputError(null);
-    setShowAddModal(false);
-  };
-
   const handleConfirmAddBooking = () => {
     const res = smartTagRepository.lookupAndAddBookingByRef(refValue);
     if (res.errorMessage || !res.itinerary) {
@@ -183,7 +176,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
           <InlineNotice
             tone="warning"
             message={entry.missingPrerequisiteMessage}
-            actionLabel="Complete demo check-in"
+            actionLabel="Complete check-in"
             onAction={() =>
               smartTagRepository.setCheckInReadiness(
                 itinerary.id,
@@ -329,36 +322,6 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
               >
                 <Text style={styles.addBookingOutlineBtnText}>Add booking</Text>
               </TouchableOpacity>
-
-              {tab === 'upcoming' && (
-                <TouchableOpacity
-                  style={styles.demoPopulateBtn}
-                  onPress={handleLoadDemoItinerary}
-                  activeOpacity={0.8}
-                  testID="btn-load-demo-itinerary"
-                >
-                  <Ionicons
-                    name="sparkles-outline"
-                    size={16}
-                    color={CATHAY_JADE}
-                  />
-                  <Text style={styles.demoPopulateBtnText}>
-                    Load hackathon demo itinerary (CX548 HKG → NRT • 8K3F7D)
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.creamTipBox}>
-                <Ionicons
-                  name="bulb-outline"
-                  size={18}
-                  color="#4B5563"
-                  style={styles.bulbIcon}
-                />
-                <Text style={styles.creamTipText}>
-                  Tap ‘Add booking’ and enter reference {DEMO_BOOKING_REFERENCE} (or tap the demo loader above) to preview the CX548 SmartTag passenger experience.
-                </Text>
-              </View>
             </View>
           </View>
         )}
@@ -388,7 +351,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
             keyboardShouldPersistTaps="handled"
           >
             <Text style={styles.modalNoticeText}>
-              Please note: For the Cathay Hackathon demo, enter synthetic booking reference {DEMO_BOOKING_REFERENCE} (Flight CX548 HKG → NRT, 21 Nov 2026).
+              Please enter your 6-character booking reference and passenger family name as shown on your e-ticket or itinerary.
             </Text>
 
             <View style={styles.whiteFormBlock}>

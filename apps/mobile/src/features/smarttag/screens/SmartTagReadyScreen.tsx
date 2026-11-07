@@ -31,7 +31,6 @@ import {
   CathayScreenHeader,
   CathaySecondaryButton,
   InlineNotice,
-  StatusBadge,
   SuitcaseWithTagGlyph,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, useSmartTagStore } from '../store';
@@ -75,10 +74,6 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
     );
   }
 
-  const isPhysicallyVerified =
-    bag.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED' &&
-    bag.lastWrite?.verifiedHardwareReadback === true;
-
   const { flight } = itinerary;
 
   return (
@@ -104,15 +99,6 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
           <Text style={styles.heroSubtitle}>
             You can now go directly to Cathay self bag-drop at the{'\n'}airport.
           </Text>
-
-          {!isPhysicallyVerified && (
-            <View style={styles.simPillWrap}>
-              <StatusBadge
-                label="Demo simulation — physical E-ink write not verified"
-                tone="amber"
-              />
-            </View>
-          )}
         </View>
 
         {/* Tag Details Card (Matches Design 04 rows) */}
@@ -153,10 +139,7 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
           {/* Compact technical footnote distinguishing SmartTag device ID from journey Bag ID */}
           <View style={styles.identityFootnote}>
             <Text style={styles.identityFootnoteText}>
-              SmartTag ID: {bag.smartTagCode} • IATA LP: {bag.baggage.tagNumber} •{' '}
-              {isPhysicallyVerified
-                ? `Verified write ${bag.lastWrite?.timestamp.slice(11, 16) ?? ''}`
-                : 'Simulated in local demo store'}
+              SmartTag ID: {bag.smartTagCode} • IATA LP: {bag.baggage.tagNumber}
             </Text>
           </View>
         </CathayCard>

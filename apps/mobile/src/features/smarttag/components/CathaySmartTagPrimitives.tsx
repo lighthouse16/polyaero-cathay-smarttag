@@ -773,9 +773,9 @@ export const SmartTagIdentityCard: React.FC<SmartTagIdentityCardProps> = ({
 export const SmartTagProgressIndicator: React.FC<{
   state: NfcSyncMachineState;
   message: string;
-  isSimulated: boolean;
+  isSimulated?: boolean;
   onCancel?: () => void;
-}> = ({ state, message, isSimulated, onCancel }) => {
+}> = ({ state, message, isSimulated: _isSimulated, onCancel }) => {
   if (state === 'IDLE') return null;
 
   const isBusy =
@@ -820,9 +820,6 @@ export const SmartTagProgressIndicator: React.FC<{
         )}
         <View style={{ flex: 1 }}>
           <Text style={[styles.progressText, { color: toneColor }]}>{message}</Text>
-          {isSimulated && (
-            <Text style={styles.progressSimBadge}>DEMO SIMULATION MODE</Text>
-          )}
         </View>
       </View>
       {isBusy && onCancel && (

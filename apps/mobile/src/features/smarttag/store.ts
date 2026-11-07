@@ -62,10 +62,10 @@ class MobileSmartTagController {
     const initialUrl = this.readInitialWebParams();
     this.repository = new InMemorySmartTagRepository({
       storage: createWebStorageAdapter(),
-      populateDemoBookingOnInit: initialUrl.populateDemo,
+      populateDemoBookingOnInit: true,
     });
 
-    if (initialUrl.populateDemo && this.repository.listItineraries().length === 0) {
+    if (this.repository.listItineraries().length === 0) {
       this.repository.addDemoItinerary();
     }
 

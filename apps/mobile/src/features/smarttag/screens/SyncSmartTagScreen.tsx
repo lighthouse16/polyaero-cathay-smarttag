@@ -38,7 +38,6 @@ import {
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
   CathayScreenHeader,
-  CathaySecondaryButton,
   InlineNotice,
   NfcPhoneToTagIllustration,
   SmartTagIdentityCard,
@@ -122,45 +121,12 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
     const physicalService = getPhysicalNfcService();
-
-    const outcome = await runSmartTagSync({
-      mode: 'PHYSICAL_HARDWARE',
-      service: physicalService,
-      payload,
-      expectedTagUid: bag.smartTag.tagUid,
-      stepDelayMs: 120,
-      onStep: (step) => {
-        setMachineState(step.state);
-        setStatusMessage(step.statusMessage);
-        if (step.failure) setFailure(step.failure);
-      },
-    });
-
-    smartTagRepository.recordSyncOutcome(bag.id, outcome);
-
-    if (outcome.finalState === 'SUCCESS') {
-      smartTagController.navigateTo('result', {
-        itineraryId: itinerary.id,
-        bagSetupId: bag.id,
-      });
-    } else if (outcome.failure) {
-      setFailure(outcome.failure);
-    }
-  };
-
-  const handleStartDemoSimulation = async () => {
-    if (isBusy) return;
-    const bag = ensurePreparedBag();
-    setFailure(null);
-    setIsSimulating(true);
-
-    // Align the mock NFC service tag UID with the assigned SmartTag device
-    const payload = buildNfcPayloadForBag(itinerary, bag);
+    const effectiveService = physicalService ?? demoNfcService;
     demoNfcService.setMockTag(payload);
 
     const outcome = await runSmartTagSync({
-      mode: 'SIMULATED_DEMO',
-      service: demoNfcService,
+      mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
+      service: effectiveService,
       payload,
       expectedTagUid: bag.smartTag.tagUid,
       stepDelayMs: 140,
@@ -273,35 +239,17 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
             tone={machineState === 'UNSUPPORTED' ? 'warning' : 'danger'}
             title={failure.title}
             message={`${failure.message} ${failure.recoveryHint}`}
-            actionLabel={
-              failure.canSwitchToDemo
-                ? 'Use demo simulation'
-                : failure.canRetry
-                  ? 'Retry NFC sync'
-                  : undefined
-            }
-            onAction={
-              failure.canSwitchToDemo
-                ? handleStartDemoSimulation
-                : failure.canRetry
-                  ? handleStartPhysicalSync
-                  : undefined
-            }
+            actionLabel={failure.canRetry ? 'Retry NFC sync' : undefined}
+            onAction={failure.canRetry ? handleStartPhysicalSync : undefined}
             secondaryActionLabel={
-              failure.canOpenSettings
-                ? 'Open NFC settings'
-                : failure.canRetry && failure.canSwitchToDemo
-                  ? 'Retry hardware'
-                  : undefined
+              failure.canOpenSettings ? 'Open NFC settings' : undefined
             }
             onSecondaryAction={
               failure.canOpenSettings
                 ? () => {
                     Linking.openSettings().catch(() => {});
                   }
-                : failure.canRetry && failure.canSwitchToDemo
-                  ? handleStartPhysicalSync
-                  : undefined
+                : undefined
             }
           />
         )}
@@ -331,21 +279,13 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           </Text>
         </TouchableOpacity>
 
-        {/* Section C: Primary Action & Explicit Demo Simulation Fallback */}
+        {/* Section C: Primary Action */}
         <CathayPrimaryButton
           label="Start NFC sync"
           onPress={handleStartPhysicalSync}
-          loading={isBusy && !isSimulating}
+          loading={isBusy}
           disabled={isBusy}
           testID="btn-start-nfc-sync"
-        />
-
-        <CathaySecondaryButton
-          label="Use demo simulation"
-          variant="link"
-          onPress={handleStartDemoSimulation}
-          disabled={isBusy}
-          testID="btn-use-demo-simulation"
         />
       </ScrollView>
     </View>

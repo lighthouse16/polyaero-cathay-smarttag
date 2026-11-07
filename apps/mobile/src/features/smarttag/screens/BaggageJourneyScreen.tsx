@@ -16,7 +16,7 @@
  *     Awaiting drop / Accepted / Loaded / Arrived in Tokyo / Collected / Delayed states
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -47,18 +47,6 @@ export interface BaggageJourneyScreenProps {
   onOpenDevMenu?: () => void;
 }
 
-const DEMO_PRESETS: {
-  id: 'AWAITING_DROP' | 'ACCEPTED' | 'LOADED' | 'ARRIVED_TOKYO' | 'COLLECTED' | 'DELAYED';
-  label: string;
-}[] = [
-  { id: 'AWAITING_DROP', label: 'Synced' },
-  { id: 'ACCEPTED', label: 'Bag-drop' },
-  { id: 'LOADED', label: 'Loaded' },
-  { id: 'ARRIVED_TOKYO', label: 'Arrived NRT' },
-  { id: 'COLLECTED', label: 'Collected' },
-  { id: 'DELAYED', label: 'Delayed' },
-];
-
 const RECOVERY_STEPS: { status: RecoveryCaseStatus; label: string }[] = [
   { status: 'OPEN', label: 'Submitted' },
   { status: 'INVESTIGATING', label: 'Under review' },
@@ -71,7 +59,6 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   onOpenDevMenu,
 }) => {
   const { repo } = useSmartTagStore();
-  const [showSimControls, setShowSimControls] = useState(false);
 
   const itinerary =
     (repo.activeItineraryId
@@ -172,7 +159,7 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
             <View style={styles.recoveryHeaderRow}>
               <View>
                 <Text style={styles.recoveryCaseEyebrow}>
-                  BAGGAGE RECOVERY CASE (DEMO)
+                  BAGGAGE RECOVERY CASE
                 </Text>
                 <Text style={styles.recoveryCaseNum}>
                   {recovery.recoveryCase.caseNumber}
@@ -248,43 +235,6 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
             }
             testID="btn-report-baggage-issue"
           />
-        </View>
-
-        {/* Subtle Demo Event Simulator Toggle (Explicitly marked as Demo Simulation) */}
-        <View style={styles.demoFooterWrap}>
-          <TouchableOpacity
-            style={styles.demoToggleBtn}
-            onPress={() => setShowSimControls((s) => !s)}
-            activeOpacity={0.75}
-            testID="btn-toggle-journey-demo-controls"
-          >
-            <Ionicons name="flask-outline" size={14} color="#6B7280" />
-            <Text style={styles.demoToggleText}>
-              {showSimControls
-                ? 'Hide demo event simulator'
-                : 'Demo mode: simulate airport baggage scans'}
-            </Text>
-          </TouchableOpacity>
-
-          {showSimControls && (
-            <View style={styles.demoChipsWrap}>
-              {DEMO_PRESETS.map((p) => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={styles.demoChip}
-                  onPress={() =>
-                    smartTagRepository.seedDemoJourneyMilestonePreset(
-                      activeBag.id,
-                      p.id
-                    )
-                  }
-                  testID={`btn-preset-${p.id.toLowerCase()}`}
-                >
-                  <Text style={styles.demoChipText}>{p.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
       </ScrollView>
     </View>

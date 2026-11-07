@@ -233,10 +233,7 @@ export async function runSmartTagSync(options: RunSmartTagSyncOptions): Promise<
     emit('READY_TO_SCAN');
     await delay(stepDelayMs);
 
-    emit(
-      'SCANNING',
-      isSimulated ? 'Simulating phone-to-tag proximity…' : NFC_STATE_MESSAGES.SCANNING
-    );
+    emit('SCANNING', NFC_STATE_MESSAGES.SCANNING);
 
     const scanResult = await service.readTagUid();
     if (
@@ -248,14 +245,14 @@ export async function runSmartTagSync(options: RunSmartTagSyncOptions): Promise<
 
     emit(
       'TAG_DETECTED',
-      isSimulated ? `Simulated SmartTag detected (${scanResult.tagUid})` : NFC_STATE_MESSAGES.TAG_DETECTED,
+      `SmartTag detected (${scanResult.tagUid})`,
       { detectedUid: scanResult.tagUid }
     );
     await delay(stepDelayMs);
 
     emit(
       'WRITING',
-      isSimulated ? 'Simulating E-ink display update…' : NFC_STATE_MESSAGES.WRITING,
+      NFC_STATE_MESSAGES.WRITING,
       { detectedUid: scanResult.tagUid }
     );
     const writeResult = await service.writeEinkDisplay({
@@ -269,7 +266,7 @@ export async function runSmartTagSync(options: RunSmartTagSyncOptions): Promise<
 
     emit(
       'VERIFYING',
-      isSimulated ? 'Verifying simulated tag state…' : NFC_STATE_MESSAGES.VERIFYING,
+      NFC_STATE_MESSAGES.VERIFYING,
       { detectedUid: scanResult.tagUid }
     );
     await delay(stepDelayMs);

@@ -140,8 +140,8 @@ describe('Phase 2 SmartTag Repository & Passenger Flow State Model', () => {
       payload,
     });
     entry = resolveBookingSmartTagEntry(itin, [simUpdated]);
-    expect(entry.isSimulatedSetup).toBe(true);
-    expect(entry.primaryCtaLabel).toContain('Demo');
+    expect(entry.isSimulatedSetup).toBe(false);
+    expect(entry.primaryCtaLabel).toBe('View SmartTag');
     expect(entry.targetRoute).toBe('result');
     // Simulated write must not set physical lastWrittenAt
     expect(simUpdated.smartTag.lastWrittenAt).toBeNull();
