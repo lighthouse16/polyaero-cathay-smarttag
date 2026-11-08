@@ -24,9 +24,7 @@ from app.services.auth import (
     decode_token,
     get_user_by_email,
     get_valid_refresh_token,
-    hash_password,
     hash_token,
-    revoke_all_user_refresh_tokens,
     revoke_refresh_token,
     update_user,
 )
