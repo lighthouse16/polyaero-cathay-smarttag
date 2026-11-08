@@ -65,11 +65,14 @@ export const CATHAY_TEXT_SECONDARY = '#52565A';
 export const CATHAY_TEXT_MUTED = '#76777A';
 export const CATHAY_BORDER = '#ECEEEF';
 
-export const CATHAY_SERIF = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, serif',
+export const CATHAY_FONT_FAMILY = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 });
+
+/** @deprecated Use CATHAY_FONT_FAMILY — Cathay brand UI is 100% sans-serif */
+export const CATHAY_SERIF = CATHAY_FONT_FAMILY;
 
 export const cardShadowStyle: ViewStyle = {
   shadowColor: '#0F172A',
@@ -904,7 +907,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18.5,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
@@ -1443,9 +1446,9 @@ const styles = StyleSheet.create({
   ticketRoute: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   ticketDate: {
@@ -1762,8 +1765,9 @@ const styles = StyleSheet.create({
   statusCardTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   statusCardSubtitle: {

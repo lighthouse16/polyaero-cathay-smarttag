@@ -44,7 +44,7 @@ import {
   CATHAY_BG,
   CATHAY_BORDER,
   CATHAY_JADE,
-  CATHAY_SERIF,
+  CATHAY_FONT_FAMILY,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   JadeBookingTicketCard,
@@ -507,10 +507,10 @@ const styles = StyleSheet.create({
   },
   headerLargeTitle: {
     fontSize: 28,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   header: {
     height: 48,

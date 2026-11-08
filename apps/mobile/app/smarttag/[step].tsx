@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { CathayAppShell } from '../../src/features/cathay-shell/CathayAppShell';
@@ -21,9 +22,18 @@ export default function SmartTagStepRoute() {
   const { step } = useLocalSearchParams<{ step?: string }>();
 
   useEffect(() => {
+    let activeStep = step;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const stepParam = searchParams.get('step');
+      if (stepParam) {
+        activeStep = stepParam;
+      }
+    }
+
     const resolved: SmartTagScreenRoute =
-      step && VALID_STEPS.includes(step as SmartTagScreenRoute)
-        ? (step as SmartTagScreenRoute)
+      activeStep && VALID_STEPS.includes(activeStep as SmartTagScreenRoute)
+        ? (activeStep as SmartTagScreenRoute)
         : 'bookings';
     const itin = smartTagRepository.addDemoItinerary();
 

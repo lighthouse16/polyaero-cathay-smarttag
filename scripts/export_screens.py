@@ -7,32 +7,32 @@ SCREENS = [
     {
         "id": "01_my_bookings",
         "title": "My Bookings - SmartTag Entry",
-        "url": "http://localhost:8081/?screen=trips&booked=1"
+        "url": "http://localhost:5000/smarttag/[step].html?step=bookings"
     },
     {
         "id": "02_prepare_smarttag",
         "title": "Prepare SmartTag",
-        "url": "http://localhost:8081/?screen=trips&booked=1&smarttag=prepare"
+        "url": "http://localhost:5000/smarttag/[step].html?step=prepare"
     },
     {
         "id": "03_sync_smarttag",
         "title": "Sync SmartTag",
-        "url": "http://localhost:8081/?screen=trips&booked=1&smarttag=sync"
+        "url": "http://localhost:5000/smarttag/[step].html?step=sync"
     },
     {
         "id": "04_smarttag_ready",
         "title": "SmartTag Ready",
-        "url": "http://localhost:8081/?screen=trips&booked=1&smarttag=result"
+        "url": "http://localhost:5000/smarttag/[step].html?step=result"
     },
     {
         "id": "05_baggage_journey",
         "title": "Baggage Journey",
-        "url": "http://localhost:8081/?screen=trips&booked=1&smarttag=journey&seedPreset=ARRIVED_TOKYO"
+        "url": "http://localhost:5000/smarttag/[step].html?step=journey"
     },
     {
         "id": "06_report_issue",
         "title": "Report Baggage Issue",
-        "url": "http://localhost:8081/?screen=trips&booked=1&smarttag=report"
+        "url": "http://localhost:5000/smarttag/[step].html?step=report"
     }
 ]
 

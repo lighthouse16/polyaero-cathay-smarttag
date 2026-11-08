@@ -31,6 +31,7 @@ import {
   INITIAL_USER_PROFILE,
   INITIAL_BOOKING,
 } from './CathayTypes';
+import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { smartTagController, smartTagRepository } from '../smarttag/store';
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
@@ -77,17 +78,27 @@ const TAB_ITEMS: TabItemConfig[] = [
   },
 ];
 
-const getInitialScreenState = (): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean; isBooked?: boolean } => {
+const getInitialScreenState = (initialTabOverride?: CathayTabId): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean; isBooked?: boolean } => {
+  if (initialTabOverride) {
+    return { onboarding: null, tab: initialTabOverride, isAuth: true, isBooked: true };
+  }
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    if (window.location.pathname.startsWith('/smarttag')) {
+      return { onboarding: null, tab: 'trips', isAuth: true, isBooked: true };
+    }
     const params = new URLSearchParams(window.location.search);
     const screen = params.get('screen');
+    const smarttag = params.get('smarttag');
     const isAuth = params.get('auth') === '1' || params.get('auth') === 'true';
     const isBooked = params.get('booked') === '1' || params.get('booked') === 'true';
+    if (smarttag || screen === 'trips') {
+      return { onboarding: null, tab: 'trips', isAuth: true, isBooked: true };
+    }
     if (screen) {
       if (['splash', 'language', 'welcome'].includes(screen)) {
         return { onboarding: screen as OnboardingScreenId, tab: 'home', isAuth, isBooked };
       }
-      if (['home', 'book', 'trips', 'profile', 'tools'].includes(screen)) {
+      if (['home', 'book', 'profile', 'tools'].includes(screen)) {
         return { onboarding: null, tab: screen as CathayTabId, isAuth, isBooked };
       }
     }
@@ -104,19 +115,19 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
 }) => {
   // Navigation State
   const [onboardingScreen, setOnboardingScreen] = useState<OnboardingScreenId | null>(() =>
-    initialTabOverride ? null : getInitialScreenState().onboarding
+    getInitialScreenState(initialTabOverride).onboarding
   );
   const [activeTab, setActiveTab] = useState<CathayTabId>(() =>
-    initialTabOverride ?? getInitialScreenState().tab
+    getInitialScreenState(initialTabOverride).tab
   );
 
   // Global Auth & Passenger Data State
   const [user, setUser] = useState<UserAuthProfile>(() => {
-    const { isAuth } = getInitialScreenState();
+    const { isAuth } = getInitialScreenState(initialTabOverride);
     return isAuth ? { ...INITIAL_USER_PROFILE, isLoggedIn: true } : INITIAL_USER_PROFILE;
   });
   const [bookings, setBookings] = useState<FlightBooking[]>(() => {
-    const { isBooked } = getInitialScreenState();
+    const { isBooked } = getInitialScreenState(initialTabOverride);
     return isBooked ? [INITIAL_BOOKING] : [];
   });
   const [recentSearch, setRecentSearch] = useState<RecentSearch | null>({
@@ -140,7 +151,46 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
   useEffect(() => {
     const handleUrlChange = () => {
       if (typeof window !== 'undefined') {
-        const { onboarding, tab } = getInitialScreenState();
+        const params = new URLSearchParams(window.location.search);
+        const smarttag = params.get('smarttag');
+        if (smarttag) {
+          setOnboardingScreen(null);
+          setActiveTab('trips');
+          const itin = smartTagRepository.addDemoItinerary();
+          if (['prepare', 'sync', 'result', 'journey', 'report'].includes(smarttag)) {
+            const { bags } = smartTagRepository.prepareBagsForItinerary({
+              itineraryId: itin.id,
+              bagCount: 1,
+              declarations: DEFAULT_DECLARATIONS,
+            });
+            if (['result', 'journey', 'report'].includes(smarttag) && bags[0]) {
+              smartTagRepository.recordSyncOutcome(bags[0].id, {
+                finalState: 'SUCCESS',
+                setupState: 'PHYSICALLY_WRITTEN_AND_VERIFIED',
+                mode: 'PHYSICAL_HARDWARE',
+                writeRecord: {
+                  mode: 'PHYSICAL_HARDWARE',
+                  timestamp: new Date().toISOString(),
+                  bytesWritten: 4736,
+                  tagUid: bags[0].smartTag.tagUid,
+                  verifiedHardwareReadback: true,
+                },
+                failure: null,
+                payload: buildNfcPayloadForBag(itin, bags[0]),
+              });
+              if (smarttag === 'journey') {
+                const preset = params.get('seedPreset') || 'ARRIVED_TOKYO';
+                smartTagRepository.seedDemoJourneyMilestonePreset(bags[0].id, preset as any);
+              }
+            }
+            smartTagController.navigateTo(smarttag as any, { itineraryId: itin.id, replace: true });
+          } else {
+            smartTagController.resetToBookings();
+          }
+          return;
+        }
+
+        const { onboarding, tab } = getInitialScreenState(initialTabOverride);
         setOnboardingScreen(onboarding);
         setActiveTab(tab);
       }
@@ -151,7 +201,7 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
       window.addEventListener('popstate', handleUrlChange);
       return () => window.removeEventListener('popstate', handleUrlChange);
     }
-  }, []);
+  }, [initialTabOverride]);
 
   // Floating Dock Liquid Droplet Slide Animation (Native Driver - 60fps/APK Safe)
   const initialItemWidth = Math.max((Dimensions.get('window').width - 28 - 12) / TAB_ITEMS.length, 50);
