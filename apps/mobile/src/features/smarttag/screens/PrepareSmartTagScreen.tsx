@@ -18,7 +18,7 @@ import {
 } from '@polyaero/shared';
 import {
   CATHAY_JADE,
-  CATHAY_FONT_FAMILY,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -233,10 +233,10 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 24,
-    fontFamily: CATHAY_FONT_FAMILY,
+    fontFamily: CATHAY_SERIF,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     marginBottom: 6,
   },
   mainSubtitle: {

@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import {
-  CATHAY_FONT_FAMILY,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
@@ -158,10 +158,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontFamily: CATHAY_FONT_FAMILY,
+    fontFamily: CATHAY_SERIF,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     marginBottom: 8,
     textAlign: 'center',
     lineHeight: 32,
