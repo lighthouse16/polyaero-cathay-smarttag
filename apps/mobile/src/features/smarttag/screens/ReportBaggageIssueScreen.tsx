@@ -173,7 +173,7 @@ export const ReportBaggageIssueScreen: React.FC<ReportBaggageIssueScreenProps> =
 
             {/* Field 2: Description */}
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>Tell us more (optional)</Text>
               <View style={styles.textareaWrap}>
                 <TextInput
                   style={styles.multilineInput}
@@ -192,7 +192,7 @@ export const ReportBaggageIssueScreen: React.FC<ReportBaggageIssueScreenProps> =
 
             {/* Field 3: Add photo (optional) */}
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>Add a photo (optional)</Text>
+              <Text style={styles.fieldLabel}>Add photo (optional)</Text>
               <TouchableOpacity
                 style={styles.uploadPhotoBox}
                 activeOpacity={0.7}
@@ -270,15 +270,17 @@ const styles = StyleSheet.create({
   },
 
   formCard: {
-    gap: 16,
+    gap: 4,
   },
   formGroup: {
+    marginBottom: 14,
     gap: 6,
   },
   fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 14.5,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 2,
   },
   selectBox: {
     flexDirection: 'row',
@@ -287,7 +289,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#ECEEEF',
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -300,13 +302,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#ECEEEF',
     padding: 14,
   },
   multilineInput: {
     fontSize: 14,
     color: CATHAY_TEXT_PRIMARY,
-    minHeight: 90,
+    minHeight: 110,
     lineHeight: 20,
     padding: 0,
   },
@@ -340,6 +342,7 @@ const styles = StyleSheet.create({
 
   submitBtn: {
     marginTop: 10,
+    marginBottom: 30,
   },
 
   successBlock: {

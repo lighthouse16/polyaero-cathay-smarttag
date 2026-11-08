@@ -47,6 +47,7 @@ export const HEADER_SOFT_MINT_WAVE = require('../../../../assets/smarttag-design
 export const NFC_HALO = require('../../../../assets/smarttag-design/surfaces/nfc_halo_2x.png');
 export const STATUS_JADE_WAVE = require('../../../../assets/smarttag-design/surfaces/status_jade_wave_2x.png');
 export const CONCEPT_BRUSHWING = require('../../../../assets/smarttag-design/icons/concept_brushwing_extracted.png');
+export const ICON_CATHAY_SUITCASE = require('../../../../assets/cathay/smarttag/icon-cathay-suitcase.png');
 
 // ---------------------------------------------------------------------------
 // Authentic Cathay Pacific Design System Tokens
@@ -1418,18 +1419,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     marginBottom: 16,
     ...cardShadowStyle,
   },
   ticketTopSection: {
-    height: 140,
+    height: 175,
     position: 'relative',
     backgroundColor: CATHAY_JADE,
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
   ticketTopOverlay: {
     zIndex: 2,
@@ -1463,9 +1465,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: '#ECEEEF',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   ticketInfoCol: {
     flex: 1,
@@ -1747,7 +1754,7 @@ const styles = StyleSheet.create({
   },
 
   statusCardWrap: {
-    height: 104,
+    height: 112,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: CATHAY_JADE,
@@ -1775,16 +1782,22 @@ const styles = StyleSheet.create({
   },
   statusCardSubtitle: {
     color: '#A2D9D2',
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '500',
   },
   statusCardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  statusCardSuitcaseIcon: {
+    width: 28,
+    height: 24,
   },
 });
 
@@ -2043,7 +2056,11 @@ export const JadeStatusCard: React.FC<JadeStatusCardProps> = ({
           <Text style={styles.statusCardSubtitle}>{subtitle}</Text>
         </View>
         <View style={styles.statusCardIconBox}>
-          <Ionicons name="briefcase-outline" size={24} color="#FFFFFF" />
+          <Image
+            source={ICON_CATHAY_SUITCASE}
+            style={styles.statusCardSuitcaseIcon}
+            resizeMode="contain"
+          />
         </View>
       </View>
     </View>

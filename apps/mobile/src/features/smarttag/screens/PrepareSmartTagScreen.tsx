@@ -246,13 +246,14 @@ const styles = StyleSheet.create({
   },
 
   checklistSectionWrap: {
+    marginTop: 18,
     marginBottom: 20,
   },
   checklistSectionHeading: {
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   floatingCheckCard: {
     flexDirection: 'row',
@@ -260,9 +261,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 16,
-    marginBottom: 10,
+    borderColor: '#ECEEEF',
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    marginBottom: 14,
     shadowColor: '#0F172A',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -318,6 +320,7 @@ const styles = StyleSheet.create({
   },
 
   continueBtn: {
-    marginTop: 4,
+    marginTop: 14,
+    marginBottom: 30,
   },
 });

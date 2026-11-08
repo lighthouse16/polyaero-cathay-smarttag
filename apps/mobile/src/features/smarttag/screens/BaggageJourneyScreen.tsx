@@ -20,6 +20,7 @@ import {
   CATHAY_TEXT_MUTED,
   JadeStatusCard,
   InlineNotice,
+  HeaderSoftWave,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
@@ -135,6 +136,7 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
 
   return (
     <View style={styles.root}>
+      <HeaderSoftWave />
       {/* Header Bar matching references/05_baggage_journey.png */}
       <View style={styles.headerBar}>
         <TouchableOpacity
@@ -253,10 +255,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 8,
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   backBtn: {
     padding: 4,

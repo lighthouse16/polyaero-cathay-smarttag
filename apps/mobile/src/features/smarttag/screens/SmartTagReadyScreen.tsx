@@ -143,12 +143,13 @@ const styles = StyleSheet.create({
   artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 12,
-    height: 150,
+    marginTop: 18,
+    marginBottom: 16,
+    height: 220,
   },
   successArtImage: {
-    width: 170,
-    height: 135,
+    width: 270,
+    height: 220,
   },
 
   headingWrap: {
@@ -157,14 +158,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: CATHAY_SERIF,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
     marginBottom: 8,
     textAlign: 'center',
-    lineHeight: 32,
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: 14,

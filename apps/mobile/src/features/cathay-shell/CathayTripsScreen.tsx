@@ -530,21 +530,21 @@ const styles = StyleSheet.create({
 
   tabsRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    marginBottom: 8,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 11,
+    paddingVertical: 10,
     alignItems: 'center',
     position: 'relative',
   },
   tabBtnActive: {
   },
   tabLabel: {
-    fontSize: 14.5,
-    fontWeight: '400',
+    fontSize: 15,
+    fontWeight: '500',
     color: '#6B7280',
   },
   tabLabelActive: {
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 8,
     paddingBottom: 120,
   },
   scrollContentEmpty: {
