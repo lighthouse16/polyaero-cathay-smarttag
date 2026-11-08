@@ -65,6 +65,12 @@ export const CATHAY_TEXT_SECONDARY = '#52565A';
 export const CATHAY_TEXT_MUTED = '#76777A';
 export const CATHAY_BORDER = '#ECEEEF';
 
+export const CATHAY_SERIF = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'Georgia, serif',
+});
+
 export const cardShadowStyle: ViewStyle = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.05,
@@ -883,7 +889,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   headerBackBtn: {
     width: 38,
@@ -896,17 +903,19 @@ const styles = StyleSheet.create({
     width: 38,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18.5,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
 
   primaryBtn: {
-    backgroundColor: CATHAY_JADE_LIGHT,
-    borderRadius: 8,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    backgroundColor: CATHAY_JADE,
+    borderRadius: 28,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    minHeight: 54,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1433,8 +1442,9 @@ const styles = StyleSheet.create({
   },
   ticketRoute: {
     color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 28,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
@@ -1483,10 +1493,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     ...cardShadowStyle,
   },
-  entryCardArt: {
-    width: 52,
-    height: 52,
+  entryCardArtTile: {
+    width: 58,
+    height: 58,
+    borderRadius: 14,
+    backgroundColor: '#F0F3F3',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 14,
+  },
+  entryCardArt: {
+    width: 44,
+    height: 44,
   },
   entryCardTextCol: {
     flex: 1,
@@ -1545,14 +1563,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: CATHAY_JADE,
-    borderRadius: 8,
-    paddingVertical: 12,
+    borderRadius: 28,
+    height: 52,
     gap: 6,
   },
   yourBaggageBtnText: {
     color: '#FFFFFF',
     fontSize: 14.5,
     fontWeight: '700',
+  },
+
+  // Brushwing Flight Summary Card
+  brushwingFlightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+    ...cardShadowStyle,
+  },
+  brushwingFlightLogo: {
+    width: 30,
+    height: 18,
+  },
+  brushwingHairline: {
+    width: 1,
+    height: 26,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 14,
+  },
+  brushwingFlightTextCol: {
+    flex: 1,
+  },
+  brushwingFlightTitle: {
+    fontSize: 14.5,
+    marginBottom: 3,
+  },
+  brushwingFlightCode: {
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  brushwingFlightRoute: {
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  brushwingFlightDate: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_MUTED,
   },
 
   headerSoftWaveImg: {
@@ -1565,39 +1626,36 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  checklistCard: {
+  checklistSectionWrap: {
+    marginBottom: 16,
+  },
+  checklistSectionHeading: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 12,
+  },
+  floatingCheckCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 10,
     ...cardShadowStyle,
   },
-  checklistSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 12,
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  checklistRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F2F4',
-  },
   checklistBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    backgroundColor: '#FFFFFF',
   },
   checklistBadgeDone: {
     backgroundColor: CATHAY_JADE,
@@ -1613,12 +1671,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   checklistTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 14.5,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   checklistSubtitle: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },
@@ -1628,24 +1686,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    padding: 16,
+    padding: 18,
     marginBottom: 20,
     ...cardShadowStyle,
   },
   guideSectionTitle: {
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   guideRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  guideRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F2F4',
+  guideBadgeCol: {
+    width: 26,
+    alignItems: 'center',
+    marginRight: 14,
   },
   guideNumberBadge: {
     width: 24,
@@ -1654,29 +1713,35 @@ const styles = StyleSheet.create({
     backgroundColor: CATHAY_JADE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   guideNumberText: {
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '700',
   },
+  guideLine: {
+    width: 1.5,
+    height: 26,
+    backgroundColor: '#E5E7EB',
+    marginTop: 4,
+  },
   guideTextCol: {
     flex: 1,
+    paddingTop: 2,
   },
   guideTitle: {
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   guideSubtitle: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },
 
   statusCardWrap: {
-    height: 100,
+    height: 104,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: CATHAY_JADE,
@@ -1696,8 +1761,9 @@ const styles = StyleSheet.create({
   },
   statusCardTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 22,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     marginBottom: 4,
   },
   statusCardSubtitle: {
@@ -1794,7 +1860,9 @@ export const SmartTagEntryCard: React.FC<SmartTagEntryCardProps> = ({ onPress })
       activeOpacity={0.8}
       testID="smarttag-entry-card"
     >
-      <Image source={SMARTTAG_ENTRY_ART} style={styles.entryCardArt} resizeMode="contain" />
+      <View style={styles.entryCardArtTile}>
+        <Image source={SMARTTAG_ENTRY_ART} style={styles.entryCardArt} resizeMode="contain" />
+      </View>
       <View style={styles.entryCardTextCol}>
         <Text style={styles.entryCardTitle}>Cathay SmartTag</Text>
         <Text style={styles.entryCardSubtitle}>
@@ -1888,13 +1956,13 @@ export const BeforeYouContinueChecklist: React.FC<{ items?: ChecklistItem[] }> =
   ];
 
   return (
-    <View style={styles.checklistCard}>
-      <Text style={styles.checklistSectionTitle}>Before you continue</Text>
-      {defaultItems.map((item, idx) => (
-        <View key={item.id} style={[styles.checklistRow, idx > 0 && styles.checklistRowBorder]}>
+    <View style={styles.checklistSectionWrap}>
+      <Text style={styles.checklistSectionHeading}>Before you continue</Text>
+      {defaultItems.map((item) => (
+        <View key={item.id} style={styles.floatingCheckCard}>
           <View style={[styles.checklistBadge, item.checked && styles.checklistBadgeDone]}>
             {item.checked ? (
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={15} color="#FFFFFF" />
             ) : (
               <View style={styles.checklistCirclePending} />
             )}
@@ -1922,17 +1990,23 @@ export const AirportGuideSteps: React.FC = () => {
   return (
     <View style={styles.guideCard}>
       <Text style={styles.guideSectionTitle}>At the airport, it’s simple</Text>
-      {steps.map((s, idx) => (
-        <View key={s.num} style={[styles.guideRow, idx > 0 && styles.guideRowBorder]}>
-          <View style={styles.guideNumberBadge}>
-            <Text style={styles.guideNumberText}>{s.num}</Text>
+      {steps.map((s, idx) => {
+        const isLast = idx === steps.length - 1;
+        return (
+          <View key={s.num} style={styles.guideRow}>
+            <View style={styles.guideBadgeCol}>
+              <View style={styles.guideNumberBadge}>
+                <Text style={styles.guideNumberText}>{s.num}</Text>
+              </View>
+              {!isLast && <View style={styles.guideLine} />}
+            </View>
+            <View style={styles.guideTextCol}>
+              <Text style={styles.guideTitle}>{s.title}</Text>
+              <Text style={styles.guideSubtitle}>{s.desc}</Text>
+            </View>
           </View>
-          <View style={styles.guideTextCol}>
-            <Text style={styles.guideTitle}>{s.title}</Text>
-            <Text style={styles.guideSubtitle}>{s.desc}</Text>
-          </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 };
@@ -1966,6 +2040,47 @@ export const JadeStatusCard: React.FC<JadeStatusCardProps> = ({
         </View>
       </View>
     </View>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 21. BrushwingFlightSummaryCard (Design 02 & 06)
+// ---------------------------------------------------------------------------
+export interface BrushwingFlightSummaryCardProps {
+  flightNumber?: string;
+  route?: string;
+  dateStr?: string;
+  onPress?: () => void;
+}
+
+export const BrushwingFlightSummaryCard: React.FC<BrushwingFlightSummaryCardProps> = ({
+  flightNumber = 'CX548',
+  route = 'HKG → NRT',
+  dateStr = 'Tue, 11 Nov 2026 · 10:35',
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      style={styles.brushwingFlightCard}
+      activeOpacity={onPress ? 0.75 : 1}
+      onPress={onPress}
+    >
+      <Image
+        source={CONCEPT_BRUSHWING}
+        style={styles.brushwingFlightLogo}
+        resizeMode="contain"
+      />
+      <View style={styles.brushwingHairline} />
+      <View style={styles.brushwingFlightTextCol}>
+        <Text style={styles.brushwingFlightTitle}>
+          <Text style={styles.brushwingFlightCode}>{flightNumber}</Text>
+          {'   '}
+          <Text style={styles.brushwingFlightRoute}>{route}</Text>
+        </Text>
+        <Text style={styles.brushwingFlightDate}>{dateStr}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+    </TouchableOpacity>
   );
 };
 

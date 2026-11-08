@@ -18,6 +18,7 @@ import {
 } from '@polyaero/shared';
 import {
   CATHAY_JADE,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -25,6 +26,7 @@ import {
   CathayScreenHeader,
   HeaderSoftWave,
   InlineNotice,
+  BrushwingFlightSummaryCard,
 } from '../components/CathaySmartTagPrimitives';
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
@@ -130,35 +132,21 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
         </View>
 
         {/* Flight summary card */}
-        <TouchableOpacity
-          style={styles.flightSummaryCard}
-          activeOpacity={0.8}
+        <BrushwingFlightSummaryCard
+          flightNumber={itinerary.flight.flightNumber}
+          route={`${itinerary.flight.origin} → ${itinerary.flight.destination}`}
+          dateStr="Tue, 11 Nov 2026 · 10:35"
           onPress={() => smartTagController.navigateTo('bookings')}
-        >
-          <View style={styles.flightSummaryLeft}>
-            <View style={styles.flightPlaneWrap}>
-              <Ionicons name="airplane" size={16} color={CATHAY_JADE} />
-            </View>
-            <View style={styles.flightSummaryTextCol}>
-              <Text style={styles.flightRouteTitle}>
-                {itinerary.flight.flightNumber} {itinerary.flight.origin} → {itinerary.flight.destination}
-              </Text>
-              <Text style={styles.flightDateSub}>
-                Tue, 11 Nov 2026 · 10:35
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-        </TouchableOpacity>
+        />
 
         {/* Before you continue checklist */}
-        <View style={styles.checklistCard}>
-          <Text style={styles.checklistSectionTitle}>Before you continue</Text>
+        <View style={styles.checklistSectionWrap}>
+          <Text style={styles.checklistSectionHeading}>Before you continue</Text>
 
           {/* Item 1 */}
-          <View style={styles.checklistRow}>
+          <View style={styles.floatingCheckCard}>
             <View style={[styles.checklistBadge, isConfirmed && styles.checklistBadgeDone]}>
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={15} color="#FFFFFF" />
             </View>
             <View style={styles.checklistTextCol}>
               <Text style={styles.checklistTitle}>Booking confirmed</Text>
@@ -168,12 +156,10 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
             </View>
           </View>
 
-          <View style={styles.checklistRowDivider} />
-
           {/* Item 2 */}
-          <View style={styles.checklistRow}>
+          <View style={styles.floatingCheckCard}>
             <View style={[styles.checklistBadge, styles.checklistBadgeDone]}>
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={15} color="#FFFFFF" />
             </View>
             <View style={styles.checklistTextCol}>
               <Text style={styles.checklistTitle}>Baggage within allowance</Text>
@@ -183,17 +169,15 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
             </View>
           </View>
 
-          <View style={styles.checklistRowDivider} />
-
           {/* Item 3 */}
           <TouchableOpacity
-            style={styles.checklistRow}
+            style={styles.floatingCheckCard}
             activeOpacity={0.7}
             onPress={() => setTagReady(!tagReady)}
           >
             <View style={[styles.checklistBadge, tagReady && styles.checklistBadgeDone]}>
               {tagReady ? (
-                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={15} color="#FFFFFF" />
               ) : (
                 <View style={styles.circleUnchecked} />
               )}
@@ -248,8 +232,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   mainTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 6,
@@ -260,82 +245,34 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  flightSummaryCard: {
+  checklistSectionWrap: {
+    marginBottom: 20,
+  },
+  checklistSectionHeading: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 12,
+  },
+  floatingCheckCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    padding: 14,
-    marginBottom: 20,
+    padding: 16,
+    marginBottom: 10,
     shadowColor: '#0F172A',
     shadowOpacity: 0.04,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  flightSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  flightPlaneWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#EBF4F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  flightSummaryTextCol: {
-    flex: 1,
-  },
-  flightRouteTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 2,
-  },
-  flightDateSub: {
-    fontSize: 12.5,
-    color: CATHAY_TEXT_MUTED,
-  },
-
-  checklistCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 18,
-    marginBottom: 24,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  checklistSectionTitle: {
-    fontSize: 15.5,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 14,
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  checklistRowDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-  },
   checklistBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',

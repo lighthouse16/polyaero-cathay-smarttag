@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   CATHAY_JADE,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -80,43 +81,55 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
       id: '1',
       title: 'Tag synced',
       location: 'At home',
-      time: 'Nov 10 20:14',
+      date: 'Nov 10',
+      time: '20:14',
       done: true,
+      isActive: false,
     },
     {
       id: '2',
       title: 'Bag accepted',
       location: 'Hong Kong · Self bag-drop',
-      time: 'Nov 11 09:42',
+      date: 'Nov 11',
+      time: '09:42',
       done: true,
+      isActive: false,
     },
     {
       id: '3',
       title: 'Security cleared',
       location: 'Hong Kong',
-      time: 'Nov 11 09:58',
+      date: 'Nov 11',
+      time: '09:58',
       done: true,
+      isActive: false,
     },
     {
       id: '4',
       title: 'Loaded onto aircraft',
       location: 'CX548',
-      time: 'Nov 11 10:14',
+      date: 'Nov 11',
+      time: '10:14',
       done: true,
+      isActive: false,
     },
     {
       id: '5',
       title: 'Arrived in Tokyo',
       location: 'NRT',
-      time: 'Nov 11 16:36',
+      date: 'Nov 11',
+      time: '16:36',
       done: true,
+      isActive: true,
     },
     {
       id: '6',
       title: 'Collected',
       location: 'Please collect your baggage at the carousel',
+      date: '',
       time: '—',
       done: false,
+      isActive: false,
     },
   ];
 
@@ -167,12 +180,14 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
               <View key={item.id} style={styles.timelineRow}>
                 {/* Node & Line Col */}
                 <View style={styles.nodeCol}>
-                  <View style={[styles.circle, item.done && styles.circleDone]}>
-                    {item.done ? (
-                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
-                    ) : (
-                      <View style={styles.circlePendingInner} />
-                    )}
+                  <View style={item.isActive ? styles.haloCircle : styles.normalNodeWrap}>
+                    <View style={[styles.circle, item.done && styles.circleDone]}>
+                      {item.done ? (
+                        <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                      ) : (
+                        <View style={styles.circlePendingInner} />
+                      )}
+                    </View>
                   </View>
                   {!isLast && <View style={[styles.connector, item.done && styles.connectorDone]} />}
                 </View>
@@ -180,10 +195,15 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
                 {/* Content Col */}
                 <View style={[styles.contentCol, !isLast && styles.contentColBorder]}>
                   <View style={styles.titleTimeRow}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemTime}>{item.time}</Text>
+                    <View style={styles.titleLocationWrap}>
+                      <Text style={styles.itemTitle}>{item.title}</Text>
+                      <Text style={styles.itemLocation}>{item.location}</Text>
+                    </View>
+                    <View style={styles.timeStackCol}>
+                      {item.date ? <Text style={styles.itemDateText}>{item.date}</Text> : null}
+                      <Text style={styles.itemTimeText}>{item.time}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.itemLocation}>{item.location}</Text>
                 </View>
               </View>
             );
@@ -245,7 +265,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16.5,
+    fontSize: 18,
+    fontFamily: CATHAY_SERIF,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
@@ -287,8 +308,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   nodeCol: {
-    width: 26,
+    width: 28,
     alignItems: 'center',
+  },
+  haloCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#D7EBE8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  normalNodeWrap: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   circle: {
     width: 20,
@@ -299,7 +334,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   circleDone: {
     backgroundColor: CATHAY_JADE,
@@ -333,9 +367,30 @@ const styles = StyleSheet.create({
   },
   titleTimeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 2,
+  },
+  titleLocationWrap: {
+    flex: 1,
+  },
+  timeStackCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingLeft: 8,
+  },
+  itemDateText: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+    fontWeight: '500',
+    textAlign: 'right',
+  },
+  itemTimeText: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_PRIMARY,
+    fontWeight: '600',
+    textAlign: 'right',
+    marginTop: 1,
   },
   itemTitle: {
     fontSize: 14.5,
@@ -349,6 +404,7 @@ const styles = StyleSheet.create({
   itemLocation: {
     fontSize: 12.5,
     color: CATHAY_TEXT_SECONDARY,
+    marginTop: 2,
   },
 
   lastUpdatedStrip: {

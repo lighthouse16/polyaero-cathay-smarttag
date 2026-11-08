@@ -23,6 +23,7 @@ import {
 } from '@polyaero/shared';
 import {
   CATHAY_JADE,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -255,8 +256,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   instructionTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 8,

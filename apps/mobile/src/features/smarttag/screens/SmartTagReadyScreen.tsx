@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import {
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
@@ -95,7 +96,7 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
 
         {/* Heading Block */}
         <View style={styles.headingWrap}>
-          <Text style={styles.title}>Your SmartTag is ready</Text>
+          <Text style={styles.title}>{'Your SmartTag\nis ready'}</Text>
           <Text style={styles.subtitle}>
             {isSimulated
               ? 'The baggage details have been configured (demo simulation).'
@@ -156,12 +157,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 26,
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 8,
     textAlign: 'center',
+    lineHeight: 32,
   },
   subtitle: {
     fontSize: 14,

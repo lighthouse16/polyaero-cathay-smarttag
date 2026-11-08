@@ -19,11 +19,13 @@ import {
 } from '@polyaero/shared';
 import {
   CATHAY_JADE,
+  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
   CathayPrimaryButton,
   InlineNotice,
+  BrushwingFlightSummaryCard,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
@@ -124,22 +126,11 @@ export const ReportBaggageIssueScreen: React.FC<ReportBaggageIssueScreenProps> =
         </View>
 
         {/* Flight summary card */}
-        <View style={styles.flightSummaryCard}>
-          <View style={styles.flightSummaryLeft}>
-            <View style={styles.flightPlaneWrap}>
-              <Ionicons name="airplane" size={16} color={CATHAY_JADE} />
-            </View>
-            <View style={styles.flightSummaryTextCol}>
-              <Text style={styles.flightRouteTitle}>
-                {itinerary.flight.flightNumber} {itinerary.flight.origin} → {itinerary.flight.destination}
-              </Text>
-              <Text style={styles.flightDateSub}>
-                Tue, 11 Nov 2026 · 10:35
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-        </View>
+        <BrushwingFlightSummaryCard
+          flightNumber={itinerary.flight.flightNumber}
+          route={`${itinerary.flight.origin} → ${itinerary.flight.destination}`}
+          dateStr="Tue, 11 Nov 2026 · 10:35"
+        />
 
         {submittedCase ? (
           <View style={styles.successBlock}>
@@ -180,39 +171,46 @@ export const ReportBaggageIssueScreen: React.FC<ReportBaggageIssueScreenProps> =
               </TouchableOpacity>
             </View>
 
-            {/* Field 2: Tell us more */}
+            {/* Field 2: Description */}
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>Tell us more (optional)</Text>
-              <TextInput
-                style={styles.multilineInput}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                placeholder="Please share any details that might help (e.g. bag description, last seen location)."
-                placeholderTextColor="#9CA3AF"
-                value={description}
-                onChangeText={setDescription}
-              />
+              <Text style={styles.fieldLabel}>Description</Text>
+              <View style={styles.textareaWrap}>
+                <TextInput
+                  style={styles.multilineInput}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={500}
+                  textAlignVertical="top"
+                  placeholder="Provide any details that might help us locate your bag (colour, brand, distinctive marks)..."
+                  placeholderTextColor="#9CA3AF"
+                  value={description}
+                  onChangeText={setDescription}
+                />
+                <Text style={styles.charCounter}>{description.length}/500</Text>
+              </View>
             </View>
 
             {/* Field 3: Add photo (optional) */}
-            <TouchableOpacity
-              style={styles.addPhotoRow}
-              activeOpacity={0.7}
-              onPress={() => setHasPhoto(!hasPhoto)}
-            >
-              <View style={styles.photoLeft}>
-                <Ionicons name="camera-outline" size={20} color={CATHAY_TEXT_SECONDARY} />
-                <Text style={styles.photoText}>
-                  {hasPhoto ? 'Photo attached (luggage.jpg)' : 'Add photo (optional)'}
+            <View style={styles.formGroup}>
+              <Text style={styles.fieldLabel}>Add a photo (optional)</Text>
+              <TouchableOpacity
+                style={styles.uploadPhotoBox}
+                activeOpacity={0.7}
+                onPress={() => setHasPhoto(!hasPhoto)}
+              >
+                <Ionicons
+                  name={hasPhoto ? 'checkmark-circle' : 'camera-outline'}
+                  size={24}
+                  color={hasPhoto ? CATHAY_JADE : '#9CA3AF'}
+                  style={styles.uploadPhotoIcon}
+                />
+                <Text style={styles.uploadPhotoText}>
+                  {hasPhoto
+                    ? 'Photo attached (baggage_tag.jpg)'
+                    : 'Upload photo of your bag or baggage claim tag'}
                 </Text>
-              </View>
-              <Ionicons
-                name={hasPhoto ? 'checkmark-circle' : 'add'}
-                size={20}
-                color={hasPhoto ? CATHAY_JADE : '#9CA3AF'}
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
 
             {/* Primary Action Button */}
             <CathayPrimaryButton
@@ -259,7 +257,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontFamily: CATHAY_SERIF,
+    fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 6,
@@ -268,50 +267,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
-  },
-
-  flightSummaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 14,
-    marginBottom: 20,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  flightSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  flightPlaneWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#EBF4F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  flightSummaryTextCol: {
-    flex: 1,
-  },
-  flightRouteTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 2,
-  },
-  flightDateSub: {
-    fontSize: 12.5,
-    color: CATHAY_TEXT_MUTED,
   },
 
   formCard: {
@@ -341,38 +296,45 @@ const styles = StyleSheet.create({
     color: CATHAY_TEXT_PRIMARY,
     fontWeight: '500',
   },
+  textareaWrap: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 14,
+  },
   multilineInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     fontSize: 14,
     color: CATHAY_TEXT_PRIMARY,
-    minHeight: 100,
+    minHeight: 90,
     lineHeight: 20,
+    padding: 0,
   },
-
-  addPhotoRow: {
+  charCounter: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+  uploadPhotoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#D1D5DB',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 18,
+    gap: 12,
   },
-  photoLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  uploadPhotoIcon: {
+    marginRight: 2,
   },
-  photoText: {
-    fontSize: 14,
-    color: CATHAY_TEXT_PRIMARY,
+  uploadPhotoText: {
+    flex: 1,
+    fontSize: 13.5,
+    color: CATHAY_TEXT_MUTED,
     fontWeight: '500',
   },
 
