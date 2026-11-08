@@ -1,45 +1,65 @@
-# Dependencies
-node_modules/
-.pnpm-store/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
 
-# Expo / React Native
-.expo/
-dist/
-web-build/
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
 
-# Next.js
-apps/staff/.next/
-apps/staff/out/
+# uv
+uv.lock
 
-# Builds & Outputs
-build/
-coverage/
-*.tsbuildinfo
-.turbo/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Environment Variables & Secrets
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
 .env
 .env.local
 .env.*.local
-!.env.example
 
-# OS / IDE
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea/
+# Logs
+*.log
+npm-debug.log*
 
-# UI Reconstruction Reference Assets (Sensitive & Large)
-# Must not be committed to Git per privacy & licensing guidelines
-reference-screenshots/
-docs/references/raw/
+# Build
+dist/
+build/
+*.egg-info/
+
+# Database
+*.sqlite
+*.db
+
+# Node (for monorepo)
+node_modules/
+.pnpm-store/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Turbo
+.turbo/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
