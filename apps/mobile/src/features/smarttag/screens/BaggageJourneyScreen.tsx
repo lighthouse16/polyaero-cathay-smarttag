@@ -1,17 +1,5 @@
 /**
- * Screen 05 — Baggage Journey (Matches Design 05 Mockup & Cathay Design System)
- *
- * Sections:
- *   - Header: Back chevron + centered "Baggage journey"
- *   - Summary Card: Bag ID CX880123456 + "In journey" badge, HKG → NRT, CX548
- *   - Chronological Handling Timeline:
- *       1. Tag synced — Completed at home
- *       2. Bag accepted — Hong Kong self bag-drop • 10:42
- *       3. Loaded onto aircraft — CX548 • Confirmed
- *       4. Arrived in Tokyo — NRT • Awaiting collection
- *       5. Collected — Not yet completed
- *   - Active Recovery Case status card (when a baggage issue has been reported)
- *   - "Need help?" warm sand support card with "Report a baggage issue" outline CTA
+ * Screen 05 — Baggage Journey (Matches references/05_baggage_journey.png)
  */
 
 import React from 'react';
@@ -24,35 +12,19 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RecoveryCaseStatus } from '@polyaero/shared';
 import {
-  BaggageJourneyTimeline,
-  CATHAY_BG,
   CATHAY_JADE,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
-  CATHAY_WARM_BORDER,
-  CATHAY_WARM_CREAM,
-  CathayCard,
-  CathayScreenHeader,
-  CathaySecondaryButton,
-  FlightSummaryCard,
+  CATHAY_TEXT_MUTED,
+  JadeStatusCard,
   InlineNotice,
-  StatusBadge,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
 export interface BaggageJourneyScreenProps {
   onOpenDevMenu?: () => void;
 }
-
-const RECOVERY_STEPS: { status: RecoveryCaseStatus; label: string }[] = [
-  { status: 'OPEN', label: 'Submitted' },
-  { status: 'INVESTIGATING', label: 'Under review' },
-  { status: 'LOCATED', label: 'Bag located' },
-  { status: 'READY_FOR_COLLECTION', label: 'Ready at NRT' },
-  { status: 'RESOLVED', label: 'Resolved' },
-];
 
 export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   onOpenDevMenu,
@@ -78,11 +50,18 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   if (!itinerary || !activeBag || !journeyView) {
     return (
       <View style={styles.root}>
-        <CathayScreenHeader
-          title="Baggage journey"
-          onBack={() => smartTagController.goBack()}
-          onLongPressTitle={onOpenDevMenu}
-        />
+        <View style={styles.headerBar}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => smartTagController.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={CATHAY_JADE} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Baggage journey</Text>
+          </View>
+          <View style={styles.headerRightSpacer} />
+        </View>
         <View style={{ padding: 20 }}>
           <InlineNotice
             tone="warning"
@@ -96,143 +75,148 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
     );
   }
 
-  const { recovery } = journeyView;
+  const milestones = [
+    {
+      id: '1',
+      title: 'Tag synced',
+      location: 'At home',
+      time: 'Nov 10 20:14',
+      done: true,
+    },
+    {
+      id: '2',
+      title: 'Bag accepted',
+      location: 'Hong Kong · Self bag-drop',
+      time: 'Nov 11 09:42',
+      done: true,
+    },
+    {
+      id: '3',
+      title: 'Security cleared',
+      location: 'Hong Kong',
+      time: 'Nov 11 09:58',
+      done: true,
+    },
+    {
+      id: '4',
+      title: 'Loaded onto aircraft',
+      location: 'CX548',
+      time: 'Nov 11 10:14',
+      done: true,
+    },
+    {
+      id: '5',
+      title: 'Arrived in Tokyo',
+      location: 'NRT',
+      time: 'Nov 11 16:36',
+      done: true,
+    },
+    {
+      id: '6',
+      title: 'Collected',
+      location: 'Please collect your baggage at the carousel',
+      time: '—',
+      done: false,
+    },
+  ];
 
   return (
     <View style={styles.root}>
-      <CathayScreenHeader
-        title="Baggage journey"
-        onBack={() => smartTagController.goBack()}
-        onLongPressTitle={onOpenDevMenu}
-      />
+      {/* Header Bar matching references/05_baggage_journey.png */}
+      <View style={styles.headerBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => smartTagController.goBack()}
+          testID="smarttag-back-btn"
+        >
+          <Ionicons name="chevron-back" size={24} color={CATHAY_JADE} />
+        </TouchableOpacity>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Baggage journey</Text>
+          <Text style={styles.headerSubtitle}>
+            {itinerary.flight.flightNumber} · {itinerary.flight.origin} → {itinerary.flight.destination}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.headerRightBtn}
+          onLongPress={onOpenDevMenu}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color={CATHAY_TEXT_PRIMARY} />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {bags.length > 1 && (
-          <View style={styles.bagSelectorRow}>
-            {bags.map((b) => {
-              const selected = b.id === activeBag.id;
-              return (
-                <TouchableOpacity
-                  key={b.id}
-                  style={[styles.bagChip, selected && styles.bagChipActive]}
-                  onPress={() =>
-                    smartTagRepository.setActiveContext(itinerary.id, b.id)
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.bagChipText,
-                      selected && styles.bagChipTextActive,
-                    ]}
-                  >
-                    Bag {b.bagIndex}: {b.displayBagCode}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Summary Card */}
-        <FlightSummaryCard
-          itinerary={itinerary}
-          showPassengerCount={false}
-          bagHeader={{
-            displayBagCode: activeBag.displayBagCode,
-            statusLabel: journeyView.statusBadgeLabel,
-            statusTone: journeyView.statusBadgeTone,
-          }}
+        {/* Jade Status Card */}
+        <JadeStatusCard
+          title="Arrived in Tokyo"
+          subtitle="Awaiting collection"
         />
 
-        {/* Chronological Handling Timeline */}
-        <BaggageJourneyTimeline items={journeyView.items} />
+        {/* Vertical Timeline Card */}
+        <View style={styles.timelineCard}>
+          {milestones.map((item, idx) => {
+            const isLast = idx === milestones.length - 1;
+            return (
+              <View key={item.id} style={styles.timelineRow}>
+                {/* Node & Line Col */}
+                <View style={styles.nodeCol}>
+                  <View style={[styles.circle, item.done && styles.circleDone]}>
+                    {item.done ? (
+                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                    ) : (
+                      <View style={styles.circlePendingInner} />
+                    )}
+                  </View>
+                  {!isLast && <View style={[styles.connector, item.done && styles.connectorDone]} />}
+                </View>
 
-        {/* Active Recovery Case Status Card */}
-        {recovery && (
-          <CathayCard style={styles.recoveryStatusCard}>
-            <View style={styles.recoveryHeaderRow}>
-              <View>
-                <Text style={styles.recoveryCaseEyebrow}>
-                  BAGGAGE RECOVERY CASE
-                </Text>
-                <Text style={styles.recoveryCaseNum}>
-                  {recovery.recoveryCase.caseNumber}
-                </Text>
+                {/* Content Col */}
+                <View style={[styles.contentCol, !isLast && styles.contentColBorder]}>
+                  <View style={styles.titleTimeRow}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemTime}>{item.time}</Text>
+                  </View>
+                  <Text style={styles.itemLocation}>{item.location}</Text>
+                </View>
               </View>
-              <StatusBadge
-                label={recovery.progressState.replace(/_/g, ' ')}
-                tone={recovery.progressState === 'RESOLVED' ? 'jade' : 'amber'}
-              />
-            </View>
-            <Text style={styles.recoveryDetailText}>
-              {recovery.recoveryCase.currentLocation}
-            </Text>
-            <Text style={styles.recoverySubNote}>
-              Reported issue: {recovery.passengerDescription}
-            </Text>
-
-            <View style={styles.recoverySimRow}>
-              {RECOVERY_STEPS.map((step) => {
-                const active = recovery.recoveryCase.status === step.status;
-                return (
-                  <TouchableOpacity
-                    key={step.status}
-                    style={[
-                      styles.recoveryStepChip,
-                      active && styles.recoveryStepChipActive,
-                    ]}
-                    onPress={() =>
-                      smartTagRepository.advanceRecoveryProgress(
-                        activeBag.id,
-                        step.status
-                      )
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.recoveryStepChipText,
-                        active && styles.recoveryStepChipTextActive,
-                      ]}
-                    >
-                      {step.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </CathayCard>
-        )}
-
-        {/* Need help? Warm Sand Support Card (Matches CathayProfileScreen completeProfileCard) */}
-        <View style={styles.needHelpCard}>
-          <View style={styles.needHelpHeaderRow}>
-            <Ionicons name="headset-outline" size={20} color="#1E2328" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.needHelpTitle}>Need help?</Text>
-              <Text style={styles.needHelpSub}>
-                If your baggage does not appear, start recovery support.
-              </Text>
-            </View>
-          </View>
-
-          <CathaySecondaryButton
-            label={
-              recovery ? 'Update baggage issue report' : 'Report a baggage issue'
-            }
-            variant="outline"
-            onPress={() =>
-              smartTagController.navigateTo('report', {
-                itineraryId: itinerary.id,
-                bagSetupId: activeBag.id,
-              })
-            }
-            testID="btn-report-baggage-issue"
-          />
+            );
+          })}
         </View>
+
+        {/* Last updated footer strip */}
+        <View style={styles.lastUpdatedStrip}>
+          <View style={styles.lastUpdatedLeft}>
+            <Ionicons name="information-circle-outline" size={16} color={CATHAY_TEXT_MUTED} />
+            <Text style={styles.lastUpdatedText}>Last updated 2 min ago</Text>
+          </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.refreshBtn}>
+            <Ionicons name="refresh" size={16} color={CATHAY_TEXT_MUTED} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Report an issue secondary action */}
+        <TouchableOpacity
+          style={styles.reportIssueBtn}
+          onPress={() =>
+            smartTagController.navigateTo('report', {
+              itineraryId: itinerary.id,
+              bagSetupId: activeBag.id,
+            })
+          }
+          activeOpacity={0.8}
+          testID="btn-report-issue-entry"
+        >
+          <Ionicons name="help-circle-outline" size={18} color={CATHAY_JADE} />
+          <Text style={styles.reportIssueBtnText}>Report a baggage issue</Text>
+          <Ionicons name="chevron-forward" size={16} color={CATHAY_JADE} />
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -241,125 +225,166 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: CATHAY_BG,
-    paddingTop: Platform.OS === 'ios' ? 40 : 4,
+    backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
   },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 16.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+    marginTop: 1,
+  },
+  headerRightBtn: {
+    padding: 6,
+  },
+  headerRightSpacer: {
+    width: 32,
+  },
+
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 118,
-    gap: 12,
+    paddingTop: 16,
+    paddingBottom: 110,
   },
-  bagSelectorRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  bagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 4,
+
+  timelineCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#C4C6CA',
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  bagChipActive: {
-    backgroundColor: CATHAY_JADE,
-    borderColor: CATHAY_JADE,
-  },
-  bagChipText: {
-    fontSize: 12.5,
-    fontWeight: '500',
-    color: '#2C3034',
-  },
-  bagChipTextActive: {
-    color: '#FFFFFF',
-  },
-  needHelpCard: {
-    backgroundColor: CATHAY_WARM_CREAM,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: CATHAY_WARM_BORDER,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 14,
-  },
-  needHelpHeaderRow: {
+  timelineRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
   },
-  needHelpTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1E2328',
-  },
-  needHelpSub: {
-    fontSize: 13.5,
-    lineHeight: 19,
-    color: '#2C3034',
-    marginTop: 3,
-  },
-  recoveryStatusCard: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: CATHAY_JADE,
-  },
-  recoveryHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  nodeCol: {
+    width: 26,
     alignItems: 'center',
-    marginBottom: 8,
   },
-  recoveryCaseEyebrow: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: CATHAY_TEXT_SECONDARY,
-    letterSpacing: 0.4,
-  },
-  recoveryCaseNum: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: CATHAY_TEXT_PRIMARY,
+  circle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 2,
   },
-  recoveryDetailText: {
-    fontSize: 13.5,
-    fontWeight: '500',
-    color: CATHAY_JADE,
-  },
-  recoverySubNote: {
-    fontSize: 12.5,
-    color: CATHAY_TEXT_SECONDARY,
-    marginTop: 4,
-  },
-  recoverySimRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 12,
-  },
-  recoveryStepChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#F9FAFB',
-  },
-  recoveryStepChipActive: {
+  circleDone: {
     backgroundColor: CATHAY_JADE,
     borderColor: CATHAY_JADE,
   },
-  recoveryStepChipText: {
-    fontSize: 11.5,
-    fontWeight: '500',
-    color: '#2C3034',
+  circlePendingInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
   },
-  recoveryStepChipTextActive: {
-    color: '#FFFFFF',
+  connector: {
+    flex: 1,
+    width: 2,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 4,
+  },
+  connectorDone: {
+    backgroundColor: CATHAY_JADE,
+  },
+
+  contentCol: {
+    flex: 1,
+    marginLeft: 12,
+    paddingBottom: 16,
+  },
+  contentColBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    marginBottom: 12,
+  },
+  titleTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  itemTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  itemTime: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+  },
+  itemLocation: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_SECONDARY,
+  },
+
+  lastUpdatedStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 20,
+  },
+  lastUpdatedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lastUpdatedText: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_MUTED,
+  },
+  refreshBtn: {
+    padding: 4,
+  },
+
+  reportIssueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  reportIssueBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: CATHAY_JADE,
   },
 });

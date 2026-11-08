@@ -1,5 +1,5 @@
 /**
- * Screen 04 — SmartTag Ready (Matches Design 04 Mockup & Cathay Design System)
+ * Screen 04 — SmartTag Ready (Matches references/04_smarttag_ready.png)
  */
 
 import React from 'react';
@@ -11,22 +11,17 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import {
-  CATHAY_BG,
-  CATHAY_JADE,
-  CATHAY_MINT_BADGE,
-  CATHAY_MINT_SURFACE,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
   CathayScreenHeader,
-  ICON_STEP_BELT,
-  ICON_STEP_QR,
-  ICON_STEP_TAG,
+  HeaderSoftWave,
+  SMARTTAG_SUCCESS_ART,
+  AirportGuideSteps,
   InlineNotice,
-  SmartTagIdentityCard,
 } from '../components/CathaySmartTagPrimitives';
+import { SmartTagStepper } from '../components/SmartTagStepper';
 import { smartTagController, useSmartTagStore } from '../store';
 
 export interface SmartTagReadyScreenProps {
@@ -51,7 +46,8 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
     return (
       <View style={styles.root}>
         <CathayScreenHeader
-          title="SmartTag ready"
+          title="Cathay SmartTag"
+          backIcon="chevron-back"
           onBack={() => smartTagController.goBack()}
           onLongPressTitle={onOpenDevMenu}
         />
@@ -68,78 +64,49 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
     );
   }
 
+  const isSimulated = bag.setupState === 'SIMULATED_WRITE_COMPLETED';
+
   return (
     <View style={styles.root}>
+      <HeaderSoftWave />
       <CathayScreenHeader
-        title="SmartTag ready"
+        title="Cathay SmartTag"
+        backIcon="chevron-back"
         onBack={() => smartTagController.goBack()}
         onLongPressTitle={onOpenDevMenu}
       />
+
+      {/* Stepper: All steps complete / Ready */}
+      <SmartTagStepper currentStep="ready" />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Positive Confirmation Block */}
-        <View style={styles.heroCheckSection}>
-          <View style={styles.checkCircle}>
-            <Ionicons name="checkmark" size={30} color={CATHAY_JADE} />
-          </View>
+        {/* Success Art Visual */}
+        <View style={styles.artWrap}>
+          <Image
+            source={SMARTTAG_SUCCESS_ART}
+            style={styles.successArtImage}
+            resizeMode="contain"
+          />
+        </View>
 
-          <Text style={styles.heroTitle}>Your SmartTag is ready</Text>
-          <Text style={styles.heroSubtitle}>
-            You can now go directly to Cathay self bag-drop at the{'\n'}airport.
+        {/* Heading Block */}
+        <View style={styles.headingWrap}>
+          <Text style={styles.title}>Your SmartTag is ready</Text>
+          <Text style={styles.subtitle}>
+            {isSimulated
+              ? 'The baggage details have been configured (demo simulation).'
+              : 'The baggage details have been successfully written to your tag.'}
           </Text>
         </View>
 
-        {/* Tag Details Card (Shared Foundation Component) */}
-        <SmartTagIdentityCard variant="ready" itinerary={itinerary} bag={bag} />
+        {/* At the airport, it's simple — 3-step Guide */}
+        <AirportGuideSteps />
 
-        {/* Airport Next Steps Mint Box (Exact Design 04) */}
-        <View style={styles.stepsMintCard}>
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconCol}>
-              <Image
-                source={ICON_STEP_TAG}
-                style={styles.stepIconImg}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.stepDivider} />
-            <Text style={styles.stepText}>1. Attach SmartTag to your luggage</Text>
-          </View>
-
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconCol}>
-              <Image
-                source={ICON_STEP_QR}
-                style={styles.stepIconImg}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.stepDivider} />
-            <Text style={styles.stepText}>
-              2. Scan boarding pass at self bag-drop
-            </Text>
-          </View>
-
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconCol}>
-              <Image
-                source={ICON_STEP_BELT}
-                style={styles.stepIconImg}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.stepDivider} />
-            <Text style={styles.stepText}>
-              3. Place your bag on the belt for weighing
-            </Text>
-          </View>
-        </View>
-
-        {/* Primary CTA */}
+        {/* Primary CTA: View baggage journey */}
         <CathayPrimaryButton
           label="View baggage journey"
           onPress={() =>
@@ -148,7 +115,8 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
               bagSetupId: bag.id,
             })
           }
-          testID="btn-ready-view-journey"
+          style={styles.journeyBtn}
+          testID="btn-view-journey-from-ready"
         />
       </ScrollView>
     </View>
@@ -158,75 +126,51 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: CATHAY_BG,
-    paddingTop: Platform.OS === 'ios' ? 40 : 4,
+    backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    position: 'relative',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 118,
-    gap: 13,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 110,
   },
-  heroCheckSection: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  checkCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: CATHAY_MINT_BADGE,
+
+  artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginVertical: 12,
+    height: 150,
   },
-  heroTitle: {
-    fontSize: 21,
-    fontWeight: '700',
+  successArtImage: {
+    width: 170,
+    height: 135,
+  },
+
+  headingWrap: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  heroSubtitle: {
+  subtitle: {
     fontSize: 14,
-    lineHeight: 20,
     color: CATHAY_TEXT_SECONDARY,
+    lineHeight: 20,
     textAlign: 'center',
-    marginTop: 5,
   },
-  stepsMintCard: {
-    backgroundColor: CATHAY_MINT_SURFACE,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    gap: 14,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepIconCol: {
-    width: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepIconImg: {
-    width: 24,
-    height: 22,
-  },
-  stepDivider: {
-    width: 1,
-    height: 22,
-    backgroundColor: '#C5DBD6',
-    marginHorizontal: 12,
-  },
-  stepText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#2B3035',
-    fontWeight: '400',
+
+  journeyBtn: {
+    marginTop: 6,
   },
 });

@@ -1,5 +1,5 @@
 /**
- * Screen 03 — Sync SmartTag (Matches Design 03 Mockup & Cathay Design System)
+ * Screen 03 — Sync SmartTag (Matches references/03_sync_smarttag.png)
  */
 
 import React, { useState } from 'react';
@@ -10,7 +10,6 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  Linking,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,20 +22,17 @@ import {
   runSmartTagSync,
 } from '@polyaero/shared';
 import {
-  CATHAY_BG,
-  CATHAY_BORDER,
   CATHAY_JADE,
-  CATHAY_JADE_LIGHT,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
+  CATHAY_TEXT_MUTED,
   CathayPrimaryButton,
   CathayScreenHeader,
-  ICON_PLANE_TAKEOFF,
+  HeaderSoftWave,
+  NFC_PHONE_TAG_SCENE,
   InlineNotice,
-  NfcPhoneToTagIllustration,
-  SmartTagIdentityCard,
-  SmartTagProgressIndicator,
 } from '../components/CathaySmartTagPrimitives';
+import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
@@ -61,15 +57,14 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
-  const [showEinkPreview, setShowEinkPreview] = useState<boolean>(false);
 
   if (!itinerary || !activeBag) {
     return (
       <View style={styles.root}>
         <CathayScreenHeader
-          title="Sync SmartTag"
+          title="Cathay SmartTag"
+          backIcon="chevron-back"
           onBack={() => smartTagController.goBack()}
           onLongPressTitle={onOpenDevMenu}
         />
@@ -106,14 +101,13 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'WRITING' ||
     machineState === 'VERIFYING';
 
-  const handleStartPhysicalSync = async () => {
+  const handleStartSync = async (forceDemo = false) => {
     if (isBusy) return;
     const bag = ensurePreparedBag();
     setFailure(null);
-    setIsSimulating(false);
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
-    const physicalService = getPhysicalNfcService();
+    const physicalService = forceDemo ? null : getPhysicalNfcService();
     const effectiveService = physicalService ?? demoNfcService;
     demoNfcService.setMockTag(payload);
 
@@ -142,139 +136,82 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
   };
 
-  const handleCancelScan = async () => {
-    await demoNfcService.cancelScan();
-    await getPhysicalNfcService()?.cancelScan();
-  };
-
-  const { flight } = itinerary;
-
   return (
     <View style={styles.root}>
+      <HeaderSoftWave />
       <CathayScreenHeader
-        title="Sync SmartTag"
+        title="Cathay SmartTag"
+        backIcon="chevron-back"
         onBack={() => smartTagController.goBack()}
         onLongPressTitle={onOpenDevMenu}
       />
 
-      {/* Secondary Flight Summary Sub-Bar */}
-      <View style={styles.flightSubBar}>
-        <View style={styles.flightSubLeft}>
-          <Image
-            source={ICON_PLANE_TAKEOFF}
-            style={styles.takeoffIcon}
-            resizeMode="contain"
-          />
-          <Text style={styles.flightSubCode}>{flight.flightNumber}</Text>
-        </View>
-        <View style={styles.subBarDivider} />
-        <Text style={styles.flightSubRoute}>
-          {flight.origin} to {flight.destination}
-        </Text>
-      </View>
+      {/* Stepper: Sync is active */}
+      <SmartTagStepper currentStep="sync" />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {bags.length > 1 && (
-          <View style={styles.bagTabsRow}>
-            {bags.map((b) => {
-              const selected = b.id === activeBag.id;
-              return (
-                <TouchableOpacity
-                  key={b.id}
-                  style={[styles.bagTabChip, selected && styles.bagTabChipActive]}
-                  onPress={() => {
-                    setMachineState('IDLE');
-                    setStatusMessage(NFC_STATE_MESSAGES.IDLE);
-                    setFailure(null);
-                    smartTagRepository.setActiveContext(itinerary.id, b.id);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.bagTabChipText,
-                      selected && styles.bagTabChipTextActive,
-                    ]}
-                  >
-                    Bag {b.bagIndex}: {b.smartTagCode}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        {/* Hero NFC Illustration Scene */}
+        <View style={styles.illustrationWrap}>
+          <Image
+            source={NFC_PHONE_TAG_SCENE}
+            style={styles.nfcArtImage}
+            resizeMode="contain"
+          />
+        </View>
 
-        {/* Section A: Phone-to-Tag NFC Illustration + Instructions */}
-        <NfcPhoneToTagIllustration activeState={machineState} />
-
-        <View style={styles.instructionBlock}>
-          <Text style={styles.instructionHeading}>
-            Hold your phone near the SmartTag
-          </Text>
-          <Text style={styles.instructionSub}>
-            We will write your flight details and baggage identity{'\n'}to the tag.
+        {/* Text Instruction */}
+        <View style={styles.textWrap}>
+          <Text style={styles.instructionTitle}>Tap your SmartTag</Text>
+          <Text style={styles.instructionSubtitle}>
+            Hold the back of your phone close to the SmartTag to write your baggage details onto the e-ink display.
           </Text>
         </View>
 
-        {/* Live NFC State Machine Progress Banner */}
-        <SmartTagProgressIndicator
-          state={machineState}
-          message={statusMessage}
-          isSimulated={isSimulating}
-          onCancel={handleCancelScan}
-        />
+        {/* Steady Hold Hint Callout */}
+        <View style={styles.hintBox}>
+          <Ionicons name="information-circle-outline" size={20} color={CATHAY_JADE} style={styles.hintIcon} />
+          <Text style={styles.hintText}>
+            Keep the tag steady until the sync is complete (about 3–5 seconds).
+          </Text>
+        </View>
 
-        {/* Actionable Error Notice */}
+        {/* Status Message or Failure Display */}
+        {isBusy && (
+          <View style={styles.busyBox}>
+            <Text style={styles.busyText}>{statusMessage}</Text>
+          </View>
+        )}
+
         {failure && (
-          <InlineNotice
-            tone={machineState === 'UNSUPPORTED' ? 'warning' : 'danger'}
-            title={failure.title}
-            message={`${failure.message} ${failure.recoveryHint}`}
-            actionLabel={failure.canRetry ? 'Retry NFC sync' : undefined}
-            onAction={failure.canRetry ? handleStartPhysicalSync : undefined}
-            secondaryActionLabel={
-              failure.canOpenSettings ? 'Open NFC settings' : undefined
-            }
-            onSecondaryAction={
-              failure.canOpenSettings
-                ? () => {
-                    Linking.openSettings().catch(() => {});
-                  }
-                : undefined
-            }
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>{failure.title}</Text>
+            <Text style={styles.errorText}>{failure.message}</Text>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.actionsWrap}>
+          <CathayPrimaryButton
+            label={isBusy ? statusMessage : 'Start NFC sync'}
+            onPress={() => handleStartSync(false)}
+            disabled={isBusy}
+            style={styles.primaryCta}
+            testID="btn-start-sync"
           />
-        )}
 
-        {/* Section B: What will be written */}
-        <SmartTagIdentityCard
-          variant="preview"
-          itinerary={itinerary}
-          bag={activeBag}
-          showMonochromeEinkPreview={showEinkPreview}
-        />
-
-        {showEinkPreview && (
           <TouchableOpacity
-            style={styles.togglePreviewRow}
-            onPress={() => setShowEinkPreview(false)}
-            activeOpacity={0.75}
+            style={styles.demoLinkBtn}
+            onPress={() => handleStartSync(true)}
+            activeOpacity={0.7}
+            testID="btn-demo-sync"
           >
-            <Ionicons name="eye-off-outline" size={15} color={CATHAY_JADE} />
-            <Text style={styles.togglePreviewText}>Hide E-ink display preview</Text>
+            <Text style={styles.demoLinkText}>Run demo simulation</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Section C: Primary Action */}
-        <CathayPrimaryButton
-          label="Start NFC sync"
-          onPress={handleStartPhysicalSync}
-          loading={isBusy}
-          disabled={isBusy}
-          testID="btn-start-nfc-sync"
-        />
+        </View>
       </ScrollView>
     </View>
   );
@@ -283,109 +220,125 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: CATHAY_BG,
-    paddingTop: Platform.OS === 'ios' ? 40 : 4,
+    backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    position: 'relative',
   },
-  flightSubBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: CATHAY_BORDER,
-  },
-  flightSubLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  takeoffIcon: {
-    width: 17,
-    height: 13,
-  },
-  flightSubCode: {
-    fontSize: 14,
-    color: '#3B4148',
-    fontWeight: '400',
-  },
-  subBarDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#D9DEE2',
-    marginHorizontal: 14,
-  },
-  flightSubRoute: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: CATHAY_JADE_LIGHT,
+  emptyWrap: {
+    padding: 20,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 120,
-    gap: 13,
-  },
-  emptyWrap: {
-    padding: 20,
-  },
-  bagTabsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  bagTabChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D5DCDF',
-  },
-  bagTabChipActive: {
-    backgroundColor: CATHAY_JADE,
-    borderColor: CATHAY_JADE,
-  },
-  bagTabChipText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#3B4148',
-  },
-  bagTabChipTextActive: {
-    color: '#FFFFFF',
-  },
-  instructionBlock: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 110,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 2,
-    paddingBottom: 2,
   },
-  instructionHeading: {
-    fontSize: 19.5,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  instructionSub: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: CATHAY_TEXT_SECONDARY,
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  togglePreviewRow: {
-    flexDirection: 'row',
+
+  illustrationWrap: {
+    width: '100%',
+    height: 240,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 2,
+    marginVertical: 12,
   },
-  togglePreviewText: {
+  nfcArtImage: {
+    width: 250,
+    height: 230,
+  },
+
+  textWrap: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginBottom: 20,
+  },
+  instructionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: CATHAY_TEXT_PRIMARY,
+    letterSpacing: -0.3,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  instructionSubtitle: {
+    fontSize: 14,
+    color: CATHAY_TEXT_SECONDARY,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+
+  hintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF3F2',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
+    marginBottom: 24,
+  },
+  hintIcon: {
+    marginRight: 10,
+  },
+  hintText: {
+    flex: 1,
     fontSize: 12.5,
-    color: CATHAY_JADE,
+    color: CATHAY_TEXT_PRIMARY,
+    lineHeight: 18,
     fontWeight: '500',
+  },
+
+  busyBox: {
+    backgroundColor: '#E6F4F1',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  busyText: {
+    color: CATHAY_JADE,
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+    marginBottom: 16,
+  },
+  errorTitle: {
+    color: '#B91C1C',
+    fontSize: 13.5,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 12.5,
+  },
+
+  actionsWrap: {
+    width: '100%',
+    marginTop: 8,
+    gap: 12,
+    alignItems: 'center',
+  },
+  primaryCta: {
+    width: '100%',
+  },
+  demoLinkBtn: {
+    paddingVertical: 8,
+  },
+  demoLinkText: {
+    color: CATHAY_TEXT_MUTED,
+    fontSize: 13,
+    textDecorationLine: 'underline',
   },
 });

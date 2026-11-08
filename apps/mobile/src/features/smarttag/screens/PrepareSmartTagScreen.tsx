@@ -1,5 +1,5 @@
 /**
- * Screen 02 — Prepare SmartTag (Matches Design 02 Mockup & Cathay Design System)
+ * Screen 02 — Prepare SmartTag (Matches references/02_prepare_smarttag.png)
  */
 
 import React, { useState } from 'react';
@@ -7,31 +7,26 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
   ScrollView,
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   DEFAULT_DECLARATIONS,
   SmartTagDeclarations,
-  areDeclarationsComplete,
 } from '@polyaero/shared';
 import {
-  BaggageDetailsCard,
-  CATHAY_BG,
-  CATHAY_BORDER,
-  CATHAY_MINT_SURFACE,
+  CATHAY_JADE,
   CATHAY_TEXT_PRIMARY,
-  CathayCard,
+  CATHAY_TEXT_SECONDARY,
+  CATHAY_TEXT_MUTED,
   CathayPrimaryButton,
   CathayScreenHeader,
-  FlightSummaryCard,
-  ICON_REQ_KIOSK,
-  ICON_REQ_TAG,
-  ICON_REQ_WARNING,
+  HeaderSoftWave,
   InlineNotice,
 } from '../components/CathaySmartTagPrimitives';
+import { SmartTagStepper } from '../components/SmartTagStepper';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
 export interface PrepareSmartTagScreenProps {
@@ -52,23 +47,24 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     : [];
   const primaryBag = existingBags[0];
 
-  const [bagCount, setBagCount] = useState<number>(() =>
+  const [bagCount] = useState<number>(() =>
     Math.max(1, existingBags.length || 1)
   );
-  const [selectedSmartTagCode, setSelectedSmartTagCode] = useState<string>(
+  const [selectedSmartTagCode] = useState<string>(
     () => primaryBag?.smartTagCode ?? repo.ownedTags[0]?.smartTagCode ?? 'ST-2048'
   );
-  const [declarations, setDeclarations] = useState<SmartTagDeclarations>(() =>
+  const [declarations] = useState<SmartTagDeclarations>(() =>
     primaryBag?.declarations ?? { ...DEFAULT_DECLARATIONS }
   );
+  const [tagReady, setTagReady] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   if (!itinerary) {
     return (
       <View style={styles.root}>
         <CathayScreenHeader
-          title="Prepare SmartTag"
-          backIcon="arrow-back"
+          title="Cathay SmartTag"
+          backIcon="chevron-back"
           onBack={() => smartTagController.goBack()}
           onLongPressTitle={onOpenDevMenu}
         />
@@ -85,41 +81,7 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     );
   }
 
-  const isSynced =
-    primaryBag?.setupState === 'SIMULATED_WRITE_COMPLETED' ||
-    primaryBag?.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED';
-
-  const syncStatusLabel = isSynced ? 'Synced' : 'Not yet synced';
-  const syncStatusTone = isSynced ? 'jade' : 'neutral';
-
-  const toggleDeclaration = (key: keyof SmartTagDeclarations) => {
-    setFeedbackError(null);
-    setDeclarations((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleCycleBagCount = () => {
-    const maxBags = Math.min(itinerary.checkedBagAllowance, repo.ownedTags.length);
-    setBagCount((prev) => (prev >= maxBags ? 1 : prev + 1));
-  };
-
   const handleContinue = () => {
-    if (itinerary.checkInReadiness !== 'DEMO_CHECK_IN_COMPLETED') {
-      setFeedbackError(
-        'Online check-in is required before generating your digital baggage tag.'
-      );
-      return;
-    }
-
-    if (!areDeclarationsComplete(declarations)) {
-      setFeedbackError(
-        'Please confirm all preflight baggage requirements in "Before you continue" to proceed.'
-      );
-      return;
-    }
-
     const res = smartTagRepository.prepareBagsForItinerary({
       itineraryId: itinerary.id,
       bagCount,
@@ -139,168 +101,124 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     });
   };
 
-  const allConfirmed =
-    itinerary.checkInReadiness === 'DEMO_CHECK_IN_COMPLETED' &&
-    areDeclarationsComplete(declarations);
+  const isConfirmed = itinerary.checkInReadiness === 'DEMO_CHECK_IN_COMPLETED';
 
   return (
     <View style={styles.root}>
+      <HeaderSoftWave />
       <CathayScreenHeader
-        title="Prepare SmartTag"
-        backIcon="arrow-back"
+        title="Cathay SmartTag"
+        backIcon="chevron-back"
         onBack={() => smartTagController.goBack()}
         onLongPressTitle={onOpenDevMenu}
       />
+
+      {/* Stepper: Prepare is active */}
+      <SmartTagStepper currentStep="prepare" />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Section A: Shared Flight Summary Card */}
-        <FlightSummaryCard itinerary={itinerary} />
+        {/* Heading Section */}
+        <View style={styles.headingWrap}>
+          <Text style={styles.mainTitle}>Prepare your SmartTag</Text>
+          <Text style={styles.mainSubtitle}>
+            Let’s get your baggage tag ready for this flight.
+          </Text>
+        </View>
 
-        {/* Section B: Baggage Details Card */}
-        <BaggageDetailsCard
-          bagCount={bagCount}
-          maxBags={repo.ownedTags.length}
-          selectedSmartTagCode={selectedSmartTagCode}
-          ownedTags={repo.ownedTags}
-          syncStatusLabel={syncStatusLabel}
-          syncStatusTone={syncStatusTone}
-          onCycleBagCount={handleCycleBagCount}
-          onSelectSmartTagCode={setSelectedSmartTagCode}
-        />
-
-        {bagCount > 1 && (
-          <InlineNotice
-            tone="info"
-            title="Distinct baggage identity per bag"
-            message={`Each checked bag receives its own unique 10-digit IATA barcode and SmartTag assignment (${repo.ownedTags
-              .slice(0, bagCount)
-              .map((t, i) => `Bag ${i + 1}: ${t.smartTagCode}`)
-              .join(' • ')}).`}
-          />
-        )}
-
-        {itinerary.checkInReadiness === 'CHECK_IN_PENDING' && (
-          <InlineNotice
-            tone="warning"
-            title="Check-in prerequisite required"
-            message="Complete flight check-in before generating a baggage identity."
-            actionLabel="Complete check-in"
-            onAction={() => {
-              smartTagRepository.setCheckInReadiness(
-                itinerary.id,
-                'DEMO_CHECK_IN_COMPLETED'
-              );
-              setFeedbackError(null);
-            }}
-          />
-        )}
-
-        {/* Section C: Before you continue */}
-        <CathayCard style={styles.beforeCard}>
-          <Text style={styles.beforeHeading}>Before you continue</Text>
-
-          {/* Requirement 1: Dangerous goods declaration */}
-          <TouchableOpacity
-            style={styles.reqRow}
-            onPress={() => toggleDeclaration('dangerousGoodsDeclared')}
-            activeOpacity={0.75}
-            testID="req-dangerous-goods"
-          >
-            <View
-              style={[
-                styles.reqIconCircle,
-                !declarations.dangerousGoodsDeclared && styles.reqIconCircleUnchecked,
-              ]}
-            >
-              <Image
-                source={ICON_REQ_WARNING}
-                style={styles.reqIconImg}
-                resizeMode="contain"
-              />
+        {/* Flight summary card */}
+        <TouchableOpacity
+          style={styles.flightSummaryCard}
+          activeOpacity={0.8}
+          onPress={() => smartTagController.navigateTo('bookings')}
+        >
+          <View style={styles.flightSummaryLeft}>
+            <View style={styles.flightPlaneWrap}>
+              <Ionicons name="airplane" size={16} color={CATHAY_JADE} />
             </View>
-            <Text style={styles.reqText}>
-              Dangerous goods declaration required at check-in
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.hairline} />
-
-          {/* Requirement 2: Use at Cathay self bag-drop */}
-          <TouchableOpacity
-            style={styles.reqRow}
-            onPress={() => toggleDeclaration('airportAcceptanceUnderstood')}
-            activeOpacity={0.75}
-            testID="req-bag-drop"
-          >
-            <View
-              style={[
-                styles.reqIconCircle,
-                !declarations.airportAcceptanceUnderstood &&
-                  styles.reqIconCircleUnchecked,
-              ]}
-            >
-              <Image
-                source={ICON_REQ_KIOSK}
-                style={styles.reqIconImg}
-                resizeMode="contain"
-              />
+            <View style={styles.flightSummaryTextCol}>
+              <Text style={styles.flightRouteTitle}>
+                {itinerary.flight.flightNumber} {itinerary.flight.origin} → {itinerary.flight.destination}
+              </Text>
+              <Text style={styles.flightDateSub}>
+                Tue, 11 Nov 2026 · 10:35
+              </Text>
             </View>
-            <Text style={styles.reqText}>Use at Cathay self bag-drop</Text>
-          </TouchableOpacity>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+        </TouchableOpacity>
 
-          <View style={styles.hairline} />
+        {/* Before you continue checklist */}
+        <View style={styles.checklistCard}>
+          <Text style={styles.checklistSectionTitle}>Before you continue</Text>
 
-          {/* Requirement 3: Keep SmartTag attached */}
-          <TouchableOpacity
-            style={[styles.reqRow, { paddingBottom: 2 }]}
-            onPress={() => toggleDeclaration('tagSecuredToLuggage')}
-            activeOpacity={0.75}
-            testID="req-keep-attached"
-          >
-            <View
-              style={[
-                styles.reqIconCircle,
-                !declarations.tagSecuredToLuggage && styles.reqIconCircleUnchecked,
-              ]}
-            >
-              <Image
-                source={ICON_REQ_TAG}
-                style={styles.reqIconImg}
-                resizeMode="contain"
-              />
+          {/* Item 1 */}
+          <View style={styles.checklistRow}>
+            <View style={[styles.checklistBadge, isConfirmed && styles.checklistBadgeDone]}>
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
             </View>
-            <Text style={styles.reqText}>
-              Keep your SmartTag attached until collection
-            </Text>
+            <View style={styles.checklistTextCol}>
+              <Text style={styles.checklistTitle}>Booking confirmed</Text>
+              <Text style={styles.checklistSubtitle}>
+                E-ticket and baggage allowance verified
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.checklistRowDivider} />
+
+          {/* Item 2 */}
+          <View style={styles.checklistRow}>
+            <View style={[styles.checklistBadge, styles.checklistBadgeDone]}>
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            </View>
+            <View style={styles.checklistTextCol}>
+              <Text style={styles.checklistTitle}>Baggage within allowance</Text>
+              <Text style={styles.checklistSubtitle}>
+                1 checked bag (≤ 23 kg)
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.checklistRowDivider} />
+
+          {/* Item 3 */}
+          <TouchableOpacity
+            style={styles.checklistRow}
+            activeOpacity={0.7}
+            onPress={() => setTagReady(!tagReady)}
+          >
+            <View style={[styles.checklistBadge, tagReady && styles.checklistBadgeDone]}>
+              {tagReady ? (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              ) : (
+                <View style={styles.circleUnchecked} />
+              )}
+            </View>
+            <View style={styles.checklistTextCol}>
+              <Text style={styles.checklistTitle}>Have your SmartTag ready</Text>
+              <Text style={styles.checklistSubtitle}>
+                A Cathay SmartTag with NFC
+              </Text>
+            </View>
           </TouchableOpacity>
-        </CathayCard>
+        </View>
 
         {feedbackError && (
-          <InlineNotice
-            tone="danger"
-            message={feedbackError}
-            actionLabel="Confirm all requirements"
-            onAction={() => {
-              smartTagRepository.setCheckInReadiness(
-                itinerary.id,
-                'DEMO_CHECK_IN_COMPLETED'
-              );
-              setDeclarations({ ...DEFAULT_DECLARATIONS });
-              setFeedbackError(null);
-            }}
-          />
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{feedbackError}</Text>
+          </View>
         )}
 
-        {/* Primary CTA */}
+        {/* Primary CTA: Continue */}
         <CathayPrimaryButton
           label="Continue"
           onPress={handleContinue}
-          style={!allConfirmed ? styles.dimmedCta : undefined}
-          testID="btn-prepare-continue"
+          style={styles.continueBtn}
+          testID="btn-continue-prepare"
         />
       </ScrollView>
     </View>
@@ -310,65 +228,159 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: CATHAY_BG,
-    paddingTop: Platform.OS === 'ios' ? 40 : 4,
+    backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    position: 'relative',
+  },
+  emptyWrap: {
+    padding: 20,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 118,
-    gap: 11,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 110,
   },
-  emptyWrap: {
-    padding: 20,
+  headingWrap: {
+    marginBottom: 20,
+    paddingTop: 8,
   },
-  beforeCard: {
-    paddingHorizontal: 18,
-    paddingVertical: 15,
-  },
-  beforeHeading: {
-    fontSize: 16.5,
-    fontWeight: '700',
+  mainTitle: {
+    fontSize: 22,
+    fontWeight: '800',
     color: CATHAY_TEXT_PRIMARY,
-    marginBottom: 8,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
-  reqRow: {
+  mainSubtitle: {
+    fontSize: 14,
+    color: CATHAY_TEXT_SECONDARY,
+    lineHeight: 20,
+  },
+
+  flightSummaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 9,
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 14,
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  reqIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: CATHAY_MINT_SURFACE,
+  flightSummaryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  flightPlaneWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EBF4F3',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  reqIconCircleUnchecked: {
-    backgroundColor: '#F2F4F5',
-    opacity: 0.55,
-  },
-  reqIconImg: {
-    width: 21,
-    height: 22,
-  },
-  reqText: {
+  flightSummaryTextCol: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 19,
-    color: '#3B4148',
   },
-  hairline: {
+  flightRouteTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  flightDateSub: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_MUTED,
+  },
+
+  checklistCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 18,
+    marginBottom: 24,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  checklistSectionTitle: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 14,
+  },
+  checklistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  checklistRowDivider: {
     height: 1,
-    backgroundColor: CATHAY_BORDER,
+    backgroundColor: '#F3F4F6',
   },
-  dimmedCta: {
-    opacity: 0.65,
+  checklistBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  checklistBadgeDone: {
+    backgroundColor: CATHAY_JADE,
+    borderColor: CATHAY_JADE,
+  },
+  circleUnchecked: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
+  },
+  checklistTextCol: {
+    flex: 1,
+  },
+  checklistTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  checklistSubtitle: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_MUTED,
+    marginTop: 2,
+  },
+
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 13,
+  },
+
+  continueBtn: {
+    marginTop: 4,
   },
 });

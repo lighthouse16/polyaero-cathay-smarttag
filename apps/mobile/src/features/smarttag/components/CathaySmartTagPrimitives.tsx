@@ -38,6 +38,16 @@ export const ICON_STEP_TAG = require('../../../../assets/cathay/smarttag/icon-st
 export const ICON_STEP_QR = require('../../../../assets/cathay/smarttag/icon-step-qr.png');
 export const ICON_STEP_BELT = require('../../../../assets/cathay/smarttag/icon-step-belt.png');
 
+// Handoff Premium V3 Assets
+export const SMARTTAG_ENTRY_ART = require('../../../../assets/smarttag-design/illustrations/smarttag_entry_art.png');
+export const NFC_PHONE_TAG_SCENE = require('../../../../assets/smarttag-design/illustrations/nfc_phone_tag_scene.png');
+export const SMARTTAG_SUCCESS_ART = require('../../../../assets/smarttag-design/illustrations/smarttag_success_art.png');
+export const BOOKING_JADE_WAVE = require('../../../../assets/smarttag-design/surfaces/booking_jade_wave_2x.png');
+export const HEADER_SOFT_MINT_WAVE = require('../../../../assets/smarttag-design/surfaces/header_soft_mint_wave_2x.png');
+export const NFC_HALO = require('../../../../assets/smarttag-design/surfaces/nfc_halo_2x.png');
+export const STATUS_JADE_WAVE = require('../../../../assets/smarttag-design/surfaces/status_jade_wave_2x.png');
+export const CONCEPT_BRUSHWING = require('../../../../assets/smarttag-design/icons/concept_brushwing_extracted.png');
+
 // ---------------------------------------------------------------------------
 // Authentic Cathay Pacific Design System Tokens
 // ---------------------------------------------------------------------------
@@ -1385,4 +1395,577 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
   },
+
+  // -------------------------------------------------------------------------
+  // Handoff V3 Styles
+  // -------------------------------------------------------------------------
+  ticketContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+    ...cardShadowStyle,
+  },
+  ticketTopSection: {
+    height: 140,
+    position: 'relative',
+    backgroundColor: CATHAY_JADE,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  ticketTopOverlay: {
+    zIndex: 2,
+  },
+  ticketHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  ticketFlightCode: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  ticketRoute: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  ticketDate: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 13.5,
+    fontWeight: '500',
+  },
+  ticketBottomSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  ticketInfoCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  ticketInfoLabel: {
+    fontSize: 11,
+    color: CATHAY_TEXT_MUTED,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  ticketInfoValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  ticketInfoDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#E5E7EB',
+  },
+
+  entryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 14,
+    marginBottom: 14,
+    ...cardShadowStyle,
+  },
+  entryCardArt: {
+    width: 52,
+    height: 52,
+    marginRight: 14,
+  },
+  entryCardTextCol: {
+    flex: 1,
+    marginRight: 8,
+  },
+  entryCardTitle: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 3,
+  },
+  entryCardSubtitle: {
+    fontSize: 12.5,
+    color: CATHAY_TEXT_SECONDARY,
+    lineHeight: 17,
+  },
+
+  yourBaggageCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 16,
+    ...cardShadowStyle,
+  },
+  yourBaggageHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  yourBaggageIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#EBF4F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  yourBaggageTitleCol: {
+    flex: 1,
+  },
+  yourBaggageTitle: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  yourBaggageSubtitle: {
+    fontSize: 13,
+    color: CATHAY_TEXT_SECONDARY,
+  },
+  yourBaggageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: CATHAY_JADE,
+    borderRadius: 8,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  yourBaggageBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+
+  headerSoftWaveImg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 90,
+    width: '100%',
+    opacity: 0.7,
+  },
+
+  checklistCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 20,
+    ...cardShadowStyle,
+  },
+  checklistSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 12,
+  },
+  checklistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  checklistRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F4',
+  },
+  checklistBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checklistBadgeDone: {
+    backgroundColor: CATHAY_JADE,
+    borderColor: CATHAY_JADE,
+  },
+  checklistCirclePending: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
+  },
+  checklistTextCol: {
+    flex: 1,
+  },
+  checklistTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  checklistSubtitle: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+    marginTop: 2,
+  },
+
+  guideCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 20,
+    ...cardShadowStyle,
+  },
+  guideSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+    marginBottom: 12,
+  },
+  guideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  guideRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F4',
+  },
+  guideNumberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: CATHAY_JADE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  guideNumberText: {
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  guideTextCol: {
+    flex: 1,
+  },
+  guideTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  guideSubtitle: {
+    fontSize: 12,
+    color: CATHAY_TEXT_MUTED,
+    marginTop: 2,
+  },
+
+  statusCardWrap: {
+    height: 100,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: CATHAY_JADE,
+    marginBottom: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    ...cardShadowStyle,
+  },
+  statusCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 2,
+  },
+  statusCardLeft: {
+    flex: 1,
+  },
+  statusCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statusCardSubtitle: {
+    color: '#A2D9D2',
+    fontSize: 13.5,
+    fontWeight: '500',
+  },
+  statusCardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
+
+// ---------------------------------------------------------------------------
+// 14. JadeBookingTicketCard (Design 01 Hero Card)
+// ---------------------------------------------------------------------------
+export interface JadeBookingTicketCardProps {
+  flightNumber: string;
+  route: string;
+  dateStr: string;
+  departureTime: string;
+  terminal: string;
+  gate: string;
+  onPress?: () => void;
+}
+
+export const JadeBookingTicketCard: React.FC<JadeBookingTicketCardProps> = ({
+  flightNumber,
+  route,
+  dateStr,
+  departureTime,
+  terminal,
+  gate,
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.9 : 1}
+      onPress={onPress}
+      style={styles.ticketContainer}
+    >
+      <View style={styles.ticketTopSection}>
+        <Image
+          source={BOOKING_JADE_WAVE}
+          style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+          resizeMode="cover"
+        />
+        <View style={styles.ticketTopOverlay}>
+          <View style={styles.ticketHeaderRow}>
+            <Ionicons name="airplane" size={16} color="#FFFFFF" />
+            <Text style={styles.ticketFlightCode}>{flightNumber}</Text>
+          </View>
+          <Text style={styles.ticketRoute}>{route}</Text>
+          <Text style={styles.ticketDate}>{dateStr}</Text>
+        </View>
+      </View>
+
+      <View style={styles.ticketBottomSection}>
+        <View style={styles.ticketInfoCol}>
+          <Text style={styles.ticketInfoLabel}>Departure</Text>
+          <Text style={styles.ticketInfoValue}>{departureTime}</Text>
+        </View>
+        <View style={styles.ticketInfoDivider} />
+        <View style={styles.ticketInfoCol}>
+          <Text style={styles.ticketInfoLabel}>Terminal</Text>
+          <Text style={styles.ticketInfoValue}>{terminal}</Text>
+        </View>
+        <View style={styles.ticketInfoDivider} />
+        <View style={styles.ticketInfoCol}>
+          <Text style={styles.ticketInfoLabel}>Gate</Text>
+          <Text style={styles.ticketInfoValue}>{gate}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 15. SmartTagEntryCard (Design 01)
+// ---------------------------------------------------------------------------
+export interface SmartTagEntryCardProps {
+  onPress: () => void;
+}
+
+export const SmartTagEntryCard: React.FC<SmartTagEntryCardProps> = ({ onPress }) => {
+  return (
+    <TouchableOpacity
+      style={styles.entryCard}
+      onPress={onPress}
+      activeOpacity={0.8}
+      testID="smarttag-entry-card"
+    >
+      <Image source={SMARTTAG_ENTRY_ART} style={styles.entryCardArt} resizeMode="contain" />
+      <View style={styles.entryCardTextCol}>
+        <Text style={styles.entryCardTitle}>Cathay SmartTag</Text>
+        <Text style={styles.entryCardSubtitle}>
+          Manage your baggage tag for a smoother journey.
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+    </TouchableOpacity>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 16. YourBaggageCard (Design 01)
+// ---------------------------------------------------------------------------
+export interface YourBaggageCardProps {
+  bagCountStr?: string;
+  onPress: () => void;
+}
+
+export const YourBaggageCard: React.FC<YourBaggageCardProps> = ({
+  bagCountStr = '1 checked bag',
+  onPress,
+}) => {
+  return (
+    <View style={styles.yourBaggageCard}>
+      <View style={styles.yourBaggageHeaderRow}>
+        <View style={styles.yourBaggageIconWrap}>
+          <Ionicons name="briefcase-outline" size={20} color={CATHAY_JADE} />
+        </View>
+        <View style={styles.yourBaggageTitleCol}>
+          <Text style={styles.yourBaggageTitle}>Your baggage</Text>
+          <Text style={styles.yourBaggageSubtitle}>{bagCountStr}</Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        style={styles.yourBaggageBtn}
+        onPress={onPress}
+        activeOpacity={0.85}
+        testID="btn-prepare-smarttag"
+      >
+        <Text style={styles.yourBaggageBtnText}>Prepare SmartTag</Text>
+        <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 17. HeaderSoftWave
+// ---------------------------------------------------------------------------
+export const HeaderSoftWave: React.FC = () => {
+  return (
+    <Image
+      source={HEADER_SOFT_MINT_WAVE}
+      style={styles.headerSoftWaveImg}
+      resizeMode="cover"
+    />
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 18. BeforeYouContinueChecklist (Design 02)
+// ---------------------------------------------------------------------------
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  checked: boolean;
+}
+
+export const BeforeYouContinueChecklist: React.FC<{ items?: ChecklistItem[] }> = ({ items }) => {
+  const defaultItems: ChecklistItem[] = items || [
+    {
+      id: '1',
+      title: 'Booking confirmed',
+      subtitle: 'E-ticket and baggage allowance verified',
+      checked: true,
+    },
+    {
+      id: '2',
+      title: 'Baggage within allowance',
+      subtitle: '1 checked bag (≤ 23 kg)',
+      checked: true,
+    },
+    {
+      id: '3',
+      title: 'Have your SmartTag ready',
+      subtitle: 'A Cathay SmartTag with NFC',
+      checked: false,
+    },
+  ];
+
+  return (
+    <View style={styles.checklistCard}>
+      <Text style={styles.checklistSectionTitle}>Before you continue</Text>
+      {defaultItems.map((item, idx) => (
+        <View key={item.id} style={[styles.checklistRow, idx > 0 && styles.checklistRowBorder]}>
+          <View style={[styles.checklistBadge, item.checked && styles.checklistBadgeDone]}>
+            {item.checked ? (
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            ) : (
+              <View style={styles.checklistCirclePending} />
+            )}
+          </View>
+          <View style={styles.checklistTextCol}>
+            <Text style={styles.checklistTitle}>{item.title}</Text>
+            <Text style={styles.checklistSubtitle}>{item.subtitle}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 19. AirportGuideSteps (Design 04)
+// ---------------------------------------------------------------------------
+export const AirportGuideSteps: React.FC = () => {
+  const steps = [
+    { num: '1', title: 'Attach', desc: 'Secure the SmartTag to your bag.' },
+    { num: '2', title: 'Bag drop', desc: 'Use the dedicated bag drop counter.' },
+    { num: '3', title: 'Track', desc: "Follow your bag's journey in the app." },
+  ];
+
+  return (
+    <View style={styles.guideCard}>
+      <Text style={styles.guideSectionTitle}>At the airport, it’s simple</Text>
+      {steps.map((s, idx) => (
+        <View key={s.num} style={[styles.guideRow, idx > 0 && styles.guideRowBorder]}>
+          <View style={styles.guideNumberBadge}>
+            <Text style={styles.guideNumberText}>{s.num}</Text>
+          </View>
+          <View style={styles.guideTextCol}>
+            <Text style={styles.guideTitle}>{s.title}</Text>
+            <Text style={styles.guideSubtitle}>{s.desc}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// 20. JadeStatusCard (Design 05)
+// ---------------------------------------------------------------------------
+export interface JadeStatusCardProps {
+  title?: string;
+  subtitle?: string;
+}
+
+export const JadeStatusCard: React.FC<JadeStatusCardProps> = ({
+  title = 'Arrived in Tokyo',
+  subtitle = 'Awaiting collection',
+}) => {
+  return (
+    <View style={styles.statusCardWrap}>
+      <Image
+        source={STATUS_JADE_WAVE}
+        style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+        resizeMode="cover"
+      />
+      <View style={styles.statusCardContent}>
+        <View style={styles.statusCardLeft}>
+          <Text style={styles.statusCardTitle}>{title}</Text>
+          <Text style={styles.statusCardSubtitle}>{subtitle}</Text>
+        </View>
+        <View style={styles.statusCardIconBox}>
+          <Ionicons name="briefcase-outline" size={24} color="#FFFFFF" />
+        </View>
+      </View>
+    </View>
+  );
+};
+

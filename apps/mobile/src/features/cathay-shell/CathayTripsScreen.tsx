@@ -31,6 +31,7 @@ import {
   TextInput,
   BackHandler,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -45,12 +46,11 @@ import {
   CATHAY_JADE,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
-  CathayPrimaryButton,
-  CathaySecondaryButton,
-  FlightSummaryCard,
-  InlineNotice,
-  StatusBadge,
-  SuitcaseWithTagGlyph,
+  JadeBookingTicketCard,
+  SmartTagEntryCard,
+  YourBaggageCard,
+  HeaderSoftWave,
+  CONCEPT_BRUSHWING,
 } from '../smarttag/components/CathaySmartTagPrimitives';
 import {
   smartTagController,
@@ -76,7 +76,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
   onOpenDevMenu,
 }) => {
   const { repo, nav } = useSmartTagStore();
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [tab, setTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Add booking modal fields (Frames #82 & #83)
@@ -143,131 +143,86 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
     const entry = resolveBookingSmartTagEntry(itinerary, bags);
 
     return (
-      <FlightSummaryCard key={itinerary.id} itinerary={itinerary}>
-        <View style={styles.cardSectionDivider} />
+      <View key={itinerary.id} style={styles.screen01CardsWrap}>
+        {/* 1. Hero Jade Ticket Card */}
+        <JadeBookingTicketCard
+          flightNumber={itinerary.flight.flightNumber}
+          route={`${itinerary.flight.origin} → ${itinerary.flight.destination}`}
+          dateStr="Tue, 11 Nov 2026"
+          departureTime="10:35"
+          terminal="T1"
+          gate="36"
+        />
 
-        {/* Baggage & SmartTag Feature Section (Exact Design 01 Mockup) */}
-        <View style={styles.smartTagHeroRow}>
-          <SuitcaseWithTagGlyph size="lg" />
+        {/* 2. Cathay SmartTag Entry Card */}
+        <SmartTagEntryCard
+          onPress={() =>
+            smartTagController.navigateTo('prepare', {
+              itineraryId: itinerary.id,
+              bagSetupId: primaryBag?.id,
+            })
+          }
+        />
 
-          <View style={styles.smartTagTextCol}>
-            <View style={styles.smartTagHeadingRow}>
-              <Text style={styles.smartTagTitle}>Baggage &amp; SmartTag</Text>
-            </View>
-            <Text style={styles.smartTagDescription}>{entry.supportingCopy}</Text>
-          </View>
-        </View>
-
-        {entry.statusBadgeLabel && (
-          <View style={styles.entryBadgeRow}>
-            <StatusBadge
-              label={entry.statusBadgeLabel}
-              tone={entry.statusBadgeTone}
-            />
-            {bags.length > 1 && (
-              <Text style={styles.multiBagCountNote}>
-                {bags.length} checked bags configured
-              </Text>
-            )}
-          </View>
-        )}
-
-        {entry.missingPrerequisiteMessage && (
-          <InlineNotice
-            tone="warning"
-            message={entry.missingPrerequisiteMessage}
-            actionLabel="Complete check-in"
-            onAction={() =>
-              smartTagRepository.setCheckInReadiness(
-                itinerary.id,
-                'DEMO_CHECK_IN_COMPLETED'
-              )
-            }
-          />
-        )}
-
-        {/* Primary CTA: Set up SmartTag / Continue setup / View SmartTag */}
-        <CathayPrimaryButton
-          label={entry.primaryCtaLabel}
+        {/* 3. Your baggage Preparation Card */}
+        <YourBaggageCard
+          bagCountStr={bags.length > 1 ? `${bags.length} checked bags` : '1 checked bag'}
           onPress={() =>
             smartTagController.navigateTo(entry.targetRoute, {
               itineraryId: itinerary.id,
               bagSetupId: primaryBag?.id,
             })
           }
-          style={styles.setupCtaBtn}
-          testID="btn-setup-smarttag"
         />
-
-        {entry.actionKind === 'VIEW_SMARTTAG' && (
-          <TouchableOpacity
-            style={styles.reconfigureLink}
-            onPress={() =>
-              smartTagController.navigateTo('prepare', {
-                itineraryId: itinerary.id,
-                bagSetupId: primaryBag?.id,
-              })
-            }
-            testID="btn-reconfigure-smarttag"
-          >
-            <Text style={styles.reconfigureLinkText}>
-              Edit baggage count or reconfigure SmartTag
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.journeyLinkDivider} />
-
-        {/* Secondary CTA: View baggage journey > */}
-        <CathaySecondaryButton
-          label={entry.secondaryCtaLabel}
-          variant="rowChevron"
-          onPress={() =>
-            smartTagController.navigateTo('journey', {
-              itineraryId: itinerary.id,
-              bagSetupId: primaryBag?.id,
-            })
-          }
-          testID="btn-view-baggage-journey"
-        />
-      </FlightSummaryCard>
+      </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Top Header (Exact Design 01: Centered "My bookings") */}
-      <View style={styles.header}>
-        <TouchableOpacity activeOpacity={0.9} onLongPress={onOpenDevMenu}>
-          <Text style={styles.headerTitle}>My bookings</Text>
-        </TouchableOpacity>
+      <HeaderSoftWave />
+      {/* Top Header (Matches references/01_my_bookings.png — NO BACK BUTTON) */}
+      <View style={styles.topBarRow}>
+        <Image source={CONCEPT_BRUSHWING} style={styles.headerBrushwing} resizeMode="contain" />
+        <View style={styles.headerIconsRight}>
+          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7}>
+            <Ionicons name="notifications-outline" size={22} color={CATHAY_TEXT_PRIMARY} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            activeOpacity={0.7}
+            onLongPress={onOpenDevMenu}
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color={CATHAY_TEXT_PRIMARY} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* 2-Column Underline Tabs: Upcoming | Past */}
-      <View style={styles.tabsRow}>
-        <TouchableOpacity
-          style={[styles.tabBtn, tab === 'upcoming' && styles.tabBtnActive]}
-          onPress={() => setTab('upcoming')}
-          activeOpacity={0.75}
-          testID="tab-bookings-upcoming"
-        >
-          <Text
-            style={[styles.tabLabel, tab === 'upcoming' && styles.tabLabelActive]}
-          >
-            Upcoming
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.headerTitleWrap}>
+        <Text style={styles.headerLargeTitle}>My trips</Text>
+      </View>
 
-        <TouchableOpacity
-          style={[styles.tabBtn, tab === 'past' && styles.tabBtnActive]}
-          onPress={() => setTab('past')}
-          activeOpacity={0.75}
-          testID="tab-bookings-past"
-        >
-          <Text style={[styles.tabLabel, tab === 'past' && styles.tabLabelActive]}>
-            Past
-          </Text>
-        </TouchableOpacity>
+      {/* 3-Column Underline Tabs: Upcoming | Past | Cancelled */}
+      <View style={styles.tabsRow}>
+        {(['upcoming', 'past', 'cancelled'] as const).map((tabKey) => {
+          const isActive = tab === tabKey;
+          const label =
+            tabKey === 'upcoming' ? 'Upcoming' : tabKey === 'past' ? 'Past' : 'Cancelled';
+          return (
+            <TouchableOpacity
+              key={tabKey}
+              style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+              onPress={() => setTab(tabKey)}
+              activeOpacity={0.75}
+              testID={`tab-bookings-${tabKey}`}
+            >
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                {label}
+              </Text>
+              {isActive && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView
@@ -522,6 +477,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? 12 : 0,
   },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  headerBrushwing: {
+    width: 28,
+    height: 18,
+  },
+  headerIconsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconBtn: {
+    padding: 4,
+  },
+  headerTitleWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  headerLargeTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: CATHAY_TEXT_PRIMARY,
+    letterSpacing: -0.3,
+  },
   header: {
     height: 48,
     alignItems: 'center',
@@ -546,22 +534,32 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 13,
+    paddingVertical: 11,
     alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    position: 'relative',
   },
   tabBtnActive: {
-    borderBottomColor: CATHAY_JADE,
   },
   tabLabel: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '400',
-    color: '#52565A',
+    color: '#6B7280',
   },
   tabLabelActive: {
-    color: CATHAY_JADE,
-    fontWeight: '600',
+    color: CATHAY_TEXT_PRIMARY,
+    fontWeight: '700',
+  },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 12,
+    right: 12,
+    height: 3,
+    backgroundColor: CATHAY_JADE,
+    borderRadius: 1.5,
+  },
+  screen01CardsWrap: {
+    marginBottom: 8,
   },
 
   contentScroll: {
