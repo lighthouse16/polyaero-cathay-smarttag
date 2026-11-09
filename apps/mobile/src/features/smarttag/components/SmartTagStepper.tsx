@@ -73,7 +73,7 @@ export const SmartTagStepper: React.FC<SmartTagStepperProps> = ({ currentStep })
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   stepItem: {
     alignItems: 'center',
     width: 64,
+    paddingTop: 3,
   },
   circle: {
     width: 22,
@@ -97,9 +98,9 @@ const styles = StyleSheet.create({
     backgroundColor: CATHAY_JADE,
   },
   haloRing: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#D7EBE8',
     alignItems: 'center',
     justifyContent: 'center',
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#E2E6E8',
     marginHorizontal: 4,
-    marginBottom: 18,
+    marginTop: 13,
   },
   lineActive: {
     backgroundColor: CATHAY_JADE,

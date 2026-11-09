@@ -47,7 +47,6 @@ export const HEADER_SOFT_MINT_WAVE = require('../../../../assets/smarttag-design
 export const NFC_HALO = require('../../../../assets/smarttag-design/surfaces/nfc_halo_2x.png');
 export const STATUS_JADE_WAVE = require('../../../../assets/smarttag-design/surfaces/status_jade_wave_2x.png');
 export const CONCEPT_BRUSHWING = require('../../../../assets/smarttag-design/icons/concept_brushwing_extracted.png');
-export const ICON_CATHAY_SUITCASE = require('../../../../assets/cathay/smarttag/icon-cathay-suitcase.png');
 
 // ---------------------------------------------------------------------------
 // Authentic Cathay Pacific Design System Tokens
@@ -1423,7 +1422,7 @@ const styles = StyleSheet.create({
     ...cardShadowStyle,
   },
   ticketTopSection: {
-    height: 175,
+    height: 150,
     position: 'relative',
     backgroundColor: CATHAY_JADE,
     justifyContent: 'center',
@@ -1451,7 +1450,7 @@ const styles = StyleSheet.create({
   ticketRoute: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     letterSpacing: -0.5,
     marginBottom: 4,
@@ -1465,7 +1464,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -1507,17 +1506,17 @@ const styles = StyleSheet.create({
     ...cardShadowStyle,
   },
   entryCardArtTile: {
-    width: 58,
-    height: 58,
+    width: 80,
+    height: 80,
     borderRadius: 14,
-    backgroundColor: '#F0F3F3',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   entryCardArt: {
-    width: 44,
-    height: 44,
+    width: 80,
+    height: 80,
   },
   entryCardTextCol: {
     flex: 1,
@@ -1588,6 +1587,7 @@ const styles = StyleSheet.create({
 
   // Brushwing Flight Summary Card
   brushwingFlightCard: {
+    minHeight: 78,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -1634,7 +1634,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 90,
+    height: 180,
     width: '100%',
     opacity: 0.7,
   },
@@ -1712,7 +1712,7 @@ const styles = StyleSheet.create({
   guideRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   guideBadgeCol: {
     width: 26,
@@ -1734,7 +1734,7 @@ const styles = StyleSheet.create({
   },
   guideLine: {
     width: 1.5,
-    height: 26,
+    height: 16,
     backgroundColor: '#E5E7EB',
     marginTop: 4,
   },
@@ -1754,7 +1754,7 @@ const styles = StyleSheet.create({
   },
 
   statusCardWrap: {
-    height: 112,
+    height: 100,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: CATHAY_JADE,
@@ -1786,9 +1786,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statusCardIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
@@ -1798,6 +1798,22 @@ const styles = StyleSheet.create({
   statusCardSuitcaseIcon: {
     width: 28,
     height: 24,
+  },
+  suitcaseHandle: {
+    position: 'absolute', top: 0, left: 7, width: 14, height: 7,
+    borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 3,
+  },
+  suitcaseBody: {
+    position: 'absolute', top: 4, left: 0, right: 0, bottom: 0,
+    borderWidth: 2, borderColor: '#FFFFFF', borderRadius: 3,
+  },
+  suitcaseSeam: {
+    position: 'absolute', top: 6, left: 0, right: 0,
+    borderTopWidth: 2, borderColor: '#FFFFFF',
+  },
+  suitcaseClasp: {
+    position: 'absolute', top: 6, left: 10, width: 5, height: 4,
+    backgroundColor: '#FFFFFF', borderBottomLeftRadius: 1, borderBottomRightRadius: 1,
   },
 });
 
@@ -2056,11 +2072,13 @@ export const JadeStatusCard: React.FC<JadeStatusCardProps> = ({
           <Text style={styles.statusCardSubtitle}>{subtitle}</Text>
         </View>
         <View style={styles.statusCardIconBox}>
-          <Image
-            source={ICON_CATHAY_SUITCASE}
-            style={styles.statusCardSuitcaseIcon}
-            resizeMode="contain"
-          />
+          <View style={styles.statusCardSuitcaseIcon} accessible={false}>
+            <View style={styles.suitcaseHandle} />
+            <View style={styles.suitcaseBody}>
+              <View style={styles.suitcaseSeam} />
+              <View style={styles.suitcaseClasp} />
+            </View>
+          </View>
         </View>
       </View>
     </View>

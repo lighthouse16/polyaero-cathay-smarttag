@@ -24,6 +24,18 @@ import {
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
+const formatJourneyTimestamp = (timestamp: string | null) => {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    date: date.toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', timeZone: 'UTC',
+    }),
+    time: `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')} UTC`,
+  };
+};
+
 export interface BaggageJourneyScreenProps {
   onOpenDevMenu?: () => void;
 }
@@ -55,6 +67,8 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
         <View style={styles.headerBar}>
           <TouchableOpacity
             style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
             onPress={() => smartTagController.goBack()}
           >
             <Ionicons name="chevron-back" size={24} color={CATHAY_JADE} />
@@ -77,62 +91,12 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
     );
   }
 
-  const milestones = [
-    {
-      id: '1',
-      title: 'Tag synced',
-      location: 'At home',
-      date: 'Nov 10',
-      time: '20:14',
-      done: true,
-      isActive: false,
-    },
-    {
-      id: '2',
-      title: 'Bag accepted',
-      location: 'Hong Kong · Self bag-drop',
-      date: 'Nov 11',
-      time: '09:42',
-      done: true,
-      isActive: false,
-    },
-    {
-      id: '3',
-      title: 'Security cleared',
-      location: 'Hong Kong',
-      date: 'Nov 11',
-      time: '09:58',
-      done: true,
-      isActive: false,
-    },
-    {
-      id: '4',
-      title: 'Loaded onto aircraft',
-      location: 'CX548',
-      date: 'Nov 11',
-      time: '10:14',
-      done: true,
-      isActive: false,
-    },
-    {
-      id: '5',
-      title: 'Arrived in Tokyo',
-      location: 'NRT',
-      date: 'Nov 11',
-      time: '16:36',
-      done: true,
-      isActive: true,
-    },
-    {
-      id: '6',
-      title: 'Collected',
-      location: 'Please collect your baggage at the carousel',
-      date: '',
-      time: '—',
-      done: false,
-      isActive: false,
-    },
-  ];
+  const milestones = journeyView.items;
+  const statusItem =
+    milestones.find((item) => item.state === 'exception' || item.state === 'delayed') ??
+    milestones.find((item) => item.state === 'current') ??
+    [...milestones].reverse().find((item) => item.state === 'completed');
+  const lastUpdated = formatJourneyTimestamp(journeyView.lastUpdatedAt);
 
   return (
     <View style={styles.root}>
@@ -141,6 +105,8 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
       <View style={styles.headerBar}>
         <TouchableOpacity
           style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           onPress={() => smartTagController.goBack()}
           testID="smarttag-back-btn"
         >
@@ -154,13 +120,17 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.headerRightBtn}
-          onLongPress={onOpenDevMenu}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="ellipsis-horizontal" size={20} color={CATHAY_TEXT_PRIMARY} />
-        </TouchableOpacity>
+        {onOpenDevMenu ? (
+          <TouchableOpacity
+            style={styles.headerRightBtn}
+            onPress={onOpenDevMenu}
+            accessibilityRole="button"
+            accessibilityLabel="Open developer menu"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={CATHAY_TEXT_PRIMARY} />
+          </TouchableOpacity>
+        ) : <View style={styles.headerRightSpacer} />}
       </View>
 
       <ScrollView
@@ -170,28 +140,51 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
       >
         {/* Jade Status Card */}
         <JadeStatusCard
-          title="Arrived in Tokyo"
-          subtitle="Awaiting collection"
+          title={journeyView.statusBadgeLabel}
+          subtitle={statusItem?.subtitle ?? 'Awaiting baggage updates'}
         />
+
+        {journeyView.isSimulated && (
+          <InlineNotice
+            tone="demo"
+            message="Demo journey - not verified airport scans."
+          />
+        )}
 
         {/* Vertical Timeline Card */}
         <View style={styles.timelineCard}>
           {milestones.map((item, idx) => {
             const isLast = idx === milestones.length - 1;
+            const isDone = item.state === 'completed';
+            const isCurrent = item.state === 'current';
+            const isProblem = item.state === 'exception' || item.state === 'delayed';
+            const isSimulated = item.isSimulated ||
+              (item.key === 'tag_synced' && activeBag.lastWrite?.mode === 'SIMULATED_DEMO');
+            const timestamp = formatJourneyTimestamp(item.timestamp);
+            const stateLabel = item.state === 'current'
+              ? 'Awaiting update'
+              : item.state.charAt(0).toUpperCase() + item.state.slice(1);
             return (
-              <View key={item.id} style={styles.timelineRow}>
+              <View key={item.key} style={styles.timelineRow}>
                 {/* Node & Line Col */}
                 <View style={styles.nodeCol}>
-                  <View style={item.isActive ? styles.haloCircle : styles.normalNodeWrap}>
-                    <View style={[styles.circle, item.done && styles.circleDone]}>
-                      {item.done ? (
+                  <View style={isCurrent ? styles.haloCircle : styles.normalNodeWrap}>
+                    <View style={[
+                      styles.circle,
+                      isDone && styles.circleDone,
+                      item.state === 'delayed' && styles.circleDelayed,
+                      item.state === 'exception' && styles.circleException,
+                    ]}>
+                      {isProblem ? (
+                        <Ionicons name="alert" size={13} color="#FFFFFF" />
+                      ) : isDone ? (
                         <Ionicons name="checkmark" size={13} color="#FFFFFF" />
                       ) : (
-                        <View style={styles.circlePendingInner} />
+                        <View style={[styles.circlePendingInner, isCurrent && styles.circleCurrentInner]} />
                       )}
                     </View>
                   </View>
-                  {!isLast && <View style={[styles.connector, item.done && styles.connectorDone]} />}
+                  {!isLast && <View style={[styles.connector, isDone && styles.connectorDone]} />}
                 </View>
 
                 {/* Content Col */}
@@ -199,11 +192,15 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
                   <View style={styles.titleTimeRow}>
                     <View style={styles.titleLocationWrap}>
                       <Text style={styles.itemTitle}>{item.title}</Text>
-                      <Text style={styles.itemLocation}>{item.location}</Text>
+                      <Text style={styles.itemLocation}>{item.subtitle}</Text>
+                      <Text style={styles.itemTime}>
+                        {stateLabel}{isSimulated ? ' \u00b7 Simulated' : ''}
+                        {item.sourceLabel ? ` \u00b7 ${item.sourceLabel}` : ''}
+                      </Text>
                     </View>
                     <View style={styles.timeStackCol}>
-                      {item.date ? <Text style={styles.itemDateText}>{item.date}</Text> : null}
-                      <Text style={styles.itemTimeText}>{item.time}</Text>
+                      {timestamp ? <Text style={styles.itemDateText}>{timestamp.date}</Text> : null}
+                      <Text style={styles.itemTimeText}>{timestamp?.time ?? '\u2014'}</Text>
                     </View>
                   </View>
                 </View>
@@ -216,16 +213,19 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
         <View style={styles.lastUpdatedStrip}>
           <View style={styles.lastUpdatedLeft}>
             <Ionicons name="information-circle-outline" size={16} color={CATHAY_TEXT_MUTED} />
-            <Text style={styles.lastUpdatedText}>Last updated 2 min ago</Text>
+            <Text style={styles.lastUpdatedText}>
+              {lastUpdated
+                ? `Last updated ${lastUpdated.date} \u00b7 ${lastUpdated.time}`
+                : 'No update time available'}
+            </Text>
           </View>
-          <TouchableOpacity activeOpacity={0.7} style={styles.refreshBtn}>
-            <Ionicons name="refresh" size={16} color={CATHAY_TEXT_MUTED} />
-          </TouchableOpacity>
         </View>
 
         {/* Report an issue secondary action */}
         <TouchableOpacity
           style={styles.reportIssueBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Report a baggage issue"
           onPress={() =>
             smartTagController.navigateTo('report', {
               itineraryId: itinerary.id,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    paddingTop: Platform.OS === 'android' ? 68 : 56,
   },
   headerBar: {
     flexDirection: 'row',
@@ -342,6 +342,17 @@ const styles = StyleSheet.create({
     backgroundColor: CATHAY_JADE,
     borderColor: CATHAY_JADE,
   },
+  circleDelayed: {
+    backgroundColor: '#A16207',
+    borderColor: '#A16207',
+  },
+  circleException: {
+    backgroundColor: '#B91C1C',
+    borderColor: '#B91C1C',
+  },
+  circleCurrentInner: {
+    backgroundColor: CATHAY_JADE,
+  },
   circlePendingInner: {
     width: 6,
     height: 6,
@@ -361,12 +372,12 @@ const styles = StyleSheet.create({
   contentCol: {
     flex: 1,
     marginLeft: 12,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   contentColBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   titleTimeRow: {
     flexDirection: 'row',
@@ -401,7 +412,8 @@ const styles = StyleSheet.create({
     color: CATHAY_TEXT_PRIMARY,
   },
   itemTime: {
-    fontSize: 12,
+    fontSize: 10.5,
+    lineHeight: 14,
     color: CATHAY_TEXT_MUTED,
   },
   itemLocation: {
@@ -418,16 +430,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   lastUpdatedLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   lastUpdatedText: {
+    flexShrink: 1,
     fontSize: 12.5,
     color: CATHAY_TEXT_MUTED,
-  },
-  refreshBtn: {
-    padding: 4,
   },
 
   reportIssueBtn: {

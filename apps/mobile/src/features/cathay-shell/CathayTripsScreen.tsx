@@ -44,7 +44,7 @@ import {
   CATHAY_BG,
   CATHAY_BORDER,
   CATHAY_JADE,
-  CATHAY_SERIF,
+  CATHAY_FONT_FAMILY,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   JadeBookingTicketCard,
@@ -475,7 +475,7 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: CATHAY_BG,
     paddingTop: Platform.OS === 'android' ? 12 : 0,
   },
   topBarRow: {
@@ -483,13 +483,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingTop: 12,
+    paddingBottom: 22,
     backgroundColor: 'transparent',
   },
   headerBrushwing: {
-    width: 28,
-    height: 18,
+    width: 34,
+    height: 38,
   },
   headerIconsRight: {
     flexDirection: 'row',
@@ -497,17 +497,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerIconBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 4,
   },
   headerTitleWrap: {
     paddingHorizontal: 20,
     paddingTop: 4,
-    paddingBottom: 8,
+    paddingBottom: 16,
     backgroundColor: 'transparent',
   },
   headerLargeTitle: {
     fontSize: 28,
-    fontFamily: CATHAY_SERIF,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
@@ -532,7 +536,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   tabBtn: {
     flex: 1,

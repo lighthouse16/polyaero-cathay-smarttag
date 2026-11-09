@@ -40,7 +40,6 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
   const bags = itinerary ? repo.bagSetupsByItinerary[itinerary.id] ?? [] : [];
   const bag =
     (repo.activeBagSetupId ? bags.find((b) => b.id === repo.activeBagSetupId) : bags[0]) ??
-    bags[0] ??
     null;
 
   if (!itinerary || !bag) {
@@ -66,6 +65,39 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
   }
 
   const isSimulated = bag.setupState === 'SIMULATED_WRITE_COMPLETED';
+  const isPhysicallyVerified =
+    bag.setupState === 'PHYSICALLY_WRITTEN_AND_VERIFIED' &&
+    bag.lastWrite?.mode === 'PHYSICAL_HARDWARE' &&
+    bag.lastWrite.verifiedHardwareReadback === true;
+
+  if (!isSimulated && !isPhysicallyVerified) {
+    const needsPreparation = bag.setupState === 'UNREGISTERED' || bag.setupState === 'LINKED';
+    return (
+      <View style={styles.root}>
+        <CathayScreenHeader
+          title="Cathay SmartTag"
+          backIcon="chevron-back"
+          onBack={() => smartTagController.goBack()}
+          onLongPressTitle={onOpenDevMenu}
+        />
+        <View style={{ padding: 20 }}>
+          <InlineNotice
+            tone="warning"
+            title="SmartTag setup is not complete"
+            message="No completed demo simulation or verified physical write is available. Return to setup to continue."
+          />
+          <CathayPrimaryButton
+            label={needsPreparation ? 'Back to Prepare SmartTag' : 'Back to Sync SmartTag'}
+            onPress={() => smartTagController.navigateTo(needsPreparation ? 'prepare' : 'sync', {
+              itineraryId: itinerary.id,
+              bagSetupId: bag.id,
+            })}
+            testID="btn-return-to-smarttag-setup"
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -96,10 +128,10 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
 
         {/* Heading Block */}
         <View style={styles.headingWrap}>
-          <Text style={styles.title}>{'Your SmartTag\nis ready'}</Text>
+          <Text style={styles.title}>{isSimulated ? 'Demo SmartTag\nis ready' : 'Your SmartTag\nis ready'}</Text>
           <Text style={styles.subtitle}>
             {isSimulated
-              ? 'The baggage details have been configured (demo simulation).'
+              ? 'Demo simulation completed. No physical tag was written.'
               : 'The baggage details have been successfully written to your tag.'}
           </Text>
         </View>
@@ -143,13 +175,13 @@ const styles = StyleSheet.create({
   artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 18,
-    marginBottom: 16,
-    height: 220,
+    marginTop: 14,
+    marginBottom: 2,
+    height: 130,
   },
   successArtImage: {
-    width: 270,
-    height: 220,
+    width: 156,
+    height: 130,
   },
 
   headingWrap: {

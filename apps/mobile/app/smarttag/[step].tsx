@@ -50,14 +50,14 @@ export default function SmartTagStepRoute() {
       ) {
         smartTagRepository.recordSyncOutcome(bags[0].id, {
           finalState: 'SUCCESS',
-          setupState: 'PHYSICALLY_WRITTEN_AND_VERIFIED',
-          mode: 'PHYSICAL_HARDWARE',
+          setupState: 'SIMULATED_WRITE_COMPLETED',
+          mode: 'SIMULATED_DEMO',
           writeRecord: {
-            mode: 'PHYSICAL_HARDWARE',
+            mode: 'SIMULATED_DEMO',
             timestamp: new Date().toISOString(),
             bytesWritten: 4736,
             tagUid: bags[0].smartTag.tagUid,
-            verifiedHardwareReadback: true,
+            verifiedHardwareReadback: false,
           },
           failure: null,
           payload: buildNfcPayloadForBag(itin, bags[0]),

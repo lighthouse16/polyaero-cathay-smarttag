@@ -10,7 +10,7 @@
     "build:packages": "pnpm --filter \"@polyaero/design-tokens\" --filter \"@polyaero/shared\" build",
     "typecheck": "pnpm -r exec tsc --noEmit",
     "lint": "pnpm -r --parallel run lint",
-    "test": "pnpm --filter @polyaero/shared test",
+    "test": "pnpm --filter @polyaero/shared test && node --test tests/*.test.cjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {

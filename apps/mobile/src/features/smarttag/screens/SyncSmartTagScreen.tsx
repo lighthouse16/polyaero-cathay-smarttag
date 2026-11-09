@@ -2,7 +2,7 @@
  * Screen 03 — Sync SmartTag (Matches references/03_sync_smarttag.png)
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  DEFAULT_DECLARATIONS,
+  INfcService,
+  NfcCancelledError,
   NFC_STATE_MESSAGES,
   NfcSyncMachineState,
   SmartTagFailureInfo,
@@ -59,6 +60,23 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
+  const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
+  useEffect(() => () => {
+    if (session.current) {
+      session.current.cancelled = true;
+      void session.current.service.cancelScan().catch(() => {});
+    }
+  }, []);
+  const cancelSync = async () => {
+    if (!session.current) return;
+    session.current.cancelled = true;
+    try {
+      await session.current.service.cancelScan();
+    } finally {
+      setMachineState('CANCELLED');
+      setStatusMessage(NFC_STATE_MESSAGES.CANCELLED);
+    }
+  };
 
   if (!itinerary || !activeBag) {
     return (
@@ -82,17 +100,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     );
   }
 
-  const ensurePreparedBag = () => {
-    if (activeBag.setupState === 'UNREGISTERED') {
-      const { bags: prepared } = smartTagRepository.prepareBagsForItinerary({
-        itineraryId: itinerary.id,
-        bagCount: 1,
-        declarations: DEFAULT_DECLARATIONS,
-      });
-      return prepared[0] ?? activeBag;
-    }
-    return activeBag;
-  };
 
   const isBusy =
     machineState === 'CHECKING_AVAILABILITY' ||
@@ -103,14 +110,32 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'VERIFYING';
 
   const handleStartSync = async (forceDemo = false) => {
-    if (isBusy) return;
-    const bag = ensurePreparedBag();
+    if (isBusy || session.current) return;
+    if (activeBag.setupState === 'UNREGISTERED') {
+      smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
+      return;
+    }
+    const bag = activeBag;
     setFailure(null);
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
     const physicalService = forceDemo ? null : getPhysicalNfcService();
+    if (!forceDemo && !physicalService) {
+      setFailure({
+        code: 'NFC_UNAVAILABLE',
+        title: 'Physical NFC unavailable',
+        message: 'Use a supported native device for physical writing, or choose Run demo simulation.',
+        recoveryHint: 'Choose demo simulation or retry on supported hardware.',
+        canRetry: true,
+        canSwitchToDemo: true,
+        canOpenSettings: false,
+      });
+      return;
+    }
     const effectiveService = physicalService ?? demoNfcService;
     demoNfcService.setMockTag(payload);
+    const operation = { service: effectiveService, cancelled: false };
+    session.current = operation;
 
     const outcome = await runSmartTagSync({
       mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
@@ -119,12 +144,18 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       expectedTagUid: bag.smartTag.tagUid,
       stepDelayMs: 140,
       onStep: (step) => {
+        if (operation.cancelled) {
+          if (step.state === 'SCANNING' || step.state === 'WRITING') throw new NfcCancelledError();
+          return;
+        }
         setMachineState(step.state);
         setStatusMessage(step.statusMessage);
         if (step.failure) setFailure(step.failure);
       },
     });
 
+    session.current = null;
+    if (operation.cancelled) return;
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
@@ -196,6 +227,12 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
         {/* Action Buttons */}
         <View style={styles.actionsWrap}>
+          {isBusy && (
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel NFC sync"
+              style={styles.demoLinkBtn} onPress={() => void cancelSync().catch(() => {})} testID="btn-cancel-sync">
+              <Text style={styles.demoLinkText}>Cancel NFC sync</Text>
+            </TouchableOpacity>
+          )}
           <CathayPrimaryButton
             label={isBusy ? statusMessage : 'Start NFC sync'}
             onPress={() => handleStartSync(false)}
@@ -207,6 +244,8 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           <TouchableOpacity
             style={styles.demoLinkBtn}
             onPress={() => handleStartSync(true)}
+            disabled={isBusy}
+            accessibilityRole="button"
             activeOpacity={0.7}
             testID="btn-demo-sync"
           >
@@ -222,7 +261,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    paddingTop: Platform.OS === 'android' ? 44 : 32,
     position: 'relative',
   },
   emptyWrap: {
@@ -239,15 +278,15 @@ const styles = StyleSheet.create({
   },
 
   illustrationWrap: {
-    width: '100%',
-    height: 240,
+    width: '92%',
+    aspectRatio: 640 / 639,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 12,
   },
   nfcArtImage: {
-    width: 250,
-    height: 230,
+    width: '100%',
+    height: '100%',
   },
 
   textWrap: {

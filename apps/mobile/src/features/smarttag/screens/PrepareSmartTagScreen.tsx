@@ -10,10 +10,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  DEFAULT_DECLARATIONS,
+  areDeclarationsComplete,
   SmartTagDeclarations,
 } from '@polyaero/shared';
 import {
@@ -49,16 +50,20 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     : [];
   const primaryBag = existingBags[0];
 
-  const [bagCount] = useState<number>(() =>
-    Math.max(1, existingBags.length || 1)
-  );
-  const [selectedSmartTagCode] = useState<string>(
-    () => primaryBag?.smartTagCode ?? repo.ownedTags[0]?.smartTagCode ?? 'ST-2048'
-  );
-  const [declarations] = useState<SmartTagDeclarations>(() =>
-    primaryBag?.declarations ?? { ...DEFAULT_DECLARATIONS }
+  const bagCount = Math.max(1, existingBags.length);
+  const selectedSmartTagCode = primaryBag?.smartTagCode ?? repo.ownedTags[0]?.smartTagCode;
+  const [declarations, setDeclarations] = useState<SmartTagDeclarations>(() =>
+    primaryBag?.preparedAt
+      ? { ...primaryBag.declarations }
+      : {
+          checkInConfirmed: false,
+          dangerousGoodsDeclared: false,
+          tagSecuredToLuggage: false,
+          airportAcceptanceUnderstood: false,
+        }
   );
   const [tagReady, setTagReady] = useState(false);
+  const [showAcknowledgements, setShowAcknowledgements] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   if (!itinerary) {
@@ -83,7 +88,29 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
     );
   }
 
+  const isConfirmed = itinerary.checkInReadiness === 'DEMO_CHECK_IN_COMPLETED';
+  const withinPieceAllowance = bagCount <= itinerary.checkedBagAllowance;
+  const hasAssignedTags =
+    repo.ownedTags.length >= bagCount &&
+    repo.ownedTags.some((tag) => tag.smartTagCode === selectedSmartTagCode);
+  const readinessError = !isConfirmed
+    ? 'Complete flight check-in in My bookings before continuing.'
+    : !withinPieceAllowance
+      ? 'The selected bag count exceeds the booking checked-bag allowance.'
+      : !hasAssignedTags
+        ? 'An owned SmartTag is required for each checked bag.'
+        : null;
+  const canContinue = !readinessError && tagReady && areDeclarationsComplete(declarations);
+  const acknowledgementLabels: Record<keyof SmartTagDeclarations, string> = {
+    checkInConfirmed: 'I acknowledge the flight check-in prerequisite',
+    dangerousGoodsDeclared: 'I acknowledge the dangerous goods and baggage rules',
+    tagSecuredToLuggage: 'I will keep my SmartTag securely attached until collection',
+    airportAcceptanceUnderstood: 'I understand baggage acceptance and weighing take place at airport bag-drop',
+  };
+
   const handleContinue = () => {
+    if (!canContinue) return;
+
     const res = smartTagRepository.prepareBagsForItinerary({
       itineraryId: itinerary.id,
       bagCount,
@@ -102,8 +129,6 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
       bagSetupId: res.bags[0]?.id,
     });
   };
-
-  const isConfirmed = itinerary.checkInReadiness === 'DEMO_CHECK_IN_COMPLETED';
 
   return (
     <View style={styles.root}>
@@ -149,22 +174,22 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
               <Ionicons name="checkmark" size={15} color="#FFFFFF" />
             </View>
             <View style={styles.checklistTextCol}>
-              <Text style={styles.checklistTitle}>Booking confirmed</Text>
+              <Text style={styles.checklistTitle}>{isConfirmed ? 'Demo check-in completed' : 'Check-in required'}</Text>
               <Text style={styles.checklistSubtitle}>
-                E-ticket and baggage allowance verified
+                {isConfirmed ? 'Check-in completed in this prototype' : 'Complete flight check-in before continuing'}
               </Text>
             </View>
           </View>
 
           {/* Item 2 */}
           <View style={styles.floatingCheckCard}>
-            <View style={[styles.checklistBadge, styles.checklistBadgeDone]}>
+            <View style={[styles.checklistBadge, withinPieceAllowance && styles.checklistBadgeDone]}>
               <Ionicons name="checkmark" size={15} color="#FFFFFF" />
             </View>
             <View style={styles.checklistTextCol}>
-              <Text style={styles.checklistTitle}>Baggage within allowance</Text>
+              <Text style={styles.checklistTitle}>Checked-bag allowance</Text>
               <Text style={styles.checklistSubtitle}>
-                1 checked bag (≤ 23 kg)
+                {`${itinerary.checkedBagAllowance} checked ${itinerary.checkedBagAllowance === 1 ? 'bag' : 'bags'} / ${bagCount} selected. Weighing at airport.`}
               </Text>
             </View>
           </View>
@@ -173,7 +198,14 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
           <TouchableOpacity
             style={styles.floatingCheckCard}
             activeOpacity={0.7}
-            onPress={() => setTagReady(!tagReady)}
+            onPress={() => {
+              setTagReady((ready) => !ready);
+              setShowAcknowledgements(true);
+            }}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Have your SmartTag ready"
+            accessibilityState={{ checked: tagReady }}
+            testID="checkbox-smarttag-ready"
           >
             <View style={[styles.checklistBadge, tagReady && styles.checklistBadgeDone]}>
               {tagReady ? (
@@ -189,7 +221,17 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
               </Text>
             </View>
           </TouchableOpacity>
+
         </View>
+
+        {readinessError && (
+          <InlineNotice
+            tone="warning"
+            message={readinessError}
+            actionLabel="Back to My bookings"
+            onAction={() => smartTagController.navigateTo('bookings')}
+          />
+        )}
 
         {feedbackError && (
           <View style={styles.errorBox}>
@@ -201,10 +243,50 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
         <CathayPrimaryButton
           label="Continue"
           onPress={handleContinue}
+          disabled={!canContinue}
           style={styles.continueBtn}
           testID="btn-continue-prepare"
         />
       </ScrollView>
+      <Modal visible={showAcknowledgements} transparent animationType="fade"
+        onRequestClose={() => setShowAcknowledgements(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.acknowledgementSheet} accessibilityViewIsModal>
+            <Text style={styles.checklistSectionHeading}>Before your bag travels</Text>
+            <ScrollView>
+          {(Object.keys(acknowledgementLabels) as (keyof SmartTagDeclarations)[]).map((key) => (
+            <TouchableOpacity
+              key={key}
+              style={styles.floatingCheckCard}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityLabel={acknowledgementLabels[key]}
+              accessibilityState={{ checked: declarations[key] }}
+              onPress={() => setDeclarations((current) => ({ ...current, [key]: !current[key] }))}
+              testID={`checkbox-${key}`}
+            >
+              <View style={[styles.checklistBadge, declarations[key] && styles.checklistBadgeDone]}>
+                {declarations[key] ? (
+                  <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+                ) : (
+                  <View style={styles.circleUnchecked} />
+                )}
+              </View>
+              <Text style={[styles.checklistTitle, styles.checklistTextCol]}>
+                {acknowledgementLabels[key]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+            </ScrollView>
+            <CathayPrimaryButton label="Done" onPress={() => setShowAcknowledgements(false)}
+              disabled={!areDeclarationsComplete(declarations)} />
+            <TouchableOpacity accessibilityRole="button" onPress={() => setShowAcknowledgements(false)}
+              style={styles.acknowledgementLink}>
+              <Text style={styles.checklistSubtitle}>Back to preparation</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -213,8 +295,25 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    paddingTop: Platform.OS === 'android' ? 44 : 32,
     position: 'relative',
+  },
+  acknowledgementLink: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  acknowledgementSheet: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
   },
   emptyWrap: {
     padding: 20,
@@ -247,7 +346,7 @@ const styles = StyleSheet.create({
 
   checklistSectionWrap: {
     marginTop: 18,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   checklistSectionHeading: {
     fontSize: 16,
@@ -320,7 +419,7 @@ const styles = StyleSheet.create({
   },
 
   continueBtn: {
-    marginTop: 14,
+    marginTop: 6,
     marginBottom: 30,
   },
 });
