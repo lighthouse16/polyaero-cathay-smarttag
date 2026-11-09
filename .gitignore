@@ -63,3 +63,6 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+# Next.js build output
+.next/
+*.tsbuildinfo
