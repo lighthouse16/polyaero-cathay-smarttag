@@ -50,3 +50,7 @@ docs/visual-qa/*
 exported_screens/
 *.mp4
 docs/*.mp4
+
+# Local screenshot comparison output
+qa/captures/
+qa/results/
