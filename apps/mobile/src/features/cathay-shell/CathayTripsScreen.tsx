@@ -536,11 +536,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingTop: 4,
+    paddingBottom: 12,
     alignItems: 'center',
     position: 'relative',
   },
@@ -549,7 +550,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#76777A',
   },
   tabLabelActive: {
     color: CATHAY_TEXT_PRIMARY,
@@ -558,8 +559,8 @@ const styles = StyleSheet.create({
   tabUnderline: {
     position: 'absolute',
     bottom: 0,
-    left: 12,
-    right: 12,
+    left: 8,
+    right: 8,
     height: 3,
     backgroundColor: CATHAY_JADE,
     borderRadius: 1.5,
@@ -574,7 +575,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 14,
     paddingBottom: 120,
   },
   scrollContentEmpty: {

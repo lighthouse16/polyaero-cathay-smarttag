@@ -47,6 +47,7 @@ export const HEADER_SOFT_MINT_WAVE = require('../../../../assets/smarttag-design
 export const NFC_HALO = require('../../../../assets/smarttag-design/surfaces/nfc_halo_2x.png');
 export const STATUS_JADE_WAVE = require('../../../../assets/smarttag-design/surfaces/status_jade_wave_2x.png');
 export const CONCEPT_BRUSHWING = require('../../../../assets/smarttag-design/icons/concept_brushwing_extracted.png');
+export const STATUS_SUITCASE_ICON = require('../../../../assets/smarttag-design/icons/status_suitcase_icon.png');
 
 // ---------------------------------------------------------------------------
 // Authentic Cathay Pacific Design System Tokens
@@ -2072,13 +2073,11 @@ export const JadeStatusCard: React.FC<JadeStatusCardProps> = ({
           <Text style={styles.statusCardSubtitle}>{subtitle}</Text>
         </View>
         <View style={styles.statusCardIconBox}>
-          <View style={styles.statusCardSuitcaseIcon} accessible={false}>
-            <View style={styles.suitcaseHandle} />
-            <View style={styles.suitcaseBody}>
-              <View style={styles.suitcaseSeam} />
-              <View style={styles.suitcaseClasp} />
-            </View>
-          </View>
+          <Image
+            source={STATUS_SUITCASE_ICON}
+            style={{ width: 26, height: 22 }}
+            resizeMode="contain"
+          />
         </View>
       </View>
     </View>

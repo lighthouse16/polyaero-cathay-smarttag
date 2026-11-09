@@ -21,6 +21,7 @@ import {
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
   CathayPrimaryButton,
+  HeaderSoftWave,
   InlineNotice,
   BrushwingFlightSummaryCard,
 } from '../components/CathaySmartTagPrimitives';
@@ -111,6 +112,7 @@ export const ReportBaggageIssueScreen: React.FC<ReportBaggageIssueScreenProps> =
 
   return (
     <View style={styles.root}>
+      <HeaderSoftWave />
       {/* Top Bar with Back Chevron */}
       <View style={styles.topBar}>
         <TouchableOpacity
@@ -276,14 +278,16 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 48 : 36,
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    position: 'relative',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#F8F9FA',
+    paddingTop: 14,
+    paddingBottom: 6,
+    backgroundColor: 'transparent',
   },
   backBtn: {
     padding: 4,

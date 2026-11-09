@@ -175,13 +175,13 @@ const styles = StyleSheet.create({
   artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
-    marginBottom: 2,
-    height: 130,
+    marginTop: 16,
+    marginBottom: 6,
+    height: 185,
   },
   successArtImage: {
-    width: 156,
-    height: 130,
+    width: 222,
+    height: 185,
   },
 
   headingWrap: {
