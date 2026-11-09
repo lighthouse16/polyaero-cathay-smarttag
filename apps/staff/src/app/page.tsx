@@ -3,20 +3,58 @@
 import React, { useState } from 'react';
 import {
   mockBaggageList,
+  mockBaggageEvents,
   mockRecoveryCases,
   findFlightById,
   Baggage,
+  BaggageEvent,
   BaggageStatus,
   RecoveryCase,
 } from '@polyaero/shared';
+import { applyStatusChange, eventsForBag } from '../lib/baggageStore';
+
+const STAFF_ID = 'STF-8821';
+const STATION = 'HKG-T1 Ramp Operations';
+
+const OVERRIDE_STATUSES: BaggageStatus[] = [
+  'CHECKED_IN',
+  'SECURITY_CLEARED',
+  'SORTED',
+  'LOADED',
+  'IN_FLIGHT',
+  'UNLOADED',
+  'ON_CAROUSEL',
+  'CLAIMED',
+  'MISROUTED',
+  'MISSING',
+];
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: '#FFFFFF',
+  borderRadius: '8px',
+  border: '1px solid #E2E8F0',
+  padding: '24px',
+};
+
+// Always formats in UTC so server and browser render the same text.
+function formatTime(iso: string): string {
+  return new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
+function statusStyle(status: BaggageStatus): React.CSSProperties {
+  if (status === 'LOADED') return { backgroundColor: '#E3FCEF', color: '#00875A' };
+  if (status === 'MISROUTED' || status === 'MISSING') return { backgroundColor: '#FFEBE6', color: '#DE350B' };
+  return { backgroundColor: '#E6F0F0', color: '#006564' };
+}
 
 export default function StaffDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [baggageList, setBaggageList] = useState<Baggage[]>(mockBaggageList);
+  const [events, setEvents] = useState<BaggageEvent[]>(mockBaggageEvents);
   const [recoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
   const [selectedBag, setSelectedBag] = useState<Baggage | null>(mockBaggageList[0]);
 
-  // Dynamic calculations from active state
+  // Metrics derived from current state
   const totalTracked = baggageList.length;
   const loadedCount = baggageList.filter((b) => b.currentStatus === 'LOADED').length;
   const atRiskCount = baggageList.filter(
@@ -36,14 +74,20 @@ export default function StaffDashboardPage() {
     );
   });
 
+  const selectedFlight = selectedBag ? findFlightById(selectedBag.flightId) : undefined;
+  const selectedHistory = selectedBag ? eventsForBag(events, selectedBag.id) : [];
+
   const handleUpdateStatus = (status: BaggageStatus) => {
     if (!selectedBag) return;
-    const now = new Date().toISOString();
-    const updatedList = baggageList.map((b) =>
-      b.id === selectedBag.id ? { ...b, currentStatus: status, lastScannedAt: now } : b
-    );
-    setBaggageList(updatedList);
-    setSelectedBag({ ...selectedBag, currentStatus: status, lastScannedAt: now });
+    const { bag: updated, event } = applyStatusChange(selectedBag, {
+      status,
+      staffId: STAFF_ID,
+      stationName: STATION,
+      scanner: 'MANUAL_OVERRIDE',
+    });
+    setBaggageList((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    setSelectedBag(updated);
+    setEvents((prev) => [event, ...prev]);
   };
 
   return (
@@ -92,7 +136,7 @@ export default function StaffDashboardPage() {
               fontSize: '12px',
             }}
           >
-            Operator: STF-8821 (Ramp Lead)
+            Operator: {STAFF_ID} (Ramp Lead)
           </span>
           <span
             style={{
@@ -111,7 +155,6 @@ export default function StaffDashboardPage() {
         </div>
       </header>
 
-      {/* Main Content Grid */}
       <main style={{ flex: 1, padding: '32px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         {/* Prototype Notice */}
         <div
@@ -126,10 +169,11 @@ export default function StaffDashboardPage() {
           }}
         >
           <strong>PolyAero Concept Verification:</strong> Ground Staff verification portal.
-          Connected to shared contracts in <code>@polyaero/shared</code>. Active state mutations are preserved in memory for local demo workflows.
+          Connected to shared contracts in <code>@polyaero/shared</code>. Changes are kept in
+          memory only, so a page refresh resets the demo.
         </div>
 
-        {/* Dashboard Metrics Derived from Real State */}
+        {/* Metrics */}
         <div
           style={{
             display: 'grid',
@@ -138,38 +182,47 @@ export default function StaffDashboardPage() {
             marginBottom: '32px',
           }}
         >
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+          <div style={{ ...cardStyle, padding: '20px' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>TRACKED BAGS IN SESSION</div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#006564', marginTop: '4px' }}>{totalTracked}</div>
             <div style={{ fontSize: '11px', color: '#00875A', marginTop: '4px' }}>Active mock fixture set</div>
           </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+          <div style={{ ...cardStyle, padding: '20px' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>LOADED / MANIFESTED</div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>
               {loadedCount} / {totalTracked}
             </div>
             <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Status milestone confirmed</div>
           </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+          <div style={{ ...cardStyle, padding: '20px' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>MISROUTED / AT RISK</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                color: atRiskCount > 0 ? '#DE350B' : '#00875A',
+                marginTop: '4px',
+              }}
+            >
               {atRiskCount}
             </div>
             <div style={{ fontSize: '11px', color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
               {atRiskCount > 0 ? 'Requires ramp / transfer inspection' : 'No routing anomalies'}
             </div>
           </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+          <div style={{ ...cardStyle, padding: '20px' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>ACTIVE RECOVERY CASES</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>{recoveryCases.length}</div>
+            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>
+              {recoveryCases.length}
+            </div>
             <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Investigation in progress</div>
           </div>
         </div>
 
         {/* 2-Column Working Area */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-          {/* Baggage Inventory & Search */}
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
+          {/* Baggage Registry */}
+          <div style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Baggage Registry</h2>
               <input
@@ -217,64 +270,53 @@ export default function StaffDashboardPage() {
                           backgroundColor: selectedBag?.id === bag.id ? '#F0F9F9' : 'transparent',
                         }}
                       >
-                      <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
-                      <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            backgroundColor:
-                              bag.currentStatus === 'LOADED'
-                                ? '#E3FCEF'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#FFEBE6'
-                                : '#E6F0F0',
-                            color:
-                              bag.currentStatus === 'LOADED'
-                                ? '#00875A'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#DE350B'
-                                : '#006564',
-                          }}
-                        >
-                          {bag.currentStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <button
-                          onClick={() => setSelectedBag(bag)}
-                          style={{
-                            backgroundColor: '#006564',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Inspect
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                }))}
+                        <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
+                        <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              ...statusStyle(bag.currentStatus),
+                            }}
+                          >
+                            {bag.currentStatus}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <button
+                            onClick={() => setSelectedBag(bag)}
+                            style={{
+                              backgroundColor: '#006564',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                            }}
+                          >
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Baggage Inspection & Recovery Details */}
+          {/* Inspection, History, Recovery */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
-                Inspection Console
-              </h2>
+            {/* Inspection Console */}
+            <div style={cardStyle}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Inspection Console</h2>
               {selectedBag ? (
                 <div>
                   <div style={{ marginBottom: '12px' }}>
@@ -284,9 +326,8 @@ export default function StaffDashboardPage() {
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>FLIGHT ASSIGNMENT</div>
                     <div style={{ fontSize: '14px', fontWeight: 600 }}>
-                      {findFlightById(selectedBag.flightId)?.flightNumber ?? selectedBag.flightId} (
-                      {findFlightById(selectedBag.flightId)?.origin} →{' '}
-                      {findFlightById(selectedBag.flightId)?.destination})
+                      {selectedFlight?.flightNumber ?? selectedBag.flightId}
+                      {selectedFlight && ` (${selectedFlight.origin} → ${selectedFlight.destination})`}
                     </div>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
@@ -297,7 +338,7 @@ export default function StaffDashboardPage() {
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>LAST SCANNED</div>
-                    <div style={{ fontSize: '13px' }}>{selectedBag.lastScannedAt}</div>
+                    <div style={{ fontSize: '13px' }}>{formatTime(selectedBag.lastScannedAt)}</div>
                   </div>
                   {selectedBag.notes && (
                     <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#F8FAFC', borderRadius: '4px', fontSize: '12px' }}>
@@ -309,7 +350,7 @@ export default function StaffDashboardPage() {
                     OVERRIDE BAGGAGE STATUS
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(['SECURITY_CLEARED', 'LOADED', 'ON_CAROUSEL', 'MISROUTED'] as BaggageStatus[]).map((st) => (
+                    {OVERRIDE_STATUSES.map((st) => (
                       <button
                         key={st}
                         onClick={() => handleUpdateStatus(st)}
@@ -333,8 +374,36 @@ export default function StaffDashboardPage() {
               )}
             </div>
 
+            {/* Scan History */}
+            <div style={cardStyle}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Scan History</h2>
+              {!selectedBag ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>Select a bag to view its history</div>
+              ) : selectedHistory.length === 0 ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>No events recorded for this bag.</div>
+              ) : (
+                <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {selectedHistory.map((ev) => (
+                    <li
+                      key={ev.id}
+                      style={{ borderLeft: '2px solid #006564', paddingLeft: '12px', paddingBottom: '12px' }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 700 }}>{ev.eventType}</div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {formatTime(ev.timestamp)} • {ev.stationName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {ev.scannerType} • {ev.handledByStaffId ?? 'system'}
+                      </div>
+                      {ev.notes && <div style={{ fontSize: '12px', marginTop: '4px' }}>{ev.notes}</div>}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
             {/* Active Recovery Cases */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
+            <div style={cardStyle}>
               <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
                 Active Recovery Cases ({recoveryCases.length})
               </h2>
@@ -346,6 +415,7 @@ export default function StaffDashboardPage() {
                     borderRadius: '6px',
                     padding: '12px',
                     backgroundColor: '#FFFAE6',
+                    marginBottom: '8px',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -369,9 +439,7 @@ export default function StaffDashboardPage() {
                   <div style={{ fontSize: '12px', marginTop: '2px' }}>
                     <strong>Reported:</strong> {rec.reportedLocation}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>
-                    {rec.staffNotes}
-                  </div>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>{rec.staffNotes}</div>
                 </div>
               ))}
             </div>
