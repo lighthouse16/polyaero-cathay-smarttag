@@ -31,7 +31,6 @@ import {
   TextInput,
   BackHandler,
   Platform,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -51,7 +50,6 @@ import {
   SmartTagEntryCard,
   YourBaggageCard,
   HeaderSoftWave,
-  CONCEPT_BRUSHWING,
 } from '../smarttag/components/CathaySmartTagPrimitives';
 import {
   smartTagController,
@@ -182,26 +180,15 @@ export const CathayTripsScreen: React.FC<CathayTripsScreenProps> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <HeaderSoftWave />
-      {/* Top Header (Matches references/01_my_bookings.png — NO BACK BUTTON) */}
-      <View style={styles.topBarRow}>
-        <Image source={CONCEPT_BRUSHWING} style={styles.headerBrushwing} resizeMode="contain" />
-        <View style={styles.headerIconsRight}>
-          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7}>
-            <Ionicons name="notifications-outline" size={22} color={CATHAY_TEXT_PRIMARY} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            activeOpacity={0.7}
-            onLongPress={onOpenDevMenu}
-          >
-            <Ionicons name="ellipsis-horizontal" size={22} color={CATHAY_TEXT_PRIMARY} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      
 
-      <View style={styles.headerTitleWrap}>
+      <TouchableOpacity
+        style={styles.headerTitleWrap}
+        activeOpacity={1}
+        onLongPress={onOpenDevMenu}
+      >
         <Text style={styles.headerLargeTitle}>My trips</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* 3-Column Underline Tabs: Upcoming | Past | Cancelled */}
       <View style={styles.tabsRow}>
@@ -478,34 +465,9 @@ const styles = StyleSheet.create({
     backgroundColor: CATHAY_BG,
     paddingTop: Platform.OS === 'android' ? 12 : 0,
   },
-  topBarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 22,
-    backgroundColor: 'transparent',
-  },
-  headerBrushwing: {
-    width: 34,
-    height: 38,
-  },
-  headerIconsRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIconBtn: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-  },
   headerTitleWrap: {
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 18,
     paddingBottom: 16,
     backgroundColor: 'transparent',
   },
