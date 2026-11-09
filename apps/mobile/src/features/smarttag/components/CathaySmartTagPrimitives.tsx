@@ -1700,7 +1700,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 12,
     ...cardShadowStyle,
   },
   guideSectionTitle: {
@@ -1712,7 +1712,7 @@ const styles = StyleSheet.create({
   guideRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   guideBadgeCol: {
     width: 26,
@@ -1734,7 +1734,7 @@ const styles = StyleSheet.create({
   },
   guideLine: {
     width: 1.5,
-    height: 16,
+    height: 14,
     backgroundColor: '#E5E7EB',
     marginTop: 4,
   },

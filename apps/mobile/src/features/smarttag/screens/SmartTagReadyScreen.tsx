@@ -207,6 +207,6 @@ const styles = StyleSheet.create({
   },
 
   journeyBtn: {
-    marginTop: 6,
+    marginTop: 2,
   },
 });
