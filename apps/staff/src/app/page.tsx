@@ -4,15 +4,28 @@ import React, { useState } from 'react';
 import {
   mockBaggageList,
   mockRecoveryCases,
+  mockBaggageEvents,
   findFlightById,
   Baggage,
+  BaggageEvent,
   BaggageStatus,
   RecoveryCase,
 } from '@polyaero/shared';
 
+import { applyStatusChange, eventsForBag } from '../lib/baggageStore';
+
+const STAFF_ID = 'STF-8821';
+const STATION = 'HKG-T1 Ramp Operations';
+
+// Formats in UTC so server and browser render identical text (avoids hydration warnings).
+function formatTime(iso: string): string {
+  return new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
 export default function StaffDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [baggageList, setBaggageList] = useState<Baggage[]>(mockBaggageList);
+  const [events, setEvents] = useState<BaggageEvent[]>(mockBaggageEvents);
   const [recoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
   const [selectedBag, setSelectedBag] = useState<Baggage | null>(mockBaggageList[0]);
 
@@ -22,6 +35,8 @@ export default function StaffDashboardPage() {
   const atRiskCount = baggageList.filter(
     (b) => b.currentStatus === 'MISROUTED' || b.currentStatus === 'MISSING'
   ).length;
+
+  const selectedHistory = selectedBag ? eventsForBag(events, selectedBag.id) : [];
 
   const filteredBaggage = baggageList.filter((bag) => {
     const flight = findFlightById(bag.flightId);
@@ -38,12 +53,15 @@ export default function StaffDashboardPage() {
 
   const handleUpdateStatus = (status: BaggageStatus) => {
     if (!selectedBag) return;
-    const now = new Date().toISOString();
-    const updatedList = baggageList.map((b) =>
-      b.id === selectedBag.id ? { ...b, currentStatus: status, lastScannedAt: now } : b
-    );
-    setBaggageList(updatedList);
-    setSelectedBag({ ...selectedBag, currentStatus: status, lastScannedAt: now });
+    const { bag: updated, event } = applyStatusChange(selectedBag, {
+      status,
+      staffId: STAFF_ID,
+      stationName: STATION,
+      scanner: 'MANUAL_OVERRIDE',
+    });
+    setBaggageList((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    setSelectedBag(updated);
+    setEvents((prev) => [event, ...prev]);
   };
 
   return (
@@ -92,7 +110,7 @@ export default function StaffDashboardPage() {
               fontSize: '12px',
             }}
           >
-            Operator: STF-8821 (Ramp Lead)
+            Operator: {STAFF_ID} (Ramp Lead)
           </span>
           <span
             style={{
@@ -217,54 +235,55 @@ export default function StaffDashboardPage() {
                           backgroundColor: selectedBag?.id === bag.id ? '#F0F9F9' : 'transparent',
                         }}
                       >
-                      <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
-                      <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            backgroundColor:
-                              bag.currentStatus === 'LOADED'
-                                ? '#E3FCEF'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#FFEBE6'
-                                : '#E6F0F0',
-                            color:
-                              bag.currentStatus === 'LOADED'
-                                ? '#00875A'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#DE350B'
-                                : '#006564',
-                          }}
-                        >
-                          {bag.currentStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <button
-                          onClick={() => setSelectedBag(bag)}
-                          style={{
-                            backgroundColor: '#006564',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Inspect
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                }))}
+                        <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
+                        <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor:
+                                bag.currentStatus === 'LOADED'
+                                  ? '#E3FCEF'
+                                  : bag.currentStatus === 'MISROUTED' || bag.currentStatus === 'MISSING'
+                                  ? '#FFEBE6'
+                                  : '#E6F0F0',
+                              color:
+                                bag.currentStatus === 'LOADED'
+                                  ? '#00875A'
+                                  : bag.currentStatus === 'MISROUTED' || bag.currentStatus === 'MISSING'
+                                  ? '#DE350B'
+                                  : '#006564',
+                            }}
+                          >
+                            {bag.currentStatus}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <button
+                            onClick={() => setSelectedBag(bag)}
+                            style={{
+                              backgroundColor: '#006564',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                            }}
+                          >
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -309,7 +328,17 @@ export default function StaffDashboardPage() {
                     OVERRIDE BAGGAGE STATUS
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(['SECURITY_CLEARED', 'LOADED', 'ON_CAROUSEL', 'MISROUTED'] as BaggageStatus[]).map((st) => (
+                    {(
+                      [
+                        'SECURITY_CLEARED',
+                        'LOADED',
+                        'IN_FLIGHT',
+                        'ON_CAROUSEL',
+                        'CLAIMED',
+                        'MISROUTED',
+                        'MISSING',
+                      ] as BaggageStatus[]
+                    ).map((st) => (
                       <button
                         key={st}
                         onClick={() => handleUpdateStatus(st)}
@@ -333,6 +362,34 @@ export default function StaffDashboardPage() {
               )}
             </div>
 
+            {/* Scan History */}
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Scan History</h2>
+              {!selectedBag ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>Select a bag to view its history</div>
+              ) : selectedHistory.length === 0 ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>No events recorded for this bag.</div>
+              ) : (
+                <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {selectedHistory.map((ev) => (
+                    <li
+                      key={ev.id}
+                      style={{ borderLeft: '2px solid #006564', paddingLeft: '12px', paddingBottom: '12px' }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 700 }}>{ev.eventType}</div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {formatTime(ev.timestamp)} • {ev.stationName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {ev.scannerType} • {ev.handledByStaffId ?? 'system'}
+                      </div>
+                      {ev.notes && <div style={{ fontSize: '12px', marginTop: '4px' }}>{ev.notes}</div>}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
             {/* Active Recovery Cases */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
@@ -346,6 +403,7 @@ export default function StaffDashboardPage() {
                     borderRadius: '6px',
                     padding: '12px',
                     backgroundColor: '#FFFAE6',
+                    marginBottom: '8px',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
