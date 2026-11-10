@@ -1,0 +1,65 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.security import get_current_user
+from app.models.auth import User
+from app.models.baggage import Tag
+from app.models.booking import Booking
+from app.schemas.booking import BookingCreate, BookingRead, LinkTagRequest
+
+router = APIRouter(tags=["bookings"])
+
+
+@router.post("", response_model=BookingRead, status_code=status.HTTP_201_CREATED)
+async def create_booking(
+    booking_in: BookingCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Booking:
+    pnr = booking_in.pnr.upper()
+    if await db.scalar(select(Booking.id).where(Booking.pnr == pnr)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Booking reference already exists"
+        )
+
+    booking = Booking(
+        user_id=current_user.id,
+        pnr=pnr,
+        **booking_in.model_dump(exclude={"pnr"}),
+    )
+    db.add(booking)
+    await db.commit()
+    await db.refresh(booking)
+    return booking
+
+
+@router.post("/link-tag", response_model=BookingRead)
+async def link_tag(
+    link_in: LinkTagRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Booking:
+    """Bind a SmartTag to a member's booking. Rebinds silently if the tag is in use."""
+    booking = await db.scalar(
+        select(Booking).where(
+            Booking.pnr == link_in.pnr.upper(), Booking.user_id == current_user.id
+        )
+    )
+    if booking is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+    tag = await db.scalar(select(Tag).where(Tag.id == link_in.tag_id))
+    if tag is None or not tag.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
+
+    await db.execute(
+        update(Booking)
+        .where(Booking.tag_id == link_in.tag_id, Booking.id != booking.id)
+        .values(tag_id=None)
+    )
+    booking.tag_id = link_in.tag_id
+    await db.commit()
+    await db.refresh(booking)
+    return booking
