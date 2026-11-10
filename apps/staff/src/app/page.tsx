@@ -12,10 +12,27 @@ import {
   RecoveryCase,
 } from '@polyaero/shared';
 
-import { applyStatusChange, eventsForBag } from '../lib/baggageStore';
+import {
+  applyStatusChange,
+  eventsForBag,
+  hasOpenCase,
+  openRecoveryCase,
+  tagDisplayMessage,
+} from '../lib/baggageStore';
+import { buildTagPayload, simulateTapWrite, tagStatusCode, TagPayload } from '../lib/tagWriter';
 
 const STAFF_ID = 'STF-8821';
 const STATION = 'HKG-T1 Ramp Operations';
+
+const OVERRIDE_STATUSES: BaggageStatus[] = [
+  'SECURITY_CLEARED',
+  'LOADED',
+  'IN_FLIGHT',
+  'ON_CAROUSEL',
+  'CLAIMED',
+  'MISROUTED',
+  'MISSING',
+];
 
 // Formats in UTC so server and browser render identical text (avoids hydration warnings).
 function formatTime(iso: string): string {
@@ -26,8 +43,10 @@ export default function StaffDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [baggageList, setBaggageList] = useState<Baggage[]>(mockBaggageList);
   const [events, setEvents] = useState<BaggageEvent[]>(mockBaggageEvents);
-  const [recoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
+  const [recoveryCases, setRecoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
   const [selectedBag, setSelectedBag] = useState<Baggage | null>(mockBaggageList[0]);
+  const [tagStatus, setTagStatus] = useState<'IDLE' | 'WRITING'>('IDLE');
+  const [lastWritten, setLastWritten] = useState<TagPayload | null>(null);
 
   // Dynamic calculations from active state
   const totalTracked = baggageList.length;
@@ -36,7 +55,14 @@ export default function StaffDashboardPage() {
     (b) => b.currentStatus === 'MISROUTED' || b.currentStatus === 'MISSING'
   ).length;
 
+  const selectedFlight = selectedBag ? findFlightById(selectedBag.flightId) : undefined;
   const selectedHistory = selectedBag ? eventsForBag(events, selectedBag.id) : [];
+  const expectedDisplay = selectedBag ? tagDisplayMessage(selectedBag.currentStatus) : null;
+
+  const tagUpToDate =
+    !!selectedBag &&
+    lastWritten?.bagId === selectedBag.tagNumber &&
+    lastWritten.statusCode === tagStatusCode(selectedBag.currentStatus);
 
   const filteredBaggage = baggageList.filter((bag) => {
     const flight = findFlightById(bag.flightId);
@@ -62,6 +88,20 @@ export default function StaffDashboardPage() {
     setBaggageList((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
     setSelectedBag(updated);
     setEvents((prev) => [event, ...prev]);
+
+    if (status === 'MISSING' && !hasOpenCase(recoveryCases, selectedBag.id)) {
+      const newCase = openRecoveryCase(updated, STATION);
+      setRecoveryCases((prev) => [newCase, ...prev]);
+    }
+  };
+
+  const handleWriteToTag = async () => {
+    if (!selectedBag) return;
+    const payload = buildTagPayload(selectedBag, findFlightById(selectedBag.flightId));
+    setTagStatus('WRITING');
+    await simulateTapWrite();
+    setLastWritten(payload);
+    setTagStatus('IDLE');
   };
 
   return (
@@ -170,7 +210,14 @@ export default function StaffDashboardPage() {
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>MISROUTED / AT RISK</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                color: atRiskCount > 0 ? '#DE350B' : '#00875A',
+                marginTop: '4px',
+              }}
+            >
               {atRiskCount}
             </div>
             <div style={{ fontSize: '11px', color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
@@ -179,7 +226,9 @@ export default function StaffDashboardPage() {
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>ACTIVE RECOVERY CASES</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>{recoveryCases.length}</div>
+            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>
+              {recoveryCases.length}
+            </div>
             <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Investigation in progress</div>
           </div>
         </div>
@@ -266,7 +315,10 @@ export default function StaffDashboardPage() {
                         <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
                         <td style={{ padding: '12px 8px' }}>
                           <button
-                            onClick={() => setSelectedBag(bag)}
+                            onClick={() => {
+                              setSelectedBag(bag);
+                              setTagStatus('IDLE');
+                            }}
                             style={{
                               backgroundColor: '#006564',
                               color: '#FFFFFF',
@@ -288,12 +340,11 @@ export default function StaffDashboardPage() {
             </table>
           </div>
 
-          {/* Baggage Inspection & Recovery Details */}
+          {/* Inspection, History, Recovery */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Inspection Console */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
-                Inspection Console
-              </h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Inspection Console</h2>
               {selectedBag ? (
                 <div>
                   <div style={{ marginBottom: '12px' }}>
@@ -303,9 +354,8 @@ export default function StaffDashboardPage() {
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>FLIGHT ASSIGNMENT</div>
                     <div style={{ fontSize: '14px', fontWeight: 600 }}>
-                      {findFlightById(selectedBag.flightId)?.flightNumber ?? selectedBag.flightId} (
-                      {findFlightById(selectedBag.flightId)?.origin} →{' '}
-                      {findFlightById(selectedBag.flightId)?.destination})
+                      {selectedFlight?.flightNumber ?? selectedBag.flightId}
+                      {selectedFlight && ` (${selectedFlight.origin} → ${selectedFlight.destination})`}
                     </div>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
@@ -316,7 +366,7 @@ export default function StaffDashboardPage() {
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>LAST SCANNED</div>
-                    <div style={{ fontSize: '13px' }}>{selectedBag.lastScannedAt}</div>
+                    <div style={{ fontSize: '13px' }}>{formatTime(selectedBag.lastScannedAt)}</div>
                   </div>
                   {selectedBag.notes && (
                     <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#F8FAFC', borderRadius: '4px', fontSize: '12px' }}>
@@ -324,21 +374,79 @@ export default function StaffDashboardPage() {
                     </div>
                   )}
 
+                  {/* Expected display for the cloud status */}
+                  {expectedDisplay && (
+                    <div
+                      style={{
+                        marginBottom: '12px',
+                        padding: '8px 12px',
+                        backgroundColor: '#0B2545',
+                        color: '#FFFFFF',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                    >
+                      EXPECTED TAG DISPLAY: {expectedDisplay}
+                    </div>
+                  )}
+
+                  {/* Mock tap-to-write */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        marginBottom: '8px',
+                        color: tagUpToDate ? '#00875A' : '#DE350B',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tagUpToDate ? 'Tag matches the cloud' : 'Tag is out of date. Tap to update.'}
+                    </div>
+                    <button
+                      onClick={handleWriteToTag}
+                      disabled={tagStatus === 'WRITING'}
+                      style={{
+                        fontSize: '12px',
+                        padding: '8px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: tagStatus === 'WRITING' ? '#94A3B8' : '#006564',
+                        color: '#FFFFFF',
+                        cursor: tagStatus === 'WRITING' ? 'default' : 'pointer',
+                      }}
+                    >
+                      {tagStatus === 'WRITING' ? 'Writing to tag…' : 'Write to tag (mock tap)'}
+                    </button>
+                    {lastWritten && lastWritten.bagId === selectedBag.tagNumber && (
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '8px 12px',
+                          backgroundColor: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '4px',
+                          fontFamily: 'monospace',
+                          fontSize: '11px',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        BAG ID: {lastWritten.bagId}
+                        <br />
+                        ROUTE: {lastWritten.route}
+                        <br />
+                        STATUS: {lastWritten.statusCode}
+                        <br />
+                        UPDATED: {lastWritten.lastUpdated}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, marginBottom: '8px' }}>
                     OVERRIDE BAGGAGE STATUS
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(
-                      [
-                        'SECURITY_CLEARED',
-                        'LOADED',
-                        'IN_FLIGHT',
-                        'ON_CAROUSEL',
-                        'CLAIMED',
-                        'MISROUTED',
-                        'MISSING',
-                      ] as BaggageStatus[]
-                    ).map((st) => (
+                    {OVERRIDE_STATUSES.map((st) => (
                       <button
                         key={st}
                         onClick={() => handleUpdateStatus(st)}
@@ -425,11 +533,13 @@ export default function StaffDashboardPage() {
                     <strong>Status:</strong> {rec.status}
                   </div>
                   <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                    <strong>Bag:</strong>{' '}
+                    {baggageList.find((b) => b.id === rec.baggageId)?.tagNumber ?? rec.baggageId}
+                  </div>
+                  <div style={{ fontSize: '12px', marginTop: '2px' }}>
                     <strong>Reported:</strong> {rec.reportedLocation}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>
-                    {rec.staffNotes}
-                  </div>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>{rec.staffNotes}</div>
                 </div>
               ))}
             </div>
