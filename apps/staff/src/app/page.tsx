@@ -19,7 +19,8 @@ import {
   openRecoveryCase,
   tagDisplayMessage,
 } from '../lib/baggageStore';
-import { buildTagPayload, simulateTapWrite, tagStatusCode, TagPayload } from '../lib/tagWriter';
+import { buildTagPayload, tagStatusCode, type TagPayload } from '../lib/tagWriter';
+import { writeToTag, type WriteMode } from '../lib/nfcWriter';
 
 const STAFF_ID = 'STF-8821';
 const STATION = 'HKG-T1 Ramp Operations';
@@ -47,6 +48,8 @@ export default function StaffDashboardPage() {
   const [selectedBag, setSelectedBag] = useState<Baggage | null>(mockBaggageList[0]);
   const [tagStatus, setTagStatus] = useState<'IDLE' | 'WRITING'>('IDLE');
   const [lastWritten, setLastWritten] = useState<TagPayload | null>(null);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [lastMode, setLastMode] = useState<WriteMode | null>(null);
 
   // Dynamic calculations from active state
   const totalTracked = baggageList.length;
@@ -99,9 +102,17 @@ export default function StaffDashboardPage() {
     if (!selectedBag) return;
     const payload = buildTagPayload(selectedBag, findFlightById(selectedBag.flightId));
     setTagStatus('WRITING');
-    await simulateTapWrite();
-    setLastWritten(payload);
-    setTagStatus('IDLE');
+    setWriteError(null);
+    try {
+      // No await before this call, so the browser still treats it as a user tap.
+      const outcome = await writeToTag(payload);
+      setLastWritten(payload);
+      setLastMode(outcome.mode);
+    } catch (err) {
+      setWriteError(err instanceof Error ? err.message : 'Tag write failed.');
+    } finally {
+      setTagStatus('IDLE');
+    }
   };
 
   return (
@@ -318,6 +329,7 @@ export default function StaffDashboardPage() {
                             onClick={() => {
                               setSelectedBag(bag);
                               setTagStatus('IDLE');
+                              setWriteError(null);
                             }}
                             style={{
                               backgroundColor: '#006564',
@@ -391,7 +403,7 @@ export default function StaffDashboardPage() {
                     </div>
                   )}
 
-                  {/* Mock tap-to-write */}
+                  {/* Tag write */}
                   <div style={{ marginBottom: '16px' }}>
                     <div
                       style={{
@@ -416,8 +428,11 @@ export default function StaffDashboardPage() {
                         cursor: tagStatus === 'WRITING' ? 'default' : 'pointer',
                       }}
                     >
-                      {tagStatus === 'WRITING' ? 'Writing to tag…' : 'Write to tag (mock tap)'}
+                      {tagStatus === 'WRITING' ? 'Writing to tag…' : 'Write to tag'}
                     </button>
+                    {writeError && (
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#DE350B' }}>{writeError}</div>
+                    )}
                     {lastWritten && lastWritten.bagId === selectedBag.tagNumber && (
                       <div
                         style={{
@@ -438,6 +453,11 @@ export default function StaffDashboardPage() {
                         STATUS: {lastWritten.statusCode}
                         <br />
                         UPDATED: {lastWritten.lastUpdated}
+                        <br />
+                        MODE:{' '}
+                        {lastMode === 'NFC_DATA'
+                          ? 'NFC record written. Display refresh not confirmed.'
+                          : 'MOCK write. No NFC reader, nothing sent to a tag.'}
                       </div>
                     )}
                   </div>
