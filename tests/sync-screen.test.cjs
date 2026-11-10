@@ -1,4 +1,4 @@
-﻿const assert = require('node:assert/strict');
+const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -24,6 +24,7 @@ function harness() {
     if(id==='react-native')return {StyleSheet:{create:v=>v},Platform:{OS:'web'},...Object.fromEntries(['View','Text','Image','ScrollView','TouchableOpacity'].map(n=>[n,n]))};
     if(id==='@expo/vector-icons')return {Ionicons:'Ionicons'};
     if(id==='@polyaero/shared')return {NfcCancelledError:Cancelled,NFC_STATE_MESSAGES:{IDLE:'Idle',CANCELLED:'Cancelled'},buildNfcPayloadForBag:()=>({}),runSmartTagSync:options=>{scanOptions=options;options.onStep({state:'SCANNING',statusMessage:'Scanning'});return new Promise(resolve=>{complete=resolve;});}};
+    if(id.includes('services/nfc/hardwareScan'))return {scanPhysicalTag:async()=>({tagUid:'UID',isMockSimulation:false}),cancelPhysicalTagScan:async()=>{}};
     if(id.includes('services/nfc'))return {demoNfcService:service,getPhysicalNfcService:()=>null};
     if(id==='../store')return {useSmartTagStore:()=>({repo:{itineraries:[{id:'trip'}],bagSetupsByItinerary:{trip:[bag]}}}),smartTagRepository:{recordSyncOutcome:()=>recorded++},smartTagController:{navigateTo:()=>navigated++,goBack(){}}};
     return new Proxy({},{get:(_,n)=>n});

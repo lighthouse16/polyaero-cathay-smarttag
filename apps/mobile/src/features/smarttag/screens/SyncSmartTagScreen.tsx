@@ -36,6 +36,7 @@ import {
 } from '../components/CathaySmartTagPrimitives';
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
+import { scanPhysicalTag, cancelPhysicalTagScan } from '../../../services/nfc/hardwareScan';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
 export interface SyncSmartTagScreenProps {
@@ -60,12 +61,16 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
+  const [isReadingChip, setIsReadingChip] = useState(false);
+  const [physicalTagUid, setPhysicalTagUid] = useState<string | null>(null);
+  const [physicalScanError, setPhysicalScanError] = useState<string | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
   useEffect(() => () => {
     if (session.current) {
       session.current.cancelled = true;
       void session.current.service.cancelScan().catch(() => {});
     }
+    void cancelPhysicalTagScan().catch(() => {});
   }, []);
   const cancelSync = async () => {
     if (!session.current) return;
@@ -109,8 +114,23 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'WRITING' ||
     machineState === 'VERIFYING';
 
+  const handleScanChip = async () => {
+    if (isBusy || isReadingChip || session.current) return;
+    setPhysicalScanError(null);
+    setPhysicalTagUid(null);
+    setIsReadingChip(true);
+    try {
+      const result = await scanPhysicalTag(15000);
+      setPhysicalTagUid(result.tagUid);
+    } catch (error) {
+      setPhysicalScanError(error instanceof Error ? error.message : 'NFC chip scan failed.');
+    } finally {
+      setIsReadingChip(false);
+    }
+  };
+
   const handleStartSync = async (forceDemo = false) => {
-    if (isBusy || session.current) return;
+    if (isBusy || isReadingChip || session.current) return;
     if (activeBag.setupState === 'UNREGISTERED') {
       smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
       return;
@@ -251,6 +271,39 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           >
             <Text style={styles.demoLinkText}>Run demo simulation</Text>
           </TouchableOpacity>
+
+          {Platform.OS !== 'web' && (
+            <View style={{ marginTop: 14, alignItems: 'center' }}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                testID="btn-read-physical-nfc"
+                disabled={isBusy}
+                onPress={() => {
+                  if (isReadingChip) {
+                    void cancelPhysicalTagScan();
+                  } else {
+                    void handleScanChip();
+                  }
+                }}
+                style={styles.demoLinkBtn}
+              >
+                <Text style={styles.demoLinkText}>
+                  {isReadingChip ? 'Cancel chip scan' : 'Read real NFC chip (UID only)'}
+                </Text>
+              </TouchableOpacity>
+              {physicalTagUid && (
+                <Text style={[styles.hintText, { textAlign: 'center', marginTop: 8 }]}>
+                  NFC chip detected: {physicalTagUid}. This verifies the chip only;
+                  updating the E-ink screen requires its vendor protocol.
+                </Text>
+              )}
+              {physicalScanError && (
+                <Text style={[styles.errorText, { textAlign: 'center', marginTop: 8 }]}>
+                  {physicalScanError}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
