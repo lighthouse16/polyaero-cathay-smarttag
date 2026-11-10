@@ -1,21 +1,43 @@
 from app.schemas.auth import (
-    LoginRequest,
+    AuthResponse,
+    CommunicationPrefs,
     RefreshRequest,
+    SigninRequest,
+    SigninResponse,
+    SigninVerifyRequest,
+    SignupInitiateRequest,
+    SignupInitiateResponse,
+    SignupVerifyRequest,
     TokenPair,
-    UserCreate,
     UserRead,
     UserUpdate,
 )
 from app.schemas.baggage import BaggageCreate, BaggageRead, BaggageUpdate
+from app.schemas.passkey import (
+    PasskeyAuthenticateOptionsRequest,
+    PasskeyAuthenticateVerifyRequest,
+    PasskeyRegisterResponse,
+    PasskeyRegisterVerifyRequest,
+)
 from app.schemas.tag import TagCreate, TagRead, TagUpdate
 
 __all__ = [
-    "UserCreate",
+    "AuthResponse",
+    "CommunicationPrefs",
+    "SigninRequest",
+    "SigninResponse",
+    "SigninVerifyRequest",
+    "SignupInitiateRequest",
+    "SignupInitiateResponse",
+    "SignupVerifyRequest",
+    "TokenPair",
     "UserRead",
     "UserUpdate",
-    "TokenPair",
-    "LoginRequest",
     "RefreshRequest",
+    "PasskeyRegisterVerifyRequest",
+    "PasskeyRegisterResponse",
+    "PasskeyAuthenticateOptionsRequest",
+    "PasskeyAuthenticateVerifyRequest",
     "BaggageCreate",
     "BaggageRead",
     "BaggageUpdate",

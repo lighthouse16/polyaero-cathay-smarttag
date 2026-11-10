@@ -24,6 +24,23 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
 
+    # Verification codes (OTP)
+    otp_length: int = 6
+    otp_ttl_seconds: int = 600
+    otp_max_attempts: int = 5
+    otp_resend_cooldown_seconds: int = 60
+
+    # Email verification (Gmail API via OAuth refresh token)
+    gmail_client_id: str | None = None
+    gmail_client_secret: str | None = None
+    gmail_refresh_token: str | None = None
+    gmail_sender_email: str | None = None
+
+    # WebAuthn / passkeys
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "PolyAero Cathay SmartTag"
+    webauthn_origin: str = "http://localhost:8081"
+
 
 @lru_cache
 def get_settings() -> Settings:
