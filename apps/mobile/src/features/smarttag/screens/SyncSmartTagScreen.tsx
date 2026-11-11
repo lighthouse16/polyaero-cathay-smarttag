@@ -20,6 +20,7 @@ import {
   NfcSyncMachineState,
   SmartTagFailureInfo,
   buildNfcPayloadForBag,
+  encodeNfcRecord,
   runSmartTagSync,
 } from '@polyaero/shared';
 import {
@@ -38,8 +39,11 @@ import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
 import {
   scanPhysicalTag,
+  writeNdefPayloadToTag,
   cancelPhysicalTagScan,
   openNfcSettings,
+  type NdefWriteStage,
+  type NfcWriteResult,
   type PhysicalTagScanDetails,
 } from '../../../services/nfc/hardwareScan';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
@@ -57,6 +61,24 @@ export type PhysicalScanStage =
   | 'TIMEOUT'
   | 'CANCELLED'
   | 'FAILED';
+
+const NDEF_STAGE_ORDER: NdefWriteStage[] = [
+  'READY',
+  'TAG_DETECTED',
+  'COMPATIBILITY_CHECK',
+  'WRITING_NDEF',
+  'READING_BACK',
+  'VERIFIED',
+];
+
+const NDEF_STAGE_LABELS: Record<NdefWriteStage, string> = {
+  READY: 'READY',
+  TAG_DETECTED: 'TAG DETECTED',
+  COMPATIBILITY_CHECK: 'COMPATIBILITY CHECK',
+  WRITING_NDEF: 'WRITING NDEF',
+  READING_BACK: 'READING BACK',
+  VERIFIED: 'VERIFIED',
+};
 
 export interface SyncSmartTagScreenProps {
   onOpenDevMenu?: () => void;
@@ -91,6 +113,12 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   );
   const [pairedPhysicalUid, setPairedPhysicalUid] = useState<string | null>(persistedPairedUid);
   const [physicalScanError, setPhysicalScanError] = useState<string | null>(null);
+  const [isWritingNdef, setIsWritingNdef] = useState(false);
+  const [ndefWriteStage, setNdefWriteStage] = useState<NdefWriteStage>('READY');
+  const [ndefRevision, setNdefRevision] = useState<number>(1);
+  const [ndefStatusCode, setNdefStatusCode] = useState<'TAGGED' | 'PRIORITY_TRANSFER'>('TAGGED');
+  const [ndefWriteResult, setNdefWriteResult] = useState<NfcWriteResult | null>(null);
+  const [ndefWriteError, setNdefWriteError] = useState<{ title: string; message: string; code?: string } | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
 
   useEffect(() => () => {
@@ -172,7 +200,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   };
 
   const handleScanChip = async () => {
-    if (isBusy || isReadingChip || session.current) return;
+    if (isBusy || isReadingChip || isWritingNdef || session.current) return;
     setPhysicalScanError(null);
     setPhysicalScanDetails(null);
     setScanStage('SCANNING');
@@ -213,8 +241,106 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
   };
 
+  const buildCanonicalPayloadText = (): string => {
+    const rawTagId = activeBag.smartTagCode || 'ST-2048';
+    const rawBagId = activeBag.baggage?.tagNumber || activeBag.displayBagCode || '0160123456';
+    const rawFlight = itinerary.flight?.flightNumber || 'CX548';
+    const rawFrom = itinerary.flight?.origin || 'HKG';
+    const rawTo = itinerary.flight?.destination || 'NRT';
+
+    if (typeof encodeNfcRecord === 'function') {
+      return encodeNfcRecord({
+        v: 1,
+        tagId: rawTagId,
+        bagId: rawBagId,
+        flight: rawFlight,
+        from: rawFrom,
+        to: rawTo,
+        status: ndefStatusCode,
+        rev: ndefRevision,
+      });
+    }
+    return `PA2|1|${rawTagId}|${rawBagId}|${rawFlight}|${rawFrom}|${rawTo}|${ndefStatusCode}|${ndefRevision}`;
+  };
+
+  const handleWriteNdefPayload = async () => {
+    if (isBusy || isReadingChip || isWritingNdef || session.current) return;
+    setNdefWriteError(null);
+    setNdefWriteResult(null);
+    setNdefWriteStage('READY');
+    setIsWritingNdef(true);
+
+    try {
+      const payloadText = buildCanonicalPayloadText();
+      const result = await writeNdefPayloadToTag(payloadText, 20000, {
+        onStageChange: (stage) => {
+          setNdefWriteStage(stage);
+        },
+      });
+
+      // Honesty gate: state updates ONLY after verified readback matches payloadText byte-for-byte.
+      if (!result.success || result.readbackPayload !== payloadText) {
+        setNdefWriteStage('READY');
+        setNdefWriteError({
+          title: 'Write verification failed',
+          message: 'NDEF readback did not match written baggage payload.',
+          code: 'NFC_VERIFICATION_MISMATCH',
+        });
+        return;
+      }
+
+      setNdefWriteStage('VERIFIED');
+      setNdefWriteResult(result);
+      setPhysicalTagUid(result.tagUid);
+      setPhysicalScanDetails({
+        tagUid: result.tagUid,
+        techTypes: result.techTypes,
+        ndefText: result.readbackPayload,
+        isMockSimulation: false,
+      });
+
+      // Attempt durable UID-to-bag pairing commit without masking write verification.
+      tryCommitPhysicalPairing(activeBag.id, result.tagUid);
+    } catch (error) {
+      setNdefWriteStage('READY');
+      const code = (error as { code?: string } | null)?.code;
+      const msg =
+        (error as { message?: string } | null)?.message ||
+        'Failed to write NDEF payload to NFC tag.';
+      if (code === 'NFC_READ_ONLY_TAG') {
+        setNdefWriteError({ title: 'Read-only NFC tag', message: msg, code });
+      } else if (code === 'NFC_INSUFFICIENT_CAPACITY') {
+        setNdefWriteError({ title: 'Insufficient tag capacity', message: msg, code });
+      } else if (code === 'NFC_UNSUPPORTED_TAG') {
+        setNdefWriteError({ title: 'Incompatible NFC tag', message: msg, code });
+      } else if (code === 'NFC_VERIFICATION_MISMATCH') {
+        setNdefWriteError({ title: 'Write verification failed', message: msg, code });
+      } else if (code === 'NFC_TAG_REMOVED') {
+        setNdefWriteError({ title: 'Tag removed prematurely', message: msg, code });
+      } else if (code === 'NFC_FORMATTED_REVERIFY_REQUIRED') {
+        setNdefWriteError({ title: 'Tag formatted — tap again to verify', message: msg, code });
+      } else if (code === 'NFC_DISABLED') {
+        setNdefWriteError({
+          title: 'NFC is disabled',
+          message: 'Enable NFC in Wireless Settings to write baggage payload to tag.',
+          code,
+        });
+      } else if (code === 'NFC_UNAVAILABLE') {
+        setNdefWriteError({ title: 'No NFC hardware', message: msg, code });
+      } else if (code === 'NFC_TIMEOUT') {
+        setNdefWriteError({ title: 'NFC write timed out', message: 'Hold a writable NTAG213/215/216 tag steady against your phone.', code });
+      } else if (code === 'NFC_CANCELLED') {
+        setNdefWriteError({ title: 'NFC write cancelled', message: 'NDEF write session cancelled before completion.', code });
+      } else {
+        setNdefWriteError({ title: 'NFC write failed', message: msg, code });
+      }
+    } finally {
+      setIsWritingNdef(false);
+    }
+  };
+
   const handleStartSync = async (forceDemo = false) => {
-    if (isBusy || isReadingChip || session.current) return;
+    if (isBusy || isReadingChip || isWritingNdef || session.current) return;
     if (activeBag.setupState === 'UNREGISTERED') {
       smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
       return;
@@ -367,7 +493,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
             </TouchableOpacity>
           )}
 
-          {/* Capability A — Real Hardware Primary Action */}
+          {/* Capability A1 — Read & Pair NFC Chip UID */}
           <CathayPrimaryButton
             label={getPrimaryButtonLabel()}
             onPress={() => {
@@ -376,10 +502,100 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
               }
               return handleScanChip();
             }}
-            disabled={isBusy}
+            disabled={isBusy || isWritingNdef}
             style={styles.primaryCta}
             testID="btn-read-physical-nfc"
           />
+
+          {/* Capability A2 — Write & Verify Compact NDEF Baggage Payload (NTAG213/215/216 -> PN532/ESP32) */}
+          <View style={styles.ndefSectionCard} testID="ndef-write-section">
+            <View style={styles.ndefHeaderRow}>
+              <Text style={styles.ndefSectionTitle}>
+                Write Payload to NFC Tag (Rev {ndefRevision})
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setNdefStatusCode((prev) =>
+                    prev === 'TAGGED' ? 'PRIORITY_TRANSFER' : 'TAGGED'
+                  );
+                  setNdefRevision((r) => r + 1);
+                  setNdefWriteStage('READY');
+                  setNdefWriteResult(null);
+                }}
+                disabled={isWritingNdef || isReadingChip || isBusy}
+                style={styles.ndefToggleChip}
+                testID="btn-toggle-ndef-status"
+              >
+                <Text style={styles.ndefToggleChipText}>
+                  {ndefStatusCode} · Bump Rev
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.ndefStageBar} testID="ndef-stage-indicator">
+              {NDEF_STAGE_ORDER.map((stage) => {
+                const idx = NDEF_STAGE_ORDER.indexOf(stage);
+                const curIdx = NDEF_STAGE_ORDER.indexOf(ndefWriteStage);
+                const marker = idx < curIdx || (idx === curIdx && ndefWriteStage === 'VERIFIED')
+                  ? '✓'
+                  : idx === curIdx && isWritingNdef
+                    ? '●'
+                    : '○';
+                return `${marker} ${NDEF_STAGE_LABELS[stage]}`;
+              }).join('  →  ')}
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.ndefWriteBtn, (isBusy || isReadingChip) && styles.ndefWriteBtnDisabled]}
+              onPress={() => {
+                if (isWritingNdef) {
+                  return cancelPhysicalTagScan();
+                }
+                return handleWriteNdefPayload();
+              }}
+              disabled={isBusy || isReadingChip}
+              accessibilityRole="button"
+              testID="btn-write-ndef-nfc"
+            >
+              <Text style={styles.ndefWriteBtnText}>
+                {isWritingNdef
+                  ? `Writing (${NDEF_STAGE_LABELS[ndefWriteStage]})… tap to cancel`
+                  : ndefWriteResult
+                    ? `Rewrite verified NDEF payload (Rev ${ndefRevision})`
+                    : `Write baggage payload to NFC tag (Rev ${ndefRevision})`}
+              </Text>
+            </TouchableOpacity>
+
+            {ndefWriteResult && ndefWriteStage === 'VERIFIED' && (
+              <View style={styles.ndefVerifiedCard} testID="ndef-write-verified-card">
+                <Text style={styles.ndefVerifiedTitle}>NFC data written and verified.</Text>
+                <Text style={styles.ndefVerifiedMeta}>
+                  UID {ndefWriteResult.tagUid} · {ndefWriteResult.bytesWritten} bytes read back cleanly
+                </Text>
+                <Text style={styles.ndefVerifiedPayload}>{ndefWriteResult.readbackPayload}</Text>
+                <Text style={styles.ndefVerifiedHint}>
+                  Next step: Tap this NFC tag on the Waveshare PN532 reader to refresh the ESP32 4.2&quot; E-paper display.
+                </Text>
+              </View>
+            )}
+
+            {ndefWriteError && (
+              <View style={styles.errorBox} testID="ndef-write-error-card">
+                <Text style={styles.errorTitle}>{ndefWriteError.title}</Text>
+                <Text style={styles.errorText}>{ndefWriteError.message}</Text>
+                {ndefWriteError.code === 'NFC_DISABLED' && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => void openNfcSettings?.()}
+                    style={styles.settingsLinkBtn}
+                    testID="btn-open-nfc-settings-write"
+                  >
+                    <Text style={styles.settingsLinkText}>Open device NFC settings</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
 
           {isReadingChip && scanStage === 'SCANNING' && (
             <View style={styles.busyBox}>
@@ -671,5 +887,92 @@ const styles = StyleSheet.create({
     color: CATHAY_TEXT_MUTED,
     fontSize: 11,
     lineHeight: 16,
+  },
+  ndefSectionCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginVertical: 4,
+  },
+  ndefHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  ndefSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
+  },
+  ndefToggleChip: {
+    backgroundColor: '#EAF3F2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ndefToggleChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: CATHAY_JADE,
+  },
+  ndefStageBar: {
+    fontSize: 10,
+    color: CATHAY_TEXT_MUTED,
+    fontWeight: '600',
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  ndefWriteBtn: {
+    backgroundColor: CATHAY_JADE,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  ndefWriteBtnDisabled: {
+    opacity: 0.5,
+  },
+  ndefWriteBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  ndefVerifiedCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+  },
+  ndefVerifiedTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#15803D',
+    marginBottom: 4,
+  },
+  ndefVerifiedMeta: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#166534',
+    marginBottom: 4,
+  },
+  ndefVerifiedPayload: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#14532D',
+    backgroundColor: '#DCFCE7',
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  ndefVerifiedHint: {
+    fontSize: 11,
+    color: '#166534',
+    lineHeight: 15,
   },
 });

@@ -435,11 +435,15 @@ describe('NFC Sync State Machine & Honesty Guarantees', () => {
       service: nfc,
       payload: samplePayload,
       expectedTagUid: samplePayload.tagUid,
-      stepDelayMs: 10,
+      stepDelayMs: 0,
+      onStep: (step) => {
+        if (step.state === 'SCANNING') {
+          setTimeout(() => {
+            void nfc.cancelScan();
+          }, 20);
+        }
+      },
     });
-    setTimeout(() => {
-      nfc.cancelScan();
-    }, 35);
     const cancelOut = await cancelPromise;
     expect(cancelOut.finalState).toBe('CANCELLED');
     expect(cancelOut.setupState).toBe('PENDING_PHYSICAL_WRITE');

@@ -1,6 +1,14 @@
 /** Web preview cannot access native NFC; never silently simulate hardware. */
 import { NfcUnavailableError, type SmartTagScanResult } from '@polyaero/shared';
 
+export type NdefWriteStage =
+  | 'READY'
+  | 'TAG_DETECTED'
+  | 'COMPATIBILITY_CHECK'
+  | 'WRITING_NDEF'
+  | 'READING_BACK'
+  | 'VERIFIED';
+
 export interface PhysicalTagScanDetails extends SmartTagScanResult {
   techTypes?: string[];
   ndefText?: string | null;
@@ -8,6 +16,16 @@ export interface PhysicalTagScanDetails extends SmartTagScanResult {
 
 export interface ScanPhysicalTagCallbacks {
   onTagDetected?: () => void;
+  onStageChange?: (stage: NdefWriteStage, detail?: string) => void;
+}
+
+export interface NfcWriteResult {
+  success: boolean;
+  bytesWritten: number;
+  readbackPayload: string;
+  tagUid: string;
+  capacityBytes?: number;
+  techTypes?: string[];
 }
 
 export function formatTagUid(rawId: string): string {
@@ -37,6 +55,14 @@ export async function scanPhysicalTag(
   _callbacks?: ScanPhysicalTagCallbacks
 ): Promise<PhysicalTagScanDetails> {
   throw new NfcUnavailableError('Physical NFC scanning requires the Android/iOS app on an NFC-capable device.');
+}
+
+export async function writeNdefPayloadToTag(
+  _payloadText: string,
+  _timeoutMs = 15000,
+  _callbacks?: ScanPhysicalTagCallbacks
+): Promise<NfcWriteResult> {
+  throw new NfcUnavailableError('Physical NFC writing requires the Android app on an NFC-capable device.');
 }
 
 export async function cancelPhysicalTagScan(): Promise<void> {

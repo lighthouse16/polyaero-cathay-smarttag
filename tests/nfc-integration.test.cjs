@@ -622,3 +622,329 @@ test('End-to-end pairing persistence integrity: failed disk write during NFC pai
   });
   assert.equal(restartedRepo.getBagSetup(activeBag.id), undefined, 'Failed disk write never persisted');
 });
+
+test('NDEF write and readback verification: complete 6-stage lifecycle renders "NFC data written and verified."', async () => {
+  const recordedStages = [];
+  let writtenPayloadText = null;
+
+  const harness = createAndroidHarness({
+    scanPhysicalTag: async () => ({ tagUid: '04:11:22:33:44:55:66', isMockSimulation: false }),
+  });
+
+  // Re-transpile SyncSmartTagScreen with custom writeNdefPayloadToTag mock
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        const proto = require('../packages/shared/src/smarttag/nfcProtocol.ts');
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+          encodeNfcRecord: proto.encodeNfcRecord,
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({ tagUid: '04:11:22:33:44:55:66', isMockSimulation: false }),
+          writeNdefPayloadToTag: async (payloadText, timeoutMs, callbacks) => {
+            writtenPayloadText = payloadText;
+            for (const stage of ['TAG_DETECTED', 'COMPATIBILITY_CHECK', 'WRITING_NDEF', 'READING_BACK', 'VERIFIED']) {
+              recordedStages.push(stage);
+              callbacks?.onStageChange?.(stage);
+            }
+            return {
+              success: true,
+              bytesWritten: 59,
+              readbackPayload: payloadText,
+              tagUid: '04:AA:BB:CC:DD:EE:FF',
+              capacityBytes: 137,
+              techTypes: ['android.nfc.tech.Ndef'],
+            };
+          },
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) {
+        return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      }
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: {
+                trip_1: [{
+                  id: 'bag_1',
+                  smartTagCode: 'ST-2048',
+                  displayBagCode: 'CX880123456',
+                  setupState: 'PENDING_PHYSICAL_WRITE',
+                  smartTag: { tagUid: '04:A2:3B:4C:5D:6E:70' },
+                  baggage: { tagNumber: '0160123456' },
+                }],
+              },
+            },
+          }),
+          smartTagRepository: {
+            pairPhysicalTagToBag: () => true,
+            recordSyncOutcome: () => {},
+            getLastPersistenceResult: () => ({ committed: true, persisted: true }),
+          },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return mod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+
+  const writeBtn = nodes(render()).find((n) => n.props.testID === 'btn-write-ndef-nfc');
+  assert.ok(writeBtn, 'Write NDEF button must be present on screen');
+  await writeBtn.props.onPress();
+
+  // Verify full 6-stage lifecycle occurred
+  assert.deepEqual(recordedStages, ['TAG_DETECTED', 'COMPATIBILITY_CHECK', 'WRITING_NDEF', 'READING_BACK', 'VERIFIED']);
+  assert.match(writtenPayloadText, /^PA2\|1\|ST-2048\|0160123456\|CX548\|HKG\|NRT\|TAGGED\|1\|/);
+
+  // Verify rendered UI shows "NFC data written and verified."
+  const verifiedCard = nodes(render()).find((n) => n.props.testID === 'ndef-write-verified-card');
+  assert.ok(verifiedCard, 'Verified card must appear after successful readback');
+  const renderedJson = JSON.stringify(verifiedCard);
+  assert.match(renderedJson, /NFC data written and verified\./);
+  assert.match(renderedJson, /04:AA:BB:CC:DD:EE:FF/);
+  assert.match(renderedJson, /59.*bytes read back cleanly/);
+  assert.match(renderedJson, /Waveshare PN532 reader/);
+});
+
+test('NDEF write rejects read-only NFC tags and displays clear error message', async () => {
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const readOnlyError = new Error('This NFC tag is locked read-only and cannot be overwritten.');
+  readOnlyError.code = 'NFC_READ_ONLY_TAG';
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+          encodeNfcRecord: () => 'PA2|1|ST-2048|0160123456|CX548|HKG|NRT|TAGGED|1|D082',
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({ tagUid: '04:11:22:33:44:55:66', isMockSimulation: false }),
+          writeNdefPayloadToTag: async () => { throw readOnlyError; },
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: {
+                trip_1: [{
+                  id: 'bag_1',
+                  smartTagCode: 'ST-2048',
+                  displayBagCode: 'CX880123456',
+                  setupState: 'PENDING_PHYSICAL_WRITE',
+                  smartTag: { tagUid: '04:A2:3B:4C:5D:6E:70' },
+                }],
+              },
+            },
+          }),
+          smartTagRepository: { pairPhysicalTagToBag: () => true },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return mod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+
+  const writeBtn = nodes(render()).find((n) => n.props.testID === 'btn-write-ndef-nfc');
+  await writeBtn.props.onPress();
+
+  const renderedJson = JSON.stringify(render());
+  assert.match(renderedJson, /Read-only NFC tag/);
+  assert.match(renderedJson, /cannot be overwritten/);
+  assert.doesNotMatch(renderedJson, /NFC data written and verified\./);
+});
+
+test('NDEF write detects MIFARE Classic tags and recommends NTAG213/215/216', async () => {
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const mifareError = new Error('MIFARE Classic key fob/card detected. Many Android devices do not support NDEF writing on MIFARE Classic without NXP hardware. Please use a standard NTAG213, NTAG215, or NTAG216 tag.');
+  mifareError.code = 'NFC_UNSUPPORTED_TAG';
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+          encodeNfcRecord: () => 'PA2|1|ST-2048|0160123456|CX548|HKG|NRT|TAGGED|1|D082',
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({ tagUid: '04:11:22:33:44:55:66', isMockSimulation: false }),
+          writeNdefPayloadToTag: async () => { throw mifareError; },
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: {
+                trip_1: [{
+                  id: 'bag_1',
+                  smartTagCode: 'ST-2048',
+                  displayBagCode: 'CX880123456',
+                  setupState: 'PENDING_PHYSICAL_WRITE',
+                  smartTag: { tagUid: '04:A2:3B:4C:5D:6E:70' },
+                }],
+              },
+            },
+          }),
+          smartTagRepository: { pairPhysicalTagToBag: () => true },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return mod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+
+  const writeBtn = nodes(render()).find((n) => n.props.testID === 'btn-write-ndef-nfc');
+  await writeBtn.props.onPress();
+
+  const renderedJson = JSON.stringify(render());
+  assert.match(renderedJson, /Incompatible NFC tag/);
+  assert.match(renderedJson, /MIFARE Classic/);
+  assert.match(renderedJson, /NTAG213/);
+  assert.doesNotMatch(renderedJson, /NFC data written and verified\./);
+});
+

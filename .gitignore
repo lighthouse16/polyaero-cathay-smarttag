@@ -60,3 +60,8 @@ apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/gradle*.log
 *.apk
+
+# Embedded PlatformIO build caches and host test binaries
+.pio/
+firmware/**/.pio/
+*.exe
