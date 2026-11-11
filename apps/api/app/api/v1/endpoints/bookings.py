@@ -9,6 +9,7 @@ from app.core.security import get_current_user
 from app.models.auth import User
 from app.models.baggage import Tag
 from app.models.booking import Booking
+from app.models.flight import Flight
 from app.schemas.booking import BookingCreate, BookingRead, LinkTagRequest
 
 router = APIRouter(tags=["bookings"])
@@ -25,6 +26,8 @@ async def create_booking(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Booking reference already exists"
         )
+    if await db.scalar(select(Flight.id).where(Flight.id == booking_in.flight_id)) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Flight not found")
 
     booking = Booking(
         user_id=current_user.id,
@@ -60,12 +63,14 @@ async def link_tag(
     await db.execute(
         update(Tag)
         .where(Tag.pnr == booking.pnr, Tag.id != tag.id)
-        .values(pnr=None, user_id=None, tag_status="UNLINKED")
+        .values(pnr=None, user_id=None, booking_id=None, tag_status="UNLINKED")
     )
     tag.user_id = current_user.id
     tag.pnr = booking.pnr
+    tag.booking_id = booking.id
     tag.tag_status = "CHECKED_IN"
     tag.last_synced_at = datetime.now(UTC)
+    booking.checkin_status = True
     await db.commit()
     await db.refresh(booking)
     return booking

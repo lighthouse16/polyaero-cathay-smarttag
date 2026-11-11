@@ -46,6 +46,17 @@ class Tag(Base):
         String(30), nullable=False, default="UNLINKED", server_default="UNLINKED"
     )
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    booking_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True, index=True
+    )
+    sync_state: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="PREPARE", server_default="PREPARE"
+    )
+    nfc_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    bar_code_payload: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_simulated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
