@@ -292,7 +292,38 @@ For the live hackathon presentation, follow this strict step-by-step script:
 
 ---
 
-## 8. Error Handling & Troubleshooting Matrix
+## 8. Error Handling, Transaction Integrity & Troubleshooting Matrix
+
+### 8.1 Firmware Transaction Integrity Pipeline
+To prevent wedged states where NVS records a new revision before the physical display updates, the firmware executes a transactional 4-stage pipeline:
+```
+VALIDATE NFC -> RENDER CANDIDATE -> REFRESH DISPLAY -> COMMIT NEW REVISION
+```
+
+1. **Staged Candidate Rendering**: The candidate tag is rendered into the frame buffer without touching the committed record in RAM or NVS.
+2. **Guarded Refresh**: GxEPD2 initiates SPI transfer and checks `PIN_EPD_BUSY`. Completion is recorded as **driver-reported refresh completion** (not optical verification).
+3. **Rollback on Refresh Failure**: If BUSY times out (>5s) or fails, the candidate is discarded, RAM state stays at the previous revision, and the passenger can retry the exact same revision without error.
+4. **Durable NVS Commit**: Only after driver-reported refresh completion is the new revision saved to NVS and promoted to `s_last_record`.
+5. **Cold-Boot Recovery Policy**: Stored two-phase marker (`tx_state`):
+   - `COMMITTED`: Loads baggage label and restores display.
+   - `PENDING`: Power was interrupted mid-refresh; re-renders and completes display cycle, then finalizes `COMMITTED`.
+   - `IDLE` / Empty: Renders standby prompt.
+
+### 8.2 Safe Physical Bench Verification Procedure (Gate 7 Fault Injection)
+> [!CAUTION]
+> **Safety Rule:** Never short GPIO lines (`PIN_EPD_BUSY`) or pull live jumper wires to simulate hardware failures. Use the firmware's built-in Serial command `INJECT_BUSY_TIMEOUT_ONCE`.
+
+1. **Flash Firmware:** After explicit hardware authorization and breadboard GPIO verification, flash `firmware.bin` onto ESP32-C6 (`uv tool run platformio run -t upload`).
+2. **Scan Initial Revision:** Tap a valid PA2 Revision 1 NTAG213 card against the PN532 antenna.
+3. **Confirm Initial Update:** Confirm `[SMARTTAG-EPD] E-Paper refresh completed (driver-reported completion)` and `[SMARTTAG-NVS] Durably COMMITTED state to NVS` appear in Serial monitor (115200 baud), and the E-paper renders Revision 1.
+4. **Simulate Pre-Refresh BUSY Failure:** In Serial monitor, send `INJECT_BUSY_TIMEOUT_ONCE`. Tap a valid Revision 2 card.
+5. **Verify Non-Commit:** Observe `[SMARTTAG-FAULT] Injected BUSY timeout fault` and `[SMARTTAG-NFC] TRANSACTION ABORTED`. Send `STATUS` over Serial and verify committed revision remains `1`.
+6. **Restore Normal Operation:** The one-shot fault injection flag automatically resets after blocking the simulated refresh; no wiring manipulation needed.
+7. **Rescan Same NFC Payload:** Rescan the exact same Revision 2 NTAG213 card without incrementing its revision.
+8. **Confirm Retry Acceptance:** Confirm `[SMARTTAG-NFC] TRANSACTION COMMITTED: New baggage payload active! Revision 2` appears and the E-paper updates cleanly.
+9. **Power-Cycle Verification:** Unplug USB power completely from ESP32-C6, reconnect after 5 seconds, and confirm `[SMARTTAG-NVS] Restored baggage state: ... Rev=2 (Marker=COMMITTED)` on Serial boot log.
+
+### 8.3 Troubleshooting Matrix
 
 | Symptom / Error | Root Cause | System Response | Recovery Action |
 | :--- | :--- | :--- | :--- |
@@ -304,7 +335,8 @@ For the live hackathon presentation, follow this strict step-by-step script:
 | **Receiver:** `Didn't find PN53x board` | Incorrect DIP switches or bad jumpers | ESP32-C6 logs error and retries | Verify DIP pins 5 & 6 are ON for I2C, check SDA=GPIO6, SCL=GPIO7. |
 | **Receiver:** `CRC mismatch` | Corrupted RF transmission | ESP32-C6 rejects payload; preserves last display | Re-tap tag firmly against PN532 antenna. |
 | **Receiver:** `Stale revision` | Tag revision is older than displayed | ESP32-C6 ignores duplicate tag tap | Mobile increments revision on new bag assignment. |
-| **Receiver:** E-Paper not updating | Power supply droop or busy timeout | ESP32-C6 powers down SPI cleanly | Ensure ESP32-C6 is supplied with stable 5V / 1A USB power. |
+| **Receiver:** E-Paper BUSY timeout | Panel busy or SPI communication dropped | Refresh aborted; RAM and NVS state preserved | Retry same tag tap once BUSY clears. No rev bump required. |
+| **Receiver:** NVS persistence error | Flash write failure | Display updated; transaction error logged; not marked committed | Re-tap tag or reboot unit. |
 
 ---
 
@@ -313,12 +345,21 @@ For the live hackathon presentation, follow this strict step-by-step script:
 ### 9.1 Automated Software & Logic Tests (100% Passed)
 - **Protocol, Flow & Storage Unit Tests (`packages/shared`, Vitest):** 46 tests passed (13 in `nfcProtocol.test.ts`, 13 in `shared.test.ts`, 20 in `smarttag-flow.test.ts`) verifying CRC-16 CCITT, strict 10-digit IATA numeric plate enforcement, strict ITF-2of5 encoding, monotonic NDEF revision persistence across restarts, and storage write-failure rollback.
 - **Node Integration Tests (`tests/*.test.cjs`):** 32 tests passed verifying NFC UI state machine, NDEF write/readback verification, Blue Fob rejection, persistent storage durability, and `+1 Rev` recovery.
-- **C++ Protocol & TLV Extraction Suite (`test/test_protocol.cpp`):** 9 tests compiled with `-Wall -Wextra` via MSYS2 GCC passed:
+- **C++ Protocol, Display & Transaction Suite (`test/test_protocol.cpp`):** 17 tests compiled with `-Wall -Wextra` via MSYS2 GCC passed:
   - CRC-16 CCITT computation against aviation test vectors (`0xD082`).
   - Strict 10-digit numeric baggage ID enforcement & revision overflow bounds.
   - Dynamic Type 2 TLV sizing (`smarttag_estimate_type2_total_bytes`) across short and extended TLVs.
-  - Stale, duplicate, and conflicting equal-revision handling + oversized non-truncation guarantee.
+  - Legacy PA1 backward compatibility.
+  - 400x300 framebuffer rendering and ITF-2of5 barcode layout.
   - Live extraction of 52-byte text payload from actual 59-byte `react-native-nfc-manager` Type 2 TLV bytes.
+  - **Transaction Scenario 1:** Successful refresh followed by successful persistence -> `COMMITTED`.
+  - **Transaction Scenario 2:** BUSY timeout before/during refresh -> State preserved, no commit.
+  - **Transaction Scenario 3:** Retry of same revision after failed refresh -> Accepted and commits.
+  - **Transaction Scenario 4:** Duplicate payload already displayed -> Suppressed with zero SPI transfer.
+  - **Transaction Scenario 5:** Rejection of older revision (`PROG_STALE`).
+  - **Transaction Scenario 6:** Rejection of equal-revision conflicting payload.
+  - **Transaction Scenario 7:** Failure during NVS persistence -> Non-durable error reported; RAM record untouched.
+  - **Transaction Scenario 8:** Crash / power-loss recovery across cold-boot states (`PENDING` -> re-refreshed and committed; `COMMITTED` -> loaded; `IDLE` -> standby).
 - **Monorepo Builds & Static Checks:** `pnpm lint`, `pnpm typecheck`, `pnpm build:staff`, `expo export --platform web`, `expo-doctor` (20/20), PlatformIO ESP32-C6 build, and Android Gradle `assembleRelease` all passed cleanly.
 
 ### 9.2 Physical Bench Verification Gates (Gates 1–8)
@@ -326,14 +367,14 @@ Due to the absence of locally attached physical devices (`adb devices` empty, no
 
 | Gate | Description | Status | Notes / Verification Evidence |
 | :---: | :--- | :---: | :--- |
-| **Gate 1** | Software Build, Signing & Automated Suites | **PASS** | APK signed (`v2`), firmware `firmware.bin` built, 46 Vitest + 32 Node + 9 C++ tests passed. |
+| **Gate 1** | Software Build, Signing & Automated Suites | **PASS** | APK signed (`v2`), firmware `firmware.bin` built, 46 Vitest + 32 Node + 17 C++ tests passed. |
 | **Gate 2** | Breadboard Wiring & 3.3V Logic Level Check | **NOT EXECUTED** | No physical bench connected; GPIO table marked `UNVERIFIED`, avoids strapping pins (`GPIO4/5/8/9/15`). |
 | **Gate 3** | ESP32-C6 Firmware Flash & Serial Boot Log | **NOT EXECUTED** | Requires physical USB-C COM connection; `firmware.bin` binary ready. |
 | **Gate 4** | PN532 I2C Detection & NTAG213 Read Test | **NOT EXECUTED** | Requires PN532 hardware + NTAG213 tag; Type 2 TLV extractor verified on host. |
 | **Gate 5** | Waveshare 4.2" E-Paper SPI Refresh Test | **NOT EXECUTED** | Requires V2 SSD1683 E-paper module; framebuffer + ITF barcode verified on host. |
 | **Gate 6** | Android APK NFC Write & Live Readback | **NOT EXECUTED** | Requires NFC-enabled Android device + NTAG213 sticker. |
-| **Gate 7** | End-to-End Tap (Phone -> Tag -> ESP32 -> EPD) | **NOT EXECUTED** | Full end-to-end physical hardware demonstration pending live bench setup. |
-| **Gate 8** | Power Cycle & NVS Cold-Boot Persistence | **NOT EXECUTED** | ESP32 NVS `Preferences` & mobile `PersistentStorageAdapter` verified via software restart tests only. |
+| **Gate 7** | End-to-End Tap & Safe Fault Injection | **NOT EXECUTED** | Verified via host transaction harness; bench test uses safe Serial `INJECT_BUSY_TIMEOUT_ONCE` command (no pin shorting). |
+| **Gate 8** | Power Cycle & NVS Cold-Boot Persistence | **NOT EXECUTED** | ESP32 NVS two-phase marker recovery & mobile `PersistentStorageAdapter` verified via software test harness. |
 
 ---
 

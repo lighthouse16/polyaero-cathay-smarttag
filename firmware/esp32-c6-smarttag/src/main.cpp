@@ -7,6 +7,7 @@
 
 #include "smarttag_protocol.h"
 #include "display_renderer.h"
+#include "smarttag_transaction.h"
 
 // =============================================================================
 // PIN DEFINITIONS & MODES (Synchronized with platformio.ini & WIRING.md)
@@ -68,7 +69,7 @@
 #endif
 
 #ifndef SMARTTAG_FW_VERSION
-#define SMARTTAG_FW_VERSION "2.0.0"
+#define SMARTTAG_FW_VERSION "2.1.0"
 #endif
 
 // =============================================================================
@@ -98,32 +99,41 @@ GxEPD2_BW<GxEPD2_420_GDEY042T81, GxEPD2_420_GDEY042T81::HEIGHT> display(
 // Global State
 static Preferences s_prefs;
 static EpdFrameBuffer s_epd_fb;
-static SmartTagRecord s_last_record;
-static bool s_has_last_record = false;
+static SmartTagTxCoordinator s_tx_coordinator;
 static bool s_pn532_ready = false;
 static bool s_epd_ready = false;
 static uint32_t s_idle_poll_cycles = 0;
 
+// Safe Software Fault Injection (Bench Gate 7 — avoids physical pin shorting)
+static bool s_fault_inject_busy_timeout_once = false;
+
 // =============================================================================
-// DISPLAY UPDATE ROUTINE
+// DISPLAY UPDATE ROUTINE (Guard-checked & transactional)
 // =============================================================================
 
-void epd_flush_to_screen() {
+EpdRefreshResult epd_flush_to_screen() {
     if (!s_epd_ready) {
         Serial.println("[SMARTTAG-EPD] Display hardware not initialized, skipping SPI transfer.");
-        return;
+        return EPD_REFRESH_NOT_INITIALIZED;
+    }
+
+    // Safe software fault injection hook for bench QA
+    if (s_fault_inject_busy_timeout_once) {
+        s_fault_inject_busy_timeout_once = false;
+        Serial.println("[SMARTTAG-FAULT] Injected BUSY timeout fault (simulated panel lock).");
+        return EPD_REFRESH_BUSY_TIMEOUT;
     }
 
     // Sanity check BUSY line before initiating full refresh
     if (digitalRead(PIN_EPD_BUSY) == HIGH) {
-        Serial.println("[SMARTTAG-EPD] WARNING: EPD BUSY pin is HIGH before refresh; waiting briefly...");
+        Serial.println("[SMARTTAG-EPD] WARNING: EPD BUSY pin is HIGH before refresh; waiting up to 5s...");
         unsigned long wait_start = millis();
         while (digitalRead(PIN_EPD_BUSY) == HIGH && (millis() - wait_start < 5000)) {
             delay(10);
         }
         if (digitalRead(PIN_EPD_BUSY) == HIGH) {
-            Serial.println("[SMARTTAG-EPD] ERROR: EPD BUSY timeout (>5s). Preserving NFC loop and skipping display flush.");
-            return;
+            Serial.println("[SMARTTAG-EPD] ERROR: Pre-refresh EPD BUSY timeout (>5s). Preserving NFC state and skipping flush.");
+            return EPD_REFRESH_BUSY_TIMEOUT;
         }
     }
 
@@ -145,52 +155,63 @@ void epd_flush_to_screen() {
         }
     } while (display.nextPage());
 
+    // Post-refresh verification: driver-reported completion check
+    if (digitalRead(PIN_EPD_BUSY) == HIGH) {
+        Serial.println("[SMARTTAG-EPD] ERROR: EPD BUSY pin still HIGH after transfer loop. Panel update incomplete.");
+        return EPD_REFRESH_BUSY_TIMEOUT;
+    }
+
     display.powerOff();
-    Serial.println("[SMARTTAG-EPD] E-Paper refresh complete. Display powered down to save energy.");
+    Serial.println("[SMARTTAG-EPD] E-Paper refresh completed (driver-reported completion). Display powered down.");
+    return EPD_REFRESH_SUCCESS;
 }
 
-// =============================================================================
-// NVS PERSISTENCE HELPERS
-// =============================================================================
+// Hardware callback for smarttag_transaction engine
+static EpdRefreshResult hardware_refresh_callback(const SmartTagRecord *rec, void *user_ctx) {
+    (void)user_ctx;
+    Serial.println("[SMARTTAG-EPD] Rendering candidate baggage tag layout to framebuffer...");
+    epd_render_baggage_tag(&s_epd_fb, rec);
+    return epd_flush_to_screen();
+}
 
-void nvs_save_record(const char *raw_payload, const SmartTagRecord *rec) {
+// Hardware persistence callback for smarttag_transaction engine
+static bool hardware_persist_callback(
+    SmartTagTxState state,
+    const SmartTagRecord *rec,
+    const char *raw_payload,
+    void *user_ctx
+) {
+    (void)user_ctx;
     if (!s_prefs.begin("smarttag", false)) {
         Serial.println("[SMARTTAG-NVS] ERROR: Failed to open NVS namespace 'smarttag' for write.");
-        return;
-    }
-    s_prefs.putString("payload", raw_payload);
-    s_prefs.putUInt("revision", rec->revision);
-    s_prefs.putString("tag_id", rec->tag_id);
-    s_prefs.putString("bag_id", rec->bag_id);
-    s_prefs.putString("flight", rec->flight);
-    s_prefs.end();
-    Serial.printf("[SMARTTAG-NVS] Persisted state to NVS: Tag=%s Bag=%s Rev=%lu\n",
-                  rec->tag_id, rec->bag_id, (unsigned long)rec->revision);
-}
-
-bool nvs_load_record(SmartTagRecord *out_rec) {
-    if (!s_prefs.begin("smarttag", true)) {
-        Serial.println("[SMARTTAG-NVS] No 'smarttag' NVS namespace found.");
         return false;
     }
 
-    String payload = s_prefs.getString("payload", "");
+    s_prefs.putUChar("tx_state", (uint8_t)state);
+
+    if (raw_payload && raw_payload[0] != '\0') {
+        s_prefs.putString("payload", raw_payload);
+    }
+
+    if (rec) {
+        s_prefs.putUInt("revision", rec->revision);
+        s_prefs.putString("tag_id", rec->tag_id);
+        s_prefs.putString("bag_id", rec->bag_id);
+        s_prefs.putString("flight", rec->flight);
+    }
+
     s_prefs.end();
 
-    if (payload.length() == 0) {
-        Serial.println("[SMARTTAG-NVS] No prior baggage payload stored in NVS.");
-        return false;
+    if (state == TX_STATE_COMMITTED && rec) {
+        Serial.printf("[SMARTTAG-NVS] Durably COMMITTED state to NVS: Tag=%s Bag=%s Rev=%lu\n",
+                      rec->tag_id, rec->bag_id, (unsigned long)rec->revision);
+    } else if (state == TX_STATE_PENDING && rec) {
+        Serial.printf("[SMARTTAG-NVS] Staged PENDING transaction marker in NVS: Rev=%lu\n",
+                      (unsigned long)rec->revision);
+    } else if (state == TX_STATE_IDLE) {
+        Serial.println("[SMARTTAG-NVS] Transaction marker set to IDLE in NVS.");
     }
 
-    SmartTagParseResult res = smarttag_parse_payload(payload.c_str(), payload.length(), out_rec);
-    if (res != SMARTTAG_OK) {
-        Serial.printf("[SMARTTAG-NVS] Stored payload failed validation (%s): %s\n",
-                      smarttag_error_string(res), payload.c_str());
-        return false;
-    }
-
-    Serial.printf("[SMARTTAG-NVS] Restored valid baggage state from NVS: Tag=%s Bag=%s Flight=%s Rev=%lu\n",
-                  out_rec->tag_id, out_rec->bag_id, out_rec->flight, (unsigned long)out_rec->revision);
     return true;
 }
 
@@ -206,6 +227,7 @@ void setup() {
     Serial.println("=============================================================");
     Serial.printf("  Cathay SmartTag NFC-to-E-Paper Gateway (ESP32-C6) v%s\n", SMARTTAG_FW_VERSION);
     Serial.println("  PolyAero Aviation Architecture — Protocol PA2 (CRC-16)");
+    Serial.println("  Transactional Display Engine & Safe Failure Recovery");
     Serial.println("=============================================================");
 
 #if PN532_MODE_I2C
@@ -236,14 +258,37 @@ void setup() {
     s_epd_ready = true;
     Serial.println("[SMARTTAG-EPD] Display initialized.");
 
-    // 3. Restore last stored state from NVS if available
-    if (nvs_load_record(&s_last_record)) {
-        s_has_last_record = true;
-        Serial.println("[SMARTTAG-EPD] Restoring cached baggage tag from NVS cold-boot...");
-        epd_render_baggage_tag(&s_epd_fb, &s_last_record);
+    // 3. Initialize Transaction Coordinator and restore/recover NVS state
+    smarttag_tx_init(&s_tx_coordinator);
+
+    uint8_t stored_tx = (uint8_t)TX_STATE_IDLE;
+    String stored_payload = "";
+    if (s_prefs.begin("smarttag", true)) {
+        stored_tx = s_prefs.getUChar("tx_state", (uint8_t)TX_STATE_IDLE);
+        stored_payload = s_prefs.getString("payload", "");
+        s_prefs.end();
+    }
+
+    bool recovered = smarttag_tx_recover_on_boot(
+        &s_tx_coordinator,
+        (SmartTagTxState)stored_tx,
+        stored_payload.c_str(),
+        hardware_refresh_callback,
+        hardware_persist_callback,
+        NULL
+    );
+
+    if (recovered) {
+        Serial.printf("[SMARTTAG-NVS] Restored baggage state: Tag=%s Bag=%s Flight=%s Rev=%lu (Marker=%s)\n",
+                      s_tx_coordinator.committed_record.tag_id,
+                      s_tx_coordinator.committed_record.bag_id,
+                      s_tx_coordinator.committed_record.flight,
+                      (unsigned long)s_tx_coordinator.committed_record.revision,
+                      smarttag_tx_state_string((SmartTagTxState)stored_tx));
+        epd_render_baggage_tag(&s_epd_fb, &s_tx_coordinator.committed_record);
         epd_flush_to_screen();
     } else {
-        Serial.println("[SMARTTAG-EPD] No prior state. Rendering standby prompt...");
+        Serial.println("[SMARTTAG-EPD] No prior committed state. Rendering standby prompt...");
         epd_buffer_clear(&s_epd_fb, EPD_COLOR_WHITE);
         epd_draw_rect(&s_epd_fb, 10, 10, EPD_WIDTH - 20, EPD_HEIGHT - 20, EPD_COLOR_BLACK);
         epd_draw_string(&s_epd_fb, 40, 60, "CATHAY SMARTTAG", EPD_COLOR_BLACK, 3);
@@ -281,6 +326,21 @@ void setup() {
 // =============================================================================
 
 void loop() {
+    // Check for Serial commands (safe fault injection for bench Gate 7)
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        if (cmd == "INJECT_BUSY_TIMEOUT_ONCE") {
+            s_fault_inject_busy_timeout_once = true;
+            Serial.println("[SMARTTAG-FAULT] Fault injection armed: next refresh will simulate BUSY timeout.");
+        } else if (cmd == "STATUS") {
+            Serial.printf("[SMARTTAG-STATUS] Committed: %s | Rev: %lu | EPD Ready: %d | PN532 Ready: %d\n",
+                          s_tx_coordinator.has_committed_record ? s_tx_coordinator.committed_record.tag_id : "NONE",
+                          (unsigned long)(s_tx_coordinator.has_committed_record ? s_tx_coordinator.committed_record.revision : 0),
+                          s_epd_ready ? 1 : 0, s_pn532_ready ? 1 : 0);
+        }
+    }
+
     if (!s_pn532_ready) {
         Serial.println("[SMARTTAG-PN532] PN532 not ready. Resetting bus and retrying in 3 seconds...");
         delay(3000);
@@ -336,7 +396,6 @@ void loop() {
     }
 
     // Dynamic Type 2 Tag reading (NTAG213 / 215 / 216)
-    // Buffer sized up to 256 bytes (64 pages) to handle standard NTAG213..216 capacities
     uint8_t user_memory[256];
     memset(user_memory, 0, sizeof(user_memory));
     bool read_ok = true;
@@ -360,7 +419,7 @@ void loop() {
 
     // Estimate total bytes needed based on TLV header
     size_t est_bytes = smarttag_estimate_type2_total_bytes(user_memory, 16);
-    uint8_t total_pages = 4; // Already read Pages 4..7 (4 pages)
+    uint8_t total_pages = 4;
 
     if (est_bytes > 0) {
         if (est_bytes > sizeof(user_memory)) {
@@ -374,11 +433,9 @@ void loop() {
         Serial.printf("[SMARTTAG-NFC] Dynamic TLV detected: %u bytes needed (%u pages total).\n",
                       (unsigned int)est_bytes, (unsigned int)total_pages);
     } else if (user_memory[0] == 'P' && user_memory[1] == 'A') {
-        // Raw ASCII PA payload starting directly at page 4: read up to 24 pages (96 bytes)
         total_pages = 24;
         Serial.println("[SMARTTAG-NFC] Raw ASCII PA header detected at Page 4.");
     } else {
-        // Fallback default: read standard NTAG213 user memory (36 pages = 144 bytes)
         total_pages = 36;
     }
 
@@ -409,7 +466,6 @@ void loop() {
     );
 
     if (extracted_len == 0) {
-        // Fallback: check if raw text starts at page 4 (first bytes ASCII "PA")
         if (user_memory[0] == 'P' && user_memory[1] == 'A') {
             size_t rlen = 0;
             while (rlen < sizeof(payload_text) - 1 && user_memory[rlen] >= 0x20 && user_memory[rlen] <= 0x7E) {
@@ -431,64 +487,64 @@ void loop() {
     Serial.printf("[SMARTTAG-NFC] Extracted payload (%u bytes): %s\n",
                   (unsigned int)extracted_len, payload_text);
 
-    // Parse and validate payload
-    SmartTagRecord new_rec;
-    SmartTagParseResult parse_res = smarttag_parse_payload(payload_text, extracted_len, &new_rec);
-
-    if (parse_res != SMARTTAG_OK) {
-        Serial.printf("[SMARTTAG-NFC] REJECTED: Payload invalid: %s (code %d)\n",
-                      smarttag_error_string(parse_res), (int)parse_res);
-        Serial.println("[SMARTTAG-EPD] Ignoring corrupt/invalid payload. Display preserved.");
-        delay(1500);
-        return;
-    }
-
-    // RF CRC-16 enforcement: PA2 records received over RF must carry valid CRC
-    if (strncmp(payload_text, "PA2|", 4) == 0 && !new_rec.has_crc) {
-        Serial.println("[SMARTTAG-NFC] REJECTED: Protocol PA2 requires 4-hex CRC-16 checksum over RF.");
-        delay(1500);
-        return;
-    }
-
-    // Check revision progression
-    SmartTagProgression prog = smarttag_evaluate_progression(
-        &new_rec, s_has_last_record ? &s_last_record : NULL
+    // =========================================================================
+    // TRANSACTIONAL EXECUTION ENGINE (Validate -> Progression -> Refresh -> Commit)
+    // =========================================================================
+    EpdRefreshResult refresh_res = EPD_REFRESH_NOT_INITIALIZED;
+    SmartTagTxResult tx_res = smarttag_tx_process_payload(
+        &s_tx_coordinator,
+        payload_text,
+        extracted_len,
+        hardware_refresh_callback,
+        hardware_persist_callback,
+        NULL,
+        &refresh_res
     );
 
-    if (prog == PROG_IDENTICAL) {
+    if (tx_res == TX_RESULT_IGNORED_IDENTICAL) {
         Serial.printf("[SMARTTAG-NFC] IGNORED: Duplicate payload already displayed (revision %lu). No refresh needed.\n",
-                      (unsigned long)new_rec.revision);
+                      (unsigned long)s_tx_coordinator.committed_record.revision);
         delay(1500);
         return;
     }
 
-    if (prog == PROG_STALE) {
-        Serial.printf("[SMARTTAG-NFC] REJECTED: Stale revision %lu <= displayed revision %lu. Ignoring.\n",
-                      (unsigned long)new_rec.revision, (unsigned long)s_last_record.revision);
+    if (tx_res == TX_RESULT_REJECTED_STALE) {
+        Serial.printf("[SMARTTAG-NFC] REJECTED: Stale or conflicting revision <= displayed revision %lu. Ignoring.\n",
+                      (unsigned long)(s_tx_coordinator.has_committed_record ? s_tx_coordinator.committed_record.revision : 0));
         delay(1500);
         return;
     }
 
-    // New revision accepted!
-    Serial.printf("[SMARTTAG-NFC] ACCEPTED: New baggage payload received! Revision %lu (was %lu)\n",
-                  (unsigned long)new_rec.revision, (unsigned long)(s_has_last_record ? s_last_record.revision : 0));
-    Serial.printf("[SMARTTAG-NFC] Tag: %s | Bag: %s | Flight: %s | %s -> %s | Status: %s\n",
-                  new_rec.tag_id, new_rec.bag_id, new_rec.flight, new_rec.from, new_rec.to, new_rec.status);
+    if (tx_res == TX_RESULT_REJECTED_INVALID) {
+        Serial.println("[SMARTTAG-NFC] REJECTED: Payload invalid format or missing required CRC-16. Display preserved.");
+        delay(1500);
+        return;
+    }
 
-    // Save to NVS
-    nvs_save_record(payload_text, &new_rec);
+    if (tx_res == TX_RESULT_REFRESH_FAILED) {
+        Serial.printf("[SMARTTAG-NFC] TRANSACTION ABORTED: E-Paper refresh failed (%s). Display and revision preserved. Retry allowed!\n",
+                      epd_refresh_result_string(refresh_res));
+        delay(2000);
+        return;
+    }
 
-    // Update memory state
-    s_last_record = new_rec;
-    s_has_last_record = true;
+    if (tx_res == TX_RESULT_PERSISTENCE_FAILED) {
+        Serial.println("[SMARTTAG-NFC] TRANSACTION ERROR: NVS durable commit failed. State marked non-durable.");
+        delay(2000);
+        return;
+    }
 
-    // Render new tag to framebuffer
-    Serial.println("[SMARTTAG-EPD] Rendering baggage tag layout to framebuffer...");
-    epd_render_baggage_tag(&s_epd_fb, &s_last_record);
-
-    // Refresh E-Paper
-    epd_flush_to_screen();
-    Serial.println("[SMARTTAG-EPD] E-Paper update cycle complete.");
+    if (tx_res == TX_RESULT_COMMITTED) {
+        Serial.printf("[SMARTTAG-NFC] TRANSACTION COMMITTED: New baggage payload active! Revision %lu\n",
+                      (unsigned long)s_tx_coordinator.committed_record.revision);
+        Serial.printf("[SMARTTAG-NFC] Tag: %s | Bag: %s | Flight: %s | %s -> %s | Status: %s\n",
+                      s_tx_coordinator.committed_record.tag_id,
+                      s_tx_coordinator.committed_record.bag_id,
+                      s_tx_coordinator.committed_record.flight,
+                      s_tx_coordinator.committed_record.from,
+                      s_tx_coordinator.committed_record.to,
+                      s_tx_coordinator.committed_record.status);
+    }
 
     // Pause before next detection to avoid rapid re-triggers
     delay(2000);

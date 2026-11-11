@@ -101,3 +101,42 @@ python -m esptool --chip esp32c6 --port <COM_PORT> --baud 921600 read_flash 0 0x
 2. **PN532 VCC & Logic Level**: Confirm PN532 HAT header Pin 1/17 is fed from **3.3V**, never 5V.
 3. **EPD VCC**: Confirm Waveshare E-Paper `VCC` is connected to **3.3V**.
 4. **PN532 Mode**: Confirm `[I1..I0]=LH` and DIP switch `00001100` (I2C) or `[I1..I0]=HL` and `11110000` (SPI).
+
+---
+
+## 6. E-Paper Transaction Integrity & Safe Bench Test (Gate 7)
+
+### A. Transaction Sequence & Reliability Contract
+The firmware executes a strict 4-stage pipeline:
+```
+VALIDATE NFC -> RENDER CANDIDATE -> REFRESH DISPLAY -> COMMIT NEW REVISION
+```
+- **Driver-Reported Completion**: The GxEPD2 driver waits on the `BUSY` pin until the panel completes its update cycle.
+- **Rollback Guarantee**: If `digitalRead(PIN_EPD_BUSY) == HIGH` times out or fails before/during transfer, the committed record in RAM and NVS is untouched.
+- **Retry Preservation**: Because the failed candidate revision was never committed, the passenger can re-tap the exact same revision without encountering duplicate or stale rejection.
+- **Physical Atomicity Limit**: SPI display refreshing and ESP32 flash write operations cannot be made physically atomic at the hardware level. The firmware uses a two-phase marker (`tx_state`: 0=IDLE, 1=PENDING, 2=COMMITTED). On boot, any interrupted `PENDING` transaction is re-refreshed and finalized to `COMMITTED`.
+
+### B. Safe Software Fault-Injection Bench Procedure
+> [!CAUTION]
+> **DO NOT INTENTIONALLY SHORT ELECTRICAL PINS OR JUMP WIRING TO SIMULATE A BUSY TIMEOUT!**  
+> Shorting live GPIO lines risks permanent latch-up or damage to the ESP32-C6 and E-paper controller. Use the built-in software simulation command over USB Serial:
+
+1. Flash firmware to ESP32-C6 after GPIO verification.
+2. Open Serial Monitor at **115200 baud** (`uv tool run platformio device monitor -b 115200`).
+3. Scan a valid PA2 payload (e.g. Rev 1).
+4. Confirm `[SMARTTAG-EPD] E-Paper refresh completed` and `[SMARTTAG-NVS] Durably COMMITTED state to NVS`.
+5. Arm the safe software BUSY timeout simulation by sending the command:
+   ```text
+   INJECT_BUSY_TIMEOUT_ONCE
+   ```
+   Confirm response: `[SMARTTAG-FAULT] Fault injection armed: next refresh will simulate BUSY timeout.`
+6. Scan a new payload with Revision 2.
+7. Observe serial output:
+   `[SMARTTAG-FAULT] Injected BUSY timeout fault (simulated panel lock).`  
+   `[SMARTTAG-NFC] TRANSACTION ABORTED: E-Paper refresh failed (BusyTimeout). Display and revision preserved. Retry allowed!`
+8. Send `STATUS` to verify committed state is still Revision 1.
+9. Without modifying or incrementing the payload, rescan the exact same Revision 2 tag.
+10. Observe successful display update:
+    `[SMARTTAG-NFC] TRANSACTION COMMITTED: New baggage payload active! Revision 2`
+11. Disconnect and reconnect USB power. Verify cold boot restores Revision 2 from NVS.
+
