@@ -96,18 +96,22 @@ SmartTagTxResult smarttag_tx_process_payload(
 
 /**
  * Cold-boot crash/power-loss recovery:
- * Inspects stored NVS tx_state and payload.
- * If TX_STATE_COMMITTED: restores committed record.
- * If TX_STATE_PENDING: finishes interrupted refresh, commits, and updates state.
- * Returns true if a valid baggage record was restored or recovered.
+ * Inspects stored NVS tx_state, committed payload, and staged pending payload.
+ * - If TX_STATE_COMMITTED: restores committed record (does not trigger refresh itself).
+ * - If TX_STATE_PENDING: attempts to finish interrupted refresh of pending payload and commit;
+ *   if pending refresh fails, rolls back safely to stored_committed_payload (if valid).
+ * Sets *out_did_refresh (if non-NULL) to true iff a display refresh succeeded during recovery.
+ * Returns true if a valid baggage record is active in coord->committed_record.
  */
 bool smarttag_tx_recover_on_boot(
     SmartTagTxCoordinator *coord,
     SmartTagTxState stored_tx_state,
-    const char *stored_payload,
+    const char *stored_committed_payload,
+    const char *stored_pending_payload,
     SmartTagRefreshFn refresh_cb,
     SmartTagPersistFn persist_cb,
-    void *user_ctx
+    void *user_ctx,
+    bool *out_did_refresh
 );
 
 /**

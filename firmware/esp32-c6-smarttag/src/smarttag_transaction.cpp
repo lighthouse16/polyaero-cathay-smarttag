@@ -114,24 +114,32 @@ SmartTagTxResult smarttag_tx_process_payload(
 bool smarttag_tx_recover_on_boot(
     SmartTagTxCoordinator *coord,
     SmartTagTxState stored_tx_state,
-    const char *stored_payload,
+    const char *stored_committed_payload,
+    const char *stored_pending_payload,
     SmartTagRefreshFn refresh_cb,
     SmartTagPersistFn persist_cb,
-    void *user_ctx
+    void *user_ctx,
+    bool *out_did_refresh
 ) {
-    if (!coord || !stored_payload || stored_payload[0] == '\0') {
+    if (out_did_refresh) {
+        *out_did_refresh = false;
+    }
+    if (!coord) {
         return false;
     }
 
     if (stored_tx_state == TX_STATE_COMMITTED) {
+        if (!stored_committed_payload || stored_committed_payload[0] == '\0') {
+            return false;
+        }
         SmartTagRecord rec;
-        SmartTagParseResult res = smarttag_parse_payload(stored_payload, strlen(stored_payload), &rec);
+        SmartTagParseResult res = smarttag_parse_payload(stored_committed_payload, strlen(stored_committed_payload), &rec);
         if (res == SMARTTAG_OK) {
             coord->committed_record = rec;
             coord->has_committed_record = true;
             coord->tx_state = TX_STATE_COMMITTED;
             coord->has_pending_record = false;
-            strncpy(coord->committed_raw_payload, stored_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+            strncpy(coord->committed_raw_payload, stored_committed_payload, SMARTTAG_MAX_PAYLOAD_LEN);
             coord->committed_raw_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
             return true;
         }
@@ -140,36 +148,57 @@ bool smarttag_tx_recover_on_boot(
 
     if (stored_tx_state == TX_STATE_PENDING) {
         // Power was interrupted while refresh was in progress.
-        // Complete the interrupted refresh cycle and finalize the commit.
-        SmartTagRecord rec;
-        SmartTagParseResult res = smarttag_parse_payload(stored_payload, strlen(stored_payload), &rec);
-        if (res != SMARTTAG_OK) {
-            // Corrupt pending payload, roll back to idle
-            if (persist_cb) {
-                persist_cb(TX_STATE_IDLE, NULL, "", user_ctx);
+        // Try finishing the interrupted refresh cycle on stored_pending_payload.
+        if (stored_pending_payload && stored_pending_payload[0] != '\0') {
+            SmartTagRecord pending_rec;
+            SmartTagParseResult res = smarttag_parse_payload(stored_pending_payload, strlen(stored_pending_payload), &pending_rec);
+            if (res == SMARTTAG_OK) {
+                EpdRefreshResult refresh_res = EPD_REFRESH_NOT_INITIALIZED;
+                if (refresh_cb) {
+                    refresh_res = refresh_cb(&pending_rec, user_ctx);
+                }
+                if (refresh_res == EPD_REFRESH_SUCCESS) {
+                    if (out_did_refresh) {
+                        *out_did_refresh = true;
+                    }
+                    bool persisted = true;
+                    if (persist_cb) {
+                        persisted = persist_cb(TX_STATE_COMMITTED, &pending_rec, stored_pending_payload, user_ctx);
+                    }
+                    if (persisted) {
+                        coord->committed_record = pending_rec;
+                        coord->has_committed_record = true;
+                        coord->tx_state = TX_STATE_COMMITTED;
+                        coord->has_pending_record = false;
+                        strncpy(coord->committed_raw_payload, stored_pending_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+                        coord->committed_raw_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+                        return true;
+                    }
+                }
             }
-            return false;
         }
 
-        EpdRefreshResult refresh_res = EPD_REFRESH_NOT_INITIALIZED;
-        if (refresh_cb) {
-            refresh_res = refresh_cb(&rec, user_ctx);
-        }
-
-        if (refresh_res == EPD_REFRESH_SUCCESS) {
-            bool persisted = true;
-            if (persist_cb) {
-                persisted = persist_cb(TX_STATE_COMMITTED, &rec, stored_payload, user_ctx);
-            }
-            if (persisted) {
-                coord->committed_record = rec;
+        // Pending recovery failed or pending payload was invalid:
+        // Roll back safely to previously committed payload if present.
+        if (stored_committed_payload && stored_committed_payload[0] != '\0') {
+            SmartTagRecord committed_rec;
+            if (smarttag_parse_payload(stored_committed_payload, strlen(stored_committed_payload), &committed_rec) == SMARTTAG_OK) {
+                coord->committed_record = committed_rec;
                 coord->has_committed_record = true;
                 coord->tx_state = TX_STATE_COMMITTED;
                 coord->has_pending_record = false;
-                strncpy(coord->committed_raw_payload, stored_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+                strncpy(coord->committed_raw_payload, stored_committed_payload, SMARTTAG_MAX_PAYLOAD_LEN);
                 coord->committed_raw_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+                if (persist_cb) {
+                    persist_cb(TX_STATE_COMMITTED, &committed_rec, stored_committed_payload, user_ctx);
+                }
                 return true;
             }
+        }
+
+        // No valid committed payload to fall back to: clear NVS to IDLE
+        if (persist_cb) {
+            persist_cb(TX_STATE_IDLE, NULL, "", user_ctx);
         }
         return false;
     }

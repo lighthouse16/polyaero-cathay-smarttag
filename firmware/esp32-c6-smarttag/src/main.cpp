@@ -187,20 +187,43 @@ static bool hardware_persist_callback(
         return false;
     }
 
-    s_prefs.putUChar("tx_state", (uint8_t)state);
+    bool ok = true;
 
-    if (raw_payload && raw_payload[0] != '\0') {
-        s_prefs.putString("payload", raw_payload);
-    }
-
-    if (rec) {
-        s_prefs.putUInt("revision", rec->revision);
-        s_prefs.putString("tag_id", rec->tag_id);
-        s_prefs.putString("bag_id", rec->bag_id);
-        s_prefs.putString("flight", rec->flight);
+    if (state == TX_STATE_PENDING) {
+        if (!raw_payload || raw_payload[0] == '\0') {
+            s_prefs.end();
+            return false;
+        }
+        // Keep committed "payload" intact until display refresh finishes.
+        ok = ok && (s_prefs.putString("p_payload", raw_payload) > 0);
+        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_PENDING) > 0);
+    } else if (state == TX_STATE_COMMITTED) {
+        if (!raw_payload || raw_payload[0] == '\0' || !rec) {
+            s_prefs.end();
+            return false;
+        }
+        ok = ok && (s_prefs.putString("payload", raw_payload) > 0);
+        ok = ok && (s_prefs.putUInt("revision", rec->revision) == sizeof(uint32_t));
+        ok = ok && (s_prefs.putString("tag_id", rec->tag_id) > 0);
+        ok = ok && (s_prefs.putString("bag_id", rec->bag_id) > 0);
+        ok = ok && (s_prefs.putString("flight", rec->flight) > 0);
+        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_COMMITTED) > 0);
+        if (s_prefs.isKey("p_payload")) {
+            s_prefs.remove("p_payload");
+        }
+    } else if (state == TX_STATE_IDLE) {
+        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_IDLE) > 0);
+        if (s_prefs.isKey("p_payload")) {
+            s_prefs.remove("p_payload");
+        }
     }
 
     s_prefs.end();
+
+    if (!ok) {
+        Serial.println("[SMARTTAG-NVS] ERROR: Flash write error persisting SmartTag state.");
+        return false;
+    }
 
     if (state == TX_STATE_COMMITTED && rec) {
         Serial.printf("[SMARTTAG-NVS] Durably COMMITTED state to NVS: Tag=%s Bag=%s Rev=%lu\n",
@@ -262,20 +285,30 @@ void setup() {
     smarttag_tx_init(&s_tx_coordinator);
 
     uint8_t stored_tx = (uint8_t)TX_STATE_IDLE;
-    String stored_payload = "";
+    String stored_committed = "";
+    String stored_pending = "";
     if (s_prefs.begin("smarttag", true)) {
-        stored_tx = s_prefs.getUChar("tx_state", (uint8_t)TX_STATE_IDLE);
-        stored_payload = s_prefs.getString("payload", "");
+        stored_committed = s_prefs.getString("payload", "");
+        stored_pending = s_prefs.getString("p_payload", "");
+        if (s_prefs.isKey("tx_state")) {
+            stored_tx = s_prefs.getUChar("tx_state", (uint8_t)TX_STATE_IDLE);
+        } else if (stored_committed.length() > 0) {
+            // Backward compatibility with legacy NVS entries lacking tx_state key
+            stored_tx = (uint8_t)TX_STATE_COMMITTED;
+        }
         s_prefs.end();
     }
 
+    bool did_refresh = false;
     bool recovered = smarttag_tx_recover_on_boot(
         &s_tx_coordinator,
         (SmartTagTxState)stored_tx,
-        stored_payload.c_str(),
+        stored_committed.c_str(),
+        stored_pending.c_str(),
         hardware_refresh_callback,
         hardware_persist_callback,
-        NULL
+        NULL,
+        &did_refresh
     );
 
     if (recovered) {
@@ -285,8 +318,10 @@ void setup() {
                       s_tx_coordinator.committed_record.flight,
                       (unsigned long)s_tx_coordinator.committed_record.revision,
                       smarttag_tx_state_string((SmartTagTxState)stored_tx));
-        epd_render_baggage_tag(&s_epd_fb, &s_tx_coordinator.committed_record);
-        epd_flush_to_screen();
+        if (!did_refresh) {
+            epd_render_baggage_tag(&s_epd_fb, &s_tx_coordinator.committed_record);
+            epd_flush_to_screen();
+        }
     } else {
         Serial.println("[SMARTTAG-EPD] No prior committed state. Rendering standby prompt...");
         epd_buffer_clear(&s_epd_fb, EPD_COLOR_WHITE);

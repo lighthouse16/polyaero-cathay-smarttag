@@ -451,7 +451,7 @@ void test_tx_scenario_7_nvs_persistence_failure() {
 void test_tx_scenario_8_reboot_crash_recovery() {
     printf("[TEST TX 8] Simulated reboot / crash recovery across power-cycle states\n");
 
-    // Case 8A: Staged PENDING state restored on cold-boot (interrupted refresh)
+    // Case 8A: Staged PENDING state restored on cold-boot (interrupted refresh completes)
     {
         SmartTagTxCoordinator coord;
         smarttag_tx_init(&coord);
@@ -461,15 +461,19 @@ void test_tx_scenario_8_reboot_crash_recovery() {
         hw.next_refresh_result = EPD_REFRESH_SUCCESS;
         hw.persist_success = true;
 
+        char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 4);
         char p_pending[SMARTTAG_MAX_PAYLOAD_LEN + 1];
         make_pa2_payload(p_pending, sizeof(p_pending), "RECOVERED", 5);
 
+        bool did_refresh = false;
         bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_PENDING, p_pending,
-            mock_refresh_fn, mock_persist_fn, &hw
+            &coord, TX_STATE_PENDING, p_committed, p_pending,
+            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
         );
 
         assert(rec == true);
+        assert(did_refresh == true);
         assert(coord.has_committed_record == true);
         assert(coord.committed_record.revision == 5);
         assert(strcmp(coord.committed_record.status, "RECOVERED") == 0);
@@ -478,7 +482,37 @@ void test_tx_scenario_8_reboot_crash_recovery() {
         printf("  -> PASS 8A: Mid-flight interrupted refresh completed and finalized on cold boot\n");
     }
 
-    // Case 8B: Clean committed state restored on boot (no re-refresh needed)
+    // Case 8B: Staged PENDING where boot refresh STILL fails -> safely falls back to prior committed payload!
+    {
+        SmartTagTxCoordinator coord;
+        smarttag_tx_init(&coord);
+
+        MockHardwareContext hw;
+        memset(&hw, 0, sizeof(hw));
+        hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
+        hw.persist_success = true;
+
+        char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 4);
+        char p_pending[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p_pending, sizeof(p_pending), "LOADED", 5);
+
+        bool did_refresh = true;
+        bool rec = smarttag_tx_recover_on_boot(
+            &coord, TX_STATE_PENDING, p_committed, p_pending,
+            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
+        );
+
+        assert(rec == true);
+        assert(did_refresh == false);
+        assert(coord.has_committed_record == true);
+        assert(coord.committed_record.revision == 4); // Rolled back cleanly to Rev 4!
+        assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
+        assert(hw.last_persisted_state == TX_STATE_COMMITTED);
+        printf("  -> PASS 8B: Failed PENDING boot recovery safely preserved prior committed Rev 4\n");
+    }
+
+    // Case 8C: Clean committed state restored on boot (no re-refresh inside recover_on_boot)
     {
         SmartTagTxCoordinator coord;
         smarttag_tx_init(&coord);
@@ -488,32 +522,36 @@ void test_tx_scenario_8_reboot_crash_recovery() {
         char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
         make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 5);
 
+        bool did_refresh = false;
         bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_COMMITTED, p_committed,
-            mock_refresh_fn, mock_persist_fn, &hw
+            &coord, TX_STATE_COMMITTED, p_committed, "",
+            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
         );
 
         assert(rec == true);
+        assert(did_refresh == false);
         assert(coord.has_committed_record == true);
         assert(coord.committed_record.revision == 5);
         assert(hw.refresh_call_count == 0); // No extra refresh in recover_on_boot for committed
-        printf("  -> PASS 8B: Valid COMMITTED state loaded from NVS on cold boot\n");
+        printf("  -> PASS 8C: Valid COMMITTED state loaded from NVS on cold boot\n");
     }
 
-    // Case 8C: First boot with no state (standby prompt)
+    // Case 8D: First boot with no state (standby prompt)
     {
         SmartTagTxCoordinator coord;
         smarttag_tx_init(&coord);
         MockHardwareContext hw;
         memset(&hw, 0, sizeof(hw));
 
+        bool did_refresh = false;
         bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_IDLE, "",
-            mock_refresh_fn, mock_persist_fn, &hw
+            &coord, TX_STATE_IDLE, "", "",
+            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
         );
         assert(rec == false);
+        assert(did_refresh == false);
         assert(coord.has_committed_record == false);
-        printf("  -> PASS 8C: Uninitialized NVS correctly triggers standby mode\n");
+        printf("  -> PASS 8D: Uninitialized NVS correctly triggers standby mode\n");
     }
 }
 
