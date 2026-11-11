@@ -31,7 +31,8 @@
       "expo-router",
       "expo-status-bar",
       "react-native-nfc-manager",
-      "./plugins/withNfcFeature.js"
+      "./plugins/withNfcFeature.js",
+      "./plugins/withWindowsCmakePathFix.js"
     ],
     "experiments": {
       "typedRoutes": true
