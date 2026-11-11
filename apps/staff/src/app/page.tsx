@@ -4,17 +4,52 @@ import React, { useState } from 'react';
 import {
   mockBaggageList,
   mockRecoveryCases,
+  mockBaggageEvents,
   findFlightById,
   Baggage,
+  BaggageEvent,
   BaggageStatus,
   RecoveryCase,
 } from '@polyaero/shared';
 
+import {
+  applyStatusChange,
+  eventsForBag,
+  hasOpenCase,
+  openRecoveryCase,
+  tagDisplayMessage,
+} from '../lib/baggageStore';
+import { buildTagPayload, tagStatusCode, type TagPayload } from '../lib/tagWriter';
+import { writeToTag, type WriteMode } from '../lib/nfcWriter';
+
+const STAFF_ID = 'STF-8821';
+const STATION = 'HKG-T1 Ramp Operations';
+
+const OVERRIDE_STATUSES: BaggageStatus[] = [
+  'SECURITY_CLEARED',
+  'LOADED',
+  'IN_FLIGHT',
+  'ON_CAROUSEL',
+  'CLAIMED',
+  'MISROUTED',
+  'MISSING',
+];
+
+// Formats in UTC so server and browser render identical text (avoids hydration warnings).
+function formatTime(iso: string): string {
+  return new Date(iso).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+}
+
 export default function StaffDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [baggageList, setBaggageList] = useState<Baggage[]>(mockBaggageList);
-  const [recoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
+  const [events, setEvents] = useState<BaggageEvent[]>(mockBaggageEvents);
+  const [recoveryCases, setRecoveryCases] = useState<RecoveryCase[]>(mockRecoveryCases);
   const [selectedBag, setSelectedBag] = useState<Baggage | null>(mockBaggageList[0]);
+  const [tagStatus, setTagStatus] = useState<'IDLE' | 'WRITING'>('IDLE');
+  const [lastWritten, setLastWritten] = useState<TagPayload | null>(null);
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const [lastMode, setLastMode] = useState<WriteMode | null>(null);
 
   // Dynamic calculations from active state
   const totalTracked = baggageList.length;
@@ -22,6 +57,15 @@ export default function StaffDashboardPage() {
   const atRiskCount = baggageList.filter(
     (b) => b.currentStatus === 'MISROUTED' || b.currentStatus === 'MISSING'
   ).length;
+
+  const selectedFlight = selectedBag ? findFlightById(selectedBag.flightId) : undefined;
+  const selectedHistory = selectedBag ? eventsForBag(events, selectedBag.id) : [];
+  const expectedDisplay = selectedBag ? tagDisplayMessage(selectedBag.currentStatus) : null;
+
+  const tagUpToDate =
+    !!selectedBag &&
+    lastWritten?.bagId === selectedBag.tagNumber &&
+    lastWritten.statusCode === tagStatusCode(selectedBag.currentStatus);
 
   const filteredBaggage = baggageList.filter((bag) => {
     const flight = findFlightById(bag.flightId);
@@ -38,12 +82,37 @@ export default function StaffDashboardPage() {
 
   const handleUpdateStatus = (status: BaggageStatus) => {
     if (!selectedBag) return;
-    const now = new Date().toISOString();
-    const updatedList = baggageList.map((b) =>
-      b.id === selectedBag.id ? { ...b, currentStatus: status, lastScannedAt: now } : b
-    );
-    setBaggageList(updatedList);
-    setSelectedBag({ ...selectedBag, currentStatus: status, lastScannedAt: now });
+    const { bag: updated, event } = applyStatusChange(selectedBag, {
+      status,
+      staffId: STAFF_ID,
+      stationName: STATION,
+      scanner: 'MANUAL_OVERRIDE',
+    });
+    setBaggageList((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+    setSelectedBag(updated);
+    setEvents((prev) => [event, ...prev]);
+
+    if (status === 'MISSING' && !hasOpenCase(recoveryCases, selectedBag.id)) {
+      const newCase = openRecoveryCase(updated, STATION);
+      setRecoveryCases((prev) => [newCase, ...prev]);
+    }
+  };
+
+  const handleWriteToTag = async () => {
+    if (!selectedBag) return;
+    const payload = buildTagPayload(selectedBag, findFlightById(selectedBag.flightId));
+    setTagStatus('WRITING');
+    setWriteError(null);
+    try {
+      // No await before this call, so the browser still treats it as a user tap.
+      const outcome = await writeToTag(payload);
+      setLastWritten(payload);
+      setLastMode(outcome.mode);
+    } catch (err) {
+      setWriteError(err instanceof Error ? err.message : 'Tag write failed.');
+    } finally {
+      setTagStatus('IDLE');
+    }
   };
 
   return (
@@ -92,7 +161,7 @@ export default function StaffDashboardPage() {
               fontSize: '12px',
             }}
           >
-            Operator: STF-8821 (Ramp Lead)
+            Operator: {STAFF_ID} (Ramp Lead)
           </span>
           <span
             style={{
@@ -152,7 +221,14 @@ export default function StaffDashboardPage() {
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>MISROUTED / AT RISK</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                color: atRiskCount > 0 ? '#DE350B' : '#00875A',
+                marginTop: '4px',
+              }}
+            >
               {atRiskCount}
             </div>
             <div style={{ fontSize: '11px', color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
@@ -161,7 +237,9 @@ export default function StaffDashboardPage() {
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>ACTIVE RECOVERY CASES</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>{recoveryCases.length}</div>
+            <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFAB00', marginTop: '4px' }}>
+              {recoveryCases.length}
+            </div>
             <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Investigation in progress</div>
           </div>
         </div>
@@ -217,64 +295,68 @@ export default function StaffDashboardPage() {
                           backgroundColor: selectedBag?.id === bag.id ? '#F0F9F9' : 'transparent',
                         }}
                       >
-                      <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
-                      <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
-                      <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            backgroundColor:
-                              bag.currentStatus === 'LOADED'
-                                ? '#E3FCEF'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#FFEBE6'
-                                : '#E6F0F0',
-                            color:
-                              bag.currentStatus === 'LOADED'
-                                ? '#00875A'
-                                : bag.currentStatus === 'MISROUTED'
-                                ? '#DE350B'
-                                : '#006564',
-                          }}
-                        >
-                          {bag.currentStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <button
-                          onClick={() => setSelectedBag(bag)}
-                          style={{
-                            backgroundColor: '#006564',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Inspect
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                }))}
+                        <td style={{ padding: '12px 8px', fontWeight: 600 }}>{bag.tagNumber}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.bookingReference}</td>
+                        <td style={{ padding: '12px 8px' }}>{flight ? flight.flightNumber : bag.flightId}</td>
+                        <td style={{ padding: '12px 8px' }}>{bag.weightKg} kg</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor:
+                                bag.currentStatus === 'LOADED'
+                                  ? '#E3FCEF'
+                                  : bag.currentStatus === 'MISROUTED' || bag.currentStatus === 'MISSING'
+                                  ? '#FFEBE6'
+                                  : '#E6F0F0',
+                              color:
+                                bag.currentStatus === 'LOADED'
+                                  ? '#00875A'
+                                  : bag.currentStatus === 'MISROUTED' || bag.currentStatus === 'MISSING'
+                                  ? '#DE350B'
+                                  : '#006564',
+                            }}
+                          >
+                            {bag.currentStatus}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px', color: '#64748B' }}>{bag.lastKnownLocation}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedBag(bag);
+                              setTagStatus('IDLE');
+                              setWriteError(null);
+                            }}
+                            style={{
+                              backgroundColor: '#006564',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                            }}
+                          >
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Baggage Inspection & Recovery Details */}
+          {/* Inspection, History, Recovery */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Inspection Console */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
-                Inspection Console
-              </h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Inspection Console</h2>
               {selectedBag ? (
                 <div>
                   <div style={{ marginBottom: '12px' }}>
@@ -284,9 +366,8 @@ export default function StaffDashboardPage() {
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>FLIGHT ASSIGNMENT</div>
                     <div style={{ fontSize: '14px', fontWeight: 600 }}>
-                      {findFlightById(selectedBag.flightId)?.flightNumber ?? selectedBag.flightId} (
-                      {findFlightById(selectedBag.flightId)?.origin} →{' '}
-                      {findFlightById(selectedBag.flightId)?.destination})
+                      {selectedFlight?.flightNumber ?? selectedBag.flightId}
+                      {selectedFlight && ` (${selectedFlight.origin} → ${selectedFlight.destination})`}
                     </div>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
@@ -297,7 +378,7 @@ export default function StaffDashboardPage() {
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>LAST SCANNED</div>
-                    <div style={{ fontSize: '13px' }}>{selectedBag.lastScannedAt}</div>
+                    <div style={{ fontSize: '13px' }}>{formatTime(selectedBag.lastScannedAt)}</div>
                   </div>
                   {selectedBag.notes && (
                     <div style={{ marginBottom: '16px', padding: '8px 12px', backgroundColor: '#F8FAFC', borderRadius: '4px', fontSize: '12px' }}>
@@ -305,11 +386,87 @@ export default function StaffDashboardPage() {
                     </div>
                   )}
 
+                  {/* Expected display for the cloud status */}
+                  {expectedDisplay && (
+                    <div
+                      style={{
+                        marginBottom: '12px',
+                        padding: '8px 12px',
+                        backgroundColor: '#0B2545',
+                        color: '#FFFFFF',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                    >
+                      EXPECTED TAG DISPLAY: {expectedDisplay}
+                    </div>
+                  )}
+
+                  {/* Tag write */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        marginBottom: '8px',
+                        color: tagUpToDate ? '#00875A' : '#DE350B',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tagUpToDate ? 'Tag matches the cloud' : 'Tag is out of date. Tap to update.'}
+                    </div>
+                    <button
+                      onClick={handleWriteToTag}
+                      disabled={tagStatus === 'WRITING'}
+                      style={{
+                        fontSize: '12px',
+                        padding: '8px 12px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: tagStatus === 'WRITING' ? '#94A3B8' : '#006564',
+                        color: '#FFFFFF',
+                        cursor: tagStatus === 'WRITING' ? 'default' : 'pointer',
+                      }}
+                    >
+                      {tagStatus === 'WRITING' ? 'Writing to tag…' : 'Write to tag'}
+                    </button>
+                    {writeError && (
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#DE350B' }}>{writeError}</div>
+                    )}
+                    {lastWritten && lastWritten.bagId === selectedBag.tagNumber && (
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '8px 12px',
+                          backgroundColor: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '4px',
+                          fontFamily: 'monospace',
+                          fontSize: '11px',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        BAG ID: {lastWritten.bagId}
+                        <br />
+                        ROUTE: {lastWritten.route}
+                        <br />
+                        STATUS: {lastWritten.statusCode}
+                        <br />
+                        UPDATED: {lastWritten.lastUpdated}
+                        <br />
+                        MODE:{' '}
+                        {lastMode === 'NFC_DATA'
+                          ? 'NFC record written. Display refresh not confirmed.'
+                          : 'MOCK write. No NFC reader, nothing sent to a tag.'}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, marginBottom: '8px' }}>
                     OVERRIDE BAGGAGE STATUS
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(['SECURITY_CLEARED', 'LOADED', 'ON_CAROUSEL', 'MISROUTED'] as BaggageStatus[]).map((st) => (
+                    {OVERRIDE_STATUSES.map((st) => (
                       <button
                         key={st}
                         onClick={() => handleUpdateStatus(st)}
@@ -333,6 +490,34 @@ export default function StaffDashboardPage() {
               )}
             </div>
 
+            {/* Scan History */}
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Scan History</h2>
+              {!selectedBag ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>Select a bag to view its history</div>
+              ) : selectedHistory.length === 0 ? (
+                <div style={{ color: '#64748B', fontSize: '13px' }}>No events recorded for this bag.</div>
+              ) : (
+                <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {selectedHistory.map((ev) => (
+                    <li
+                      key={ev.id}
+                      style={{ borderLeft: '2px solid #006564', paddingLeft: '12px', paddingBottom: '12px' }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 700 }}>{ev.eventType}</div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {formatTime(ev.timestamp)} • {ev.stationName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        {ev.scannerType} • {ev.handledByStaffId ?? 'system'}
+                      </div>
+                      {ev.notes && <div style={{ fontSize: '12px', marginTop: '4px' }}>{ev.notes}</div>}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
             {/* Active Recovery Cases */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
@@ -346,6 +531,7 @@ export default function StaffDashboardPage() {
                     borderRadius: '6px',
                     padding: '12px',
                     backgroundColor: '#FFFAE6',
+                    marginBottom: '8px',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -367,11 +553,13 @@ export default function StaffDashboardPage() {
                     <strong>Status:</strong> {rec.status}
                   </div>
                   <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                    <strong>Bag:</strong>{' '}
+                    {baggageList.find((b) => b.id === rec.baggageId)?.tagNumber ?? rec.baggageId}
+                  </div>
+                  <div style={{ fontSize: '12px', marginTop: '2px' }}>
                     <strong>Reported:</strong> {rec.reportedLocation}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>
-                    {rec.staffNotes}
-                  </div>
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px' }}>{rec.staffNotes}</div>
                 </div>
               ))}
             </div>
