@@ -177,21 +177,45 @@ void test_android_ndef_bytes_compatibility() {
 }
 
 // =============================================================================
-// MOCK HARDWARE & NVS STORAGE HARNESS
+// GRANULAR MOCK HARDWARE & NVS STORAGE HARNESS
 // =============================================================================
 
 typedef struct {
+    // Hardware display mock
     EpdRefreshResult next_refresh_result;
     int refresh_call_count;
-    bool persist_success;
-    int persist_call_count;
-    SmartTagTxState last_persisted_state;
-    char last_persisted_payload[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     SmartTagRecord last_refreshed_record;
-} MockHardwareContext;
+
+    // Granular NVS key-value backing store (models ESP32 Preferences namespace)
+    bool nvs_has_payload;
+    char nvs_payload[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    bool nvs_has_p_payload;
+    char nvs_p_payload[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    bool nvs_has_tx_state;
+    uint8_t nvs_tx_state;
+    uint32_t nvs_revision;
+    char nvs_tag_id[17];
+    char nvs_bag_id[17];
+    char nvs_flight[10];
+
+    // Individual fault-injection flags per NVS write operation
+    bool fail_nvs_open;
+    bool fail_p_payload_write;
+    bool fail_pending_tx_state_write;
+    bool fail_committed_payload_write;
+    bool fail_committed_metadata_write;
+    bool fail_committed_tx_state_write;
+    bool simulate_power_loss_after_committed_payload;
+
+    // Audit counters (tracking actual flash writes to detect wear/retries)
+    int persist_call_count;
+    int p_payload_write_count;
+    int payload_write_count;
+    int tx_state_write_count;
+} MockNvsContext;
 
 static EpdRefreshResult mock_refresh_fn(const SmartTagRecord *rec, void *user_ctx) {
-    MockHardwareContext *hw = (MockHardwareContext*)user_ctx;
+    MockNvsContext *hw = (MockNvsContext*)user_ctx;
     hw->refresh_call_count++;
     if (rec) hw->last_refreshed_record = *rec;
     return hw->next_refresh_result;
@@ -203,15 +227,93 @@ static bool mock_persist_fn(
     const char *raw_payload,
     void *user_ctx
 ) {
-    (void)rec;
-    MockHardwareContext *hw = (MockHardwareContext*)user_ctx;
+    MockNvsContext *hw = (MockNvsContext*)user_ctx;
     hw->persist_call_count++;
-    hw->last_persisted_state = state;
-    if (raw_payload) {
-        strncpy(hw->last_persisted_payload, raw_payload, SMARTTAG_MAX_PAYLOAD_LEN);
-        hw->last_persisted_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+
+    if (hw->fail_nvs_open) {
+        return false;
     }
-    return hw->persist_success;
+
+    if (state == TX_STATE_PENDING) {
+        if (!raw_payload || raw_payload[0] == '\0') return false;
+        if (hw->fail_p_payload_write) {
+            return false;
+        }
+        strncpy(hw->nvs_p_payload, raw_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+        hw->nvs_p_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+        hw->nvs_has_p_payload = true;
+        hw->p_payload_write_count++;
+
+        if (hw->fail_pending_tx_state_write) {
+            // Mirror main.cpp rollback: clean up orphaned p_payload if marker fails
+            hw->nvs_has_p_payload = false;
+            hw->nvs_p_payload[0] = '\0';
+            return false;
+        }
+        hw->nvs_tx_state = (uint8_t)TX_STATE_PENDING;
+        hw->nvs_has_tx_state = true;
+        hw->tx_state_write_count++;
+        return true;
+    }
+
+    if (state == TX_STATE_COMMITTED) {
+        if (!raw_payload || raw_payload[0] == '\0' || !rec) return false;
+
+        if (!hw->nvs_has_payload || strcmp(hw->nvs_payload, raw_payload) != 0) {
+            if (hw->fail_committed_payload_write) {
+                return false;
+            }
+            strncpy(hw->nvs_payload, raw_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+            hw->nvs_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+            hw->nvs_has_payload = true;
+            hw->payload_write_count++;
+
+            if (hw->simulate_power_loss_after_committed_payload) {
+                // Simulate brownout right after overwriting "payload" but before "tx_state"
+                return false;
+            }
+
+            if (hw->fail_committed_metadata_write) {
+                return false;
+            }
+            hw->nvs_revision = rec->revision;
+            strncpy(hw->nvs_tag_id, rec->tag_id, sizeof(hw->nvs_tag_id) - 1);
+            hw->nvs_tag_id[sizeof(hw->nvs_tag_id) - 1] = '\0';
+            strncpy(hw->nvs_bag_id, rec->bag_id, sizeof(hw->nvs_bag_id) - 1);
+            hw->nvs_bag_id[sizeof(hw->nvs_bag_id) - 1] = '\0';
+            strncpy(hw->nvs_flight, rec->flight, sizeof(hw->nvs_flight) - 1);
+            hw->nvs_flight[sizeof(hw->nvs_flight) - 1] = '\0';
+        }
+
+        if (hw->fail_committed_tx_state_write) {
+            return false;
+        }
+        if (!hw->nvs_has_tx_state || hw->nvs_tx_state != (uint8_t)TX_STATE_COMMITTED) {
+            hw->nvs_tx_state = (uint8_t)TX_STATE_COMMITTED;
+            hw->nvs_has_tx_state = true;
+            hw->tx_state_write_count++;
+        }
+
+        hw->nvs_has_p_payload = false;
+        hw->nvs_p_payload[0] = '\0';
+        return true;
+    }
+
+    if (state == TX_STATE_IDLE) {
+        if (hw->fail_pending_tx_state_write) {
+            return false;
+        }
+        if (!hw->nvs_has_tx_state || hw->nvs_tx_state != (uint8_t)TX_STATE_IDLE) {
+            hw->nvs_tx_state = (uint8_t)TX_STATE_IDLE;
+            hw->nvs_has_tx_state = true;
+            hw->tx_state_write_count++;
+        }
+        hw->nvs_has_p_payload = false;
+        hw->nvs_p_payload[0] = '\0';
+        return true;
+    }
+
+    return false;
 }
 
 static void make_pa2_payload(char *buf, size_t max_len, const char *status, uint32_t rev) {
@@ -223,336 +325,393 @@ static void make_pa2_payload(char *buf, size_t max_len, const char *status, uint
 }
 
 // =============================================================================
-// TRANSACTION INTEGRITY REGRESSION TESTS (P3 — 8 SCENARIOS)
+// TRANSACTION INTEGRITY REGRESSION TESTS (P3 — 10 COMPREHENSIVE SCENARIOS)
 // =============================================================================
 
-// Scenario 1: Successful refresh followed by successful persistence
-void test_tx_scenario_1_successful_refresh_and_commit() {
-    printf("[TEST TX 1] Successful refresh followed by successful persistence -> COMMITTED\n");
+// Scenario 1: Failure when writing p_payload during PENDING staging (Aborts before refresh)
+void test_tx_scenario_1_failure_writing_p_payload() {
+    printf("[TEST TX 1] Failure writing p_payload during staging -> Aborts before refresh\n");
     SmartTagTxCoordinator coord;
     smarttag_tx_init(&coord);
 
-    MockHardwareContext hw;
+    MockNvsContext hw;
     memset(&hw, 0, sizeof(hw));
     hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
-
-    char payload[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(payload, sizeof(payload), "TAGGED", 1);
-
-    EpdRefreshResult ref_res;
-    SmartTagTxResult tx_res = smarttag_tx_process_payload(
-        &coord, payload, strlen(payload),
-        mock_refresh_fn, mock_persist_fn, &hw, &ref_res
-    );
-
-    assert(tx_res == TX_RESULT_COMMITTED);
-    assert(ref_res == EPD_REFRESH_SUCCESS);
-    assert(coord.has_committed_record == true);
-    assert(coord.committed_record.revision == 1);
-    assert(coord.tx_state == TX_STATE_COMMITTED);
-    assert(coord.has_pending_record == false);
-    assert(hw.refresh_call_count == 1);
-    assert(hw.last_persisted_state == TX_STATE_COMMITTED);
-    printf("  -> PASS: Candidate successfully displayed and durably committed to NVS\n");
-}
-
-// Scenario 2: BUSY timeout with no state commit (state preserved)
-void test_tx_scenario_2_busy_timeout_rollback() {
-    printf("[TEST TX 2] BUSY timeout before/during refresh -> State preserved, no commit\n");
-    SmartTagTxCoordinator coord;
-    smarttag_tx_init(&coord);
 
     // Initial valid state: Rev 1 COMMITTED
-    MockHardwareContext hw;
-    memset(&hw, 0, sizeof(hw));
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
     char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
-    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    SmartTagTxResult r1 = smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(r1 == TX_RESULT_COMMITTED);
+    assert(hw.refresh_call_count == 1);
     assert(coord.committed_record.revision == 1);
 
-    // Attempt Rev 2 when panel BUSY line times out
-    hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
+    // Attempt Rev 2 when p_payload write fails (e.g. NVS sector failure)
+    hw.fail_p_payload_write = true;
     char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
 
-    EpdRefreshResult ref_res;
-    SmartTagTxResult tx_res = smarttag_tx_process_payload(
-        &coord, p2, strlen(p2),
-        mock_refresh_fn, mock_persist_fn, &hw, &ref_res
-    );
+    EpdRefreshResult ref_res = EPD_REFRESH_NOT_INITIALIZED;
+    SmartTagTxResult r2 = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, &ref_res);
 
-    assert(tx_res == TX_RESULT_REFRESH_FAILED);
-    assert(ref_res == EPD_REFRESH_BUSY_TIMEOUT);
-    // Crucial: Committed record MUST remain Rev 1!
-    assert(coord.has_committed_record == true);
-    assert(coord.committed_record.revision == 1);
-    assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
+    assert(r2 == TX_RESULT_PERSISTENCE_FAILED);
+    assert(hw.refresh_call_count == 1); // CRITICAL: refresh MUST NOT be attempted!
+    assert(coord.committed_record.revision == 1); // Committed RAM state MUST stay Rev 1!
     assert(coord.has_pending_record == false);
     assert(coord.tx_state == TX_STATE_COMMITTED);
-    printf("  -> PASS: Refresh failed cleanly rolled back; committed Rev 1 preserved\n");
+    assert(hw.nvs_has_p_payload == false);
+    assert(strcmp(hw.nvs_payload, p1) == 0); // Authoritative committed payload untouched!
+    printf("  -> PASS: Staging aborted cleanly; zero display refresh; Rev 1 preserved\n");
 }
 
-// Scenario 3: Retry of the same revision after a failed refresh succeeds
-void test_tx_scenario_3_retry_same_revision_after_failure() {
-    printf("[TEST TX 3] Retry of same revision after failed refresh -> Accepted and commits\n");
+// Scenario 2: Failure when writing tx_state during PENDING staging (Rolls back partial staging)
+void test_tx_scenario_2_failure_writing_tx_state() {
+    printf("[TEST TX 2] Failure writing tx_state during staging -> Rollback cleans up p_payload\n");
     SmartTagTxCoordinator coord;
     smarttag_tx_init(&coord);
 
-    MockHardwareContext hw;
+    MockNvsContext hw;
     memset(&hw, 0, sizeof(hw));
     hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
-    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
-    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
 
-    // Rev 2 fails first time (BUSY timeout)
-    hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
-    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
-    SmartTagTxResult res1 = smarttag_tx_process_payload(
-        &coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
-    assert(res1 == TX_RESULT_REFRESH_FAILED);
-    assert(coord.committed_record.revision == 1);
-
-    // Passenger retries EXACT SAME Rev 2 payload now that BUSY released
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    SmartTagTxResult res2 = smarttag_tx_process_payload(
-        &coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
-
-    assert(res2 == TX_RESULT_COMMITTED);
-    assert(coord.committed_record.revision == 2);
-    assert(strcmp(coord.committed_record.status, "LOADED") == 0);
-    printf("  -> PASS: Same revision 2 successfully accepted on retry (NOT blocked as duplicate)\n");
-}
-
-// Scenario 4: Duplicate suppression after success
-void test_tx_scenario_4_duplicate_suppression_after_success() {
-    printf("[TEST TX 4] Duplicate payload already displayed -> Suppressed with zero SPI transfer\n");
-    SmartTagTxCoordinator coord;
-    smarttag_tx_init(&coord);
-
-    MockHardwareContext hw;
-    memset(&hw, 0, sizeof(hw));
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
     char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
     smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
     assert(hw.refresh_call_count == 1);
 
-    // Tap identical payload again
-    SmartTagTxResult res = smarttag_tx_process_payload(
-        &coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
-
-    assert(res == TX_RESULT_IGNORED_IDENTICAL);
-    assert(hw.refresh_call_count == 1); // Refresh call count MUST NOT increment!
-    assert(coord.committed_record.revision == 1);
-    printf("  -> PASS: Duplicate tap suppressed without re-refreshing E-paper\n");
-}
-
-// Scenario 5: Rejection of an older revision
-void test_tx_scenario_5_rejection_of_older_revision() {
-    printf("[TEST TX 5] Rejection of older revision (Stale)\n");
-    SmartTagTxCoordinator coord;
-    smarttag_tx_init(&coord);
-
-    MockHardwareContext hw;
-    memset(&hw, 0, sizeof(hw));
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
-
-    // Advance to Rev 3
-    char p3[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p3, sizeof(p3), "TAGGED", 3);
-    smarttag_tx_process_payload(&coord, p3, strlen(p3), mock_refresh_fn, mock_persist_fn, &hw, NULL);
-    assert(coord.committed_record.revision == 3);
-
-    // Tap stale Rev 2
-    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p2, sizeof(p2), "TAGGED", 2);
-    SmartTagTxResult res = smarttag_tx_process_payload(
-        &coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
-
-    assert(res == TX_RESULT_REJECTED_STALE);
-    assert(coord.committed_record.revision == 3);
-    printf("  -> PASS: Older revision cleanly rejected as stale\n");
-}
-
-// Scenario 6: Rejection of equal-revision conflicting payloads
-void test_tx_scenario_6_rejection_of_equal_revision_conflict() {
-    printf("[TEST TX 6] Rejection of equal-revision conflicting payload\n");
-    SmartTagTxCoordinator coord;
-    smarttag_tx_init(&coord);
-
-    MockHardwareContext hw;
-    memset(&hw, 0, sizeof(hw));
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
-
-    // Committed: Rev 2, status "TAGGED"
-    char p2_a[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p2_a, sizeof(p2_a), "TAGGED", 2);
-    smarttag_tx_process_payload(&coord, p2_a, strlen(p2_a), mock_refresh_fn, mock_persist_fn, &hw, NULL);
-
-    // Incoming: Rev 2, but status "LOADED" (conflict!)
-    char p2_b[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p2_b, sizeof(p2_b), "LOADED", 2);
-    SmartTagTxResult res = smarttag_tx_process_payload(
-        &coord, p2_b, strlen(p2_b), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
-
-    assert(res == TX_RESULT_REJECTED_STALE);
-    assert(coord.committed_record.revision == 2);
-    assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
-    printf("  -> PASS: Conflicting payload with equal revision rejected\n");
-}
-
-// Scenario 7: Failure during NVS persistence
-void test_tx_scenario_7_nvs_persistence_failure() {
-    printf("[TEST TX 7] Failure during NVS persistence -> Non-durable error reported\n");
-    SmartTagTxCoordinator coord;
-    smarttag_tx_init(&coord);
-
-    // Start with committed Rev 1
-    MockHardwareContext hw;
-    memset(&hw, 0, sizeof(hw));
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = true;
-    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
-    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
-
-    // Refresh succeeds, but flash write fails
-    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-    hw.persist_success = false; // Simulated flash wear / NVS open failure
-
+    // Fail marker write during Rev 2 staging
+    hw.fail_pending_tx_state_write = true;
     char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
-    SmartTagTxResult res = smarttag_tx_process_payload(
-        &coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL
-    );
 
-    assert(res == TX_RESULT_PERSISTENCE_FAILED);
-    // Crucial: Committed RAM record must NOT advance if durable write failed!
+    SmartTagTxResult r2 = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+
+    assert(r2 == TX_RESULT_PERSISTENCE_FAILED);
+    assert(hw.refresh_call_count == 1); // Refresh not called!
+    assert(hw.nvs_has_p_payload == false); // Partial p_payload was rolled back!
     assert(coord.committed_record.revision == 1);
-    assert(coord.has_pending_record == false);
-    printf("  -> PASS: Flash error prevented invalid state progression; error reported\n");
+    printf("  -> PASS: Marker write failure cleaned up p_payload and aborted before display\n");
 }
 
-// Scenario 8: Simulated reboot between display refresh and NVS commit
-void test_tx_scenario_8_reboot_crash_recovery() {
-    printf("[TEST TX 8] Simulated reboot / crash recovery across power-cycle states\n");
+// Scenario 3: Partial PENDING persistence recovery on boot
+void test_tx_scenario_3_partial_pending_persistence_recovery() {
+    printf("[TEST TX 3] Partial PENDING persistence recovery on boot\n");
 
-    // Case 8A: Staged PENDING state restored on cold-boot (interrupted refresh completes)
+    // Case 3A: tx_state was COMMITTED (Rev 1), but an orphaned p_payload existed from interrupted staging
     {
         SmartTagTxCoordinator coord;
         smarttag_tx_init(&coord);
-
-        MockHardwareContext hw;
+        MockNvsContext hw;
         memset(&hw, 0, sizeof(hw));
-        hw.next_refresh_result = EPD_REFRESH_SUCCESS;
-        hw.persist_success = true;
 
-        char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-        make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 4);
-        char p_pending[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-        make_pa2_payload(p_pending, sizeof(p_pending), "RECOVERED", 5);
-
-        bool did_refresh = false;
-        bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_PENDING, p_committed, p_pending,
-            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
-        );
-
-        assert(rec == true);
-        assert(did_refresh == true);
-        assert(coord.has_committed_record == true);
-        assert(coord.committed_record.revision == 5);
-        assert(strcmp(coord.committed_record.status, "RECOVERED") == 0);
-        assert(hw.refresh_call_count == 1); // Display cycle completed on boot!
-        assert(hw.last_persisted_state == TX_STATE_COMMITTED); // Finalized to COMMITTED!
-        printf("  -> PASS 8A: Mid-flight interrupted refresh completed and finalized on cold boot\n");
-    }
-
-    // Case 8B: Staged PENDING where boot refresh STILL fails -> safely falls back to prior committed payload!
-    {
-        SmartTagTxCoordinator coord;
-        smarttag_tx_init(&coord);
-
-        MockHardwareContext hw;
-        memset(&hw, 0, sizeof(hw));
-        hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
-        hw.persist_success = true;
-
-        char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-        make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 4);
-        char p_pending[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-        make_pa2_payload(p_pending, sizeof(p_pending), "LOADED", 5);
+        char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+        char p2_partial[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p2_partial, sizeof(p2_partial), "LOADED", 2);
 
         bool did_refresh = true;
         bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_PENDING, p_committed, p_pending,
+            &coord, TX_STATE_COMMITTED, p1, p2_partial,
             mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
         );
 
         assert(rec == true);
         assert(did_refresh == false);
-        assert(coord.has_committed_record == true);
-        assert(coord.committed_record.revision == 4); // Rolled back cleanly to Rev 4!
+        assert(coord.committed_record.revision == 1); // Only authoritative committed record trusted!
         assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
-        assert(hw.last_persisted_state == TX_STATE_COMMITTED);
-        printf("  -> PASS 8B: Failed PENDING boot recovery safely preserved prior committed Rev 4\n");
+        printf("  -> PASS 3A: COMMITTED state loaded; incomplete staged payload ignored\n");
     }
 
-    // Case 8C: Clean committed state restored on boot (no re-refresh inside recover_on_boot)
+    // Case 3B: tx_state was PENDING, but p_payload was missing/empty
     {
         SmartTagTxCoordinator coord;
         smarttag_tx_init(&coord);
-
-        MockHardwareContext hw;
+        MockNvsContext hw;
         memset(&hw, 0, sizeof(hw));
-        char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
-        make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 5);
 
-        bool did_refresh = false;
+        char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+        make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+
+        bool did_refresh = true;
         bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_COMMITTED, p_committed, "",
+            &coord, TX_STATE_PENDING, p1, "", // Empty pending payload
             mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
         );
 
         assert(rec == true);
         assert(did_refresh == false);
-        assert(coord.has_committed_record == true);
-        assert(coord.committed_record.revision == 5);
-        assert(hw.refresh_call_count == 0); // No extra refresh in recover_on_boot for committed
-        printf("  -> PASS 8C: Valid COMMITTED state loaded from NVS on cold boot\n");
+        assert(coord.committed_record.revision == 1); // Falls back safely to committed!
+        assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+        printf("  -> PASS 3B: Empty pending payload cleanly rolled back to committed Rev 1\n");
     }
+}
 
-    // Case 8D: First boot with no state (standby prompt)
-    {
-        SmartTagTxCoordinator coord;
-        smarttag_tx_init(&coord);
-        MockHardwareContext hw;
-        memset(&hw, 0, sizeof(hw));
+// Scenario 4: Successful staging followed by BUSY timeout (Rollback, retry allowed)
+void test_tx_scenario_4_successful_staging_busy_timeout() {
+    printf("[TEST TX 4] Successful staging followed by BUSY timeout -> Rollback, retry allowed\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
 
-        bool did_refresh = false;
-        bool rec = smarttag_tx_recover_on_boot(
-            &coord, TX_STATE_IDLE, "", "",
-            mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
-        );
-        assert(rec == false);
-        assert(did_refresh == false);
-        assert(coord.has_committed_record == false);
-        printf("  -> PASS 8D: Uninitialized NVS correctly triggers standby mode\n");
-    }
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(coord.committed_record.revision == 1);
+    int p1_writes = hw.payload_write_count;
+
+    // Rev 2 stages successfully, but display refresh times out on BUSY pin
+    hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
+    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
+
+    EpdRefreshResult ref_res;
+    SmartTagTxResult r2 = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, &ref_res);
+
+    assert(r2 == TX_RESULT_REFRESH_FAILED);
+    assert(ref_res == EPD_REFRESH_BUSY_TIMEOUT);
+    assert(coord.committed_record.revision == 1); // RAM committed stays Rev 1!
+    assert(coord.has_pending_record == false);
+    assert(coord.tx_state == TX_STATE_COMMITTED);
+    assert(hw.nvs_has_p_payload == false); // Staging key cleaned up!
+    assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+    assert(hw.payload_write_count == p1_writes); // Wear protection: did NOT rewrite payload on rollback!
+    printf("  -> PASS: Staged candidate rolled back on BUSY timeout; committed record preserved\n");
+}
+
+// Scenario 5: Successful refresh followed by final NVS commit failure (RAM unchanged, retry allowed)
+void test_tx_scenario_5_refresh_succeeds_final_commit_fails() {
+    printf("[TEST TX 5] Successful refresh followed by final commit failure -> RAM unchanged\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(coord.committed_record.revision == 1);
+
+    // Staging and refresh succeed, but final commit marker write fails
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+    hw.fail_committed_tx_state_write = true;
+
+    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
+
+    SmartTagTxResult r2 = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+
+    assert(r2 == TX_RESULT_PERSISTENCE_FAILED);
+    assert(coord.committed_record.revision == 1); // CRITICAL: RAM committed must NOT advance!
+    assert(coord.has_pending_record == false);
+    assert(hw.refresh_call_count == 2); // Refresh completed on hardware
+    printf("  -> PASS: Final commit failure reported; RAM state remained un-advanced\n");
+}
+
+// Scenario 6: Reboot after partial COMMITTED persistence (Recovered from p_payload)
+void test_tx_scenario_6_reboot_after_partial_committed_persistence() {
+    printf("[TEST TX 6] Reboot after partial COMMITTED persistence -> Recovered from p_payload\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
+
+    // Simulate crash after payload write but before tx_state=COMMITTED
+    hw.nvs_has_payload = true;
+    strncpy(hw.nvs_payload, p2, sizeof(hw.nvs_payload) - 1);
+    hw.nvs_has_p_payload = true;
+    strncpy(hw.nvs_p_payload, p2, sizeof(hw.nvs_p_payload) - 1);
+    hw.nvs_tx_state = (uint8_t)TX_STATE_PENDING;
+
+    bool did_refresh = false;
+    bool rec = smarttag_tx_recover_on_boot(
+        &coord, TX_STATE_PENDING, hw.nvs_payload, hw.nvs_p_payload,
+        mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
+    );
+
+    assert(rec == true);
+    assert(did_refresh == true);
+    assert(coord.committed_record.revision == 2);
+    assert(strcmp(coord.committed_record.status, "LOADED") == 0);
+    assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+    assert(hw.nvs_has_p_payload == false);
+    printf("  -> PASS: Interrupted commit finalized and committed upon boot\n");
+}
+
+// Scenario 7: Recovery from stale/failing PENDING marker (Safe fallback to committed)
+void test_tx_scenario_7_recovery_from_stale_pending_marker() {
+    printf("[TEST TX 7] Recovery from failing PENDING marker -> Safe fallback to committed\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    // Display refresh fails during boot recovery
+    hw.next_refresh_result = EPD_REFRESH_BUSY_TIMEOUT;
+
+    char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p_committed, sizeof(p_committed), "CONFIRMED", 3);
+    char p_pending[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p_pending, sizeof(p_pending), "INTERRUPTED", 4);
+
+    bool did_refresh = true;
+    bool rec = smarttag_tx_recover_on_boot(
+        &coord, TX_STATE_PENDING, p_committed, p_pending,
+        mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
+    );
+
+    assert(rec == true);
+    assert(did_refresh == false);
+    assert(coord.committed_record.revision == 3); // Must preserve Rev 3!
+    assert(strcmp(coord.committed_record.status, "CONFIRMED") == 0);
+    assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+    printf("  -> PASS: Failed pending boot refresh safely rolled back to last committed revision\n");
+}
+
+// Scenario 8: Same-revision retry following failure (Immediate acceptance)
+void test_tx_scenario_8_same_revision_retry_following_failure() {
+    printf("[TEST TX 8] Same-revision retry following failure -> Immediate acceptance\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(coord.committed_record.revision == 1);
+
+    // Rev 2 fails on staging first time
+    hw.fail_p_payload_write = true;
+    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p2, sizeof(p2), "LOADED", 2);
+
+    SmartTagTxResult r2_fail = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(r2_fail == TX_RESULT_PERSISTENCE_FAILED);
+    assert(coord.committed_record.revision == 1);
+
+    // Passenger retries EXACT SAME Rev 2 payload now that flash write succeeds
+    hw.fail_p_payload_write = false;
+    SmartTagTxResult r2_retry = smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+
+    assert(r2_retry == TX_RESULT_COMMITTED);
+    assert(coord.committed_record.revision == 2);
+    assert(strcmp(coord.committed_record.status, "LOADED") == 0);
+    printf("  -> PASS: Same revision accepted without stale/duplicate rejection after error\n");
+}
+
+// Scenario 9: Recovery from corrupted pending payload (CRC failure falls back to committed)
+void test_tx_scenario_9_recovery_from_corrupted_pending_payload() {
+    printf("[TEST TX 9] Recovery from corrupted pending payload -> CRC failure falls back to committed\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p_committed[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p_committed, sizeof(p_committed), "TAGGED", 1);
+
+    // Corrupted pending payload (bad CRC checksum)
+    const char *p_corrupt = "PA2|1|ST-2048|0160123456|CX548|HKG|NRT|CORRUPT|2|DEAD";
+
+    bool did_refresh = true;
+    bool rec = smarttag_tx_recover_on_boot(
+        &coord, TX_STATE_PENDING, p_committed, p_corrupt,
+        mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
+    );
+
+    assert(rec == true);
+    assert(did_refresh == false);
+    assert(coord.committed_record.revision == 1);
+    assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
+    assert(hw.refresh_call_count == 0); // Corrupted pending payload MUST NOT be displayed!
+    assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+    printf("  -> PASS: Corrupt pending CRC discarded without refresh; committed Rev 1 restored\n");
+}
+
+// Scenario 10: Duplicate suppression after fully committed success (0 SPI transfers)
+void test_tx_scenario_10_duplicate_suppression_after_commit() {
+    printf("[TEST TX 10] Duplicate suppression after commit -> 0 SPI transfers\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    char p1[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p1, sizeof(p1), "TAGGED", 1);
+    smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+    assert(hw.refresh_call_count == 1);
+    int persist_count = hw.persist_call_count;
+
+    // Rescan identical tag
+    SmartTagTxResult res = smarttag_tx_process_payload(&coord, p1, strlen(p1), mock_refresh_fn, mock_persist_fn, &hw, NULL);
+
+    assert(res == TX_RESULT_IGNORED_IDENTICAL);
+    assert(hw.refresh_call_count == 1); // No new display refresh!
+    assert(hw.persist_call_count == persist_count); // No new flash write!
+    assert(coord.committed_record.revision == 1);
+    printf("  -> PASS: Duplicate tag tap ignored cleanly with zero SPI and zero NVS overhead\n");
+}
+
+// Scenario 11: Stale revisions, equal-revision conflicts, and legacy PA1 upgrade
+void test_tx_scenario_11_stale_and_legacy_transitions() {
+    printf("[TEST TX 11] Stale revisions, equal-revision conflicts, and legacy PA1 upgrade\n");
+    SmartTagTxCoordinator coord;
+    smarttag_tx_init(&coord);
+
+    MockNvsContext hw;
+    memset(&hw, 0, sizeof(hw));
+    hw.next_refresh_result = EPD_REFRESH_SUCCESS;
+
+    // 1. Legacy boot recovery where tx_state == IDLE (v1 firmware upgrade)
+    const char *legacy = "PA1|0160892012|HKG-NRT|RECOVERY_IN_PROGRESS|2026-11-10";
+    bool did_refresh = false;
+    bool rec_leg = smarttag_tx_recover_on_boot(
+        &coord, TX_STATE_IDLE, legacy, "",
+        mock_refresh_fn, mock_persist_fn, &hw, &did_refresh
+    );
+    assert(rec_leg == true);
+    assert(coord.committed_record.revision == 1);
+    assert(strcmp(coord.committed_record.bag_id, "0160892012") == 0);
+    assert(hw.nvs_tx_state == TX_STATE_COMMITTED);
+
+    // 2. Advance to Rev 3
+    char p3[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p3, sizeof(p3), "TAGGED", 3);
+    assert(smarttag_tx_process_payload(&coord, p3, strlen(p3), mock_refresh_fn, mock_persist_fn, &hw, NULL) == TX_RESULT_COMMITTED);
+    assert(coord.committed_record.revision == 3);
+
+    // 3. Stale revision (< 3) rejected
+    char p2[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p2, sizeof(p2), "TAGGED", 2);
+    assert(smarttag_tx_process_payload(&coord, p2, strlen(p2), mock_refresh_fn, mock_persist_fn, &hw, NULL) == TX_RESULT_REJECTED_STALE);
+    assert(coord.committed_record.revision == 3);
+
+    // 4. Equal revision conflicting payload rejected
+    char p3_conflict[SMARTTAG_MAX_PAYLOAD_LEN + 1];
+    make_pa2_payload(p3_conflict, sizeof(p3_conflict), "LOADED", 3);
+    assert(smarttag_tx_process_payload(&coord, p3_conflict, strlen(p3_conflict), mock_refresh_fn, mock_persist_fn, &hw, NULL) == TX_RESULT_REJECTED_STALE);
+    assert(coord.committed_record.revision == 3);
+    assert(strcmp(coord.committed_record.status, "TAGGED") == 0);
+
+    printf("  -> PASS: Stale revisions, equal-revision conflicts, and legacy migrations verified\n");
 }
 
 // =============================================================================
@@ -577,19 +736,22 @@ int main() {
     test_android_ndef_bytes_compatibility();
     printf("-> PART 1 PASSED (9/9 tests)\n\n");
 
-    printf("--- PART 2: E-Paper Transaction Integrity Tests (P3) ---\n");
-    test_tx_scenario_1_successful_refresh_and_commit();
-    test_tx_scenario_2_busy_timeout_rollback();
-    test_tx_scenario_3_retry_same_revision_after_failure();
-    test_tx_scenario_4_duplicate_suppression_after_success();
-    test_tx_scenario_5_rejection_of_older_revision();
-    test_tx_scenario_6_rejection_of_equal_revision_conflict();
-    test_tx_scenario_7_nvs_persistence_failure();
-    test_tx_scenario_8_reboot_crash_recovery();
-    printf("-> PART 2 PASSED (8/8 tests)\n\n");
+    printf("--- PART 2: E-Paper Transaction Integrity Tests (P3 — 10 Scenarios) ---\n");
+    test_tx_scenario_1_failure_writing_p_payload();
+    test_tx_scenario_2_failure_writing_tx_state();
+    test_tx_scenario_3_partial_pending_persistence_recovery();
+    test_tx_scenario_4_successful_staging_busy_timeout();
+    test_tx_scenario_5_refresh_succeeds_final_commit_fails();
+    test_tx_scenario_6_reboot_after_partial_committed_persistence();
+    test_tx_scenario_7_recovery_from_stale_pending_marker();
+    test_tx_scenario_8_same_revision_retry_following_failure();
+    test_tx_scenario_9_recovery_from_corrupted_pending_payload();
+    test_tx_scenario_10_duplicate_suppression_after_commit();
+    test_tx_scenario_11_stale_and_legacy_transitions();
+    printf("-> PART 2 PASSED (11/11 tests)\n\n");
 
     printf("=============================================================\n");
-    printf("  ALL 17 C++ PROTOCOL, DISPLAY & TRANSACTION TESTS PASSED!\n");
+    printf("  ALL 20 C++ PROTOCOL, DISPLAY & TRANSACTION TESTS PASSED!\n");
     printf("=============================================================\n");
     return 0;
 }

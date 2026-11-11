@@ -60,7 +60,13 @@ SmartTagTxResult smarttag_tx_process_payload(
 
     // Store pending transaction marker in NVS to guard against mid-refresh crash
     if (persist_cb) {
-        persist_cb(TX_STATE_PENDING, &candidate, coord->pending_raw_payload, user_ctx);
+        bool staged = persist_cb(TX_STATE_PENDING, &candidate, coord->pending_raw_payload, user_ctx);
+        if (!staged) {
+            // Staging failed! Abort transaction before touching display hardware
+            coord->has_pending_record = false;
+            coord->tx_state = coord->has_committed_record ? TX_STATE_COMMITTED : TX_STATE_IDLE;
+            return TX_RESULT_PERSISTENCE_FAILED;
+        }
     }
 
     // 5. Attempt display refresh via callback
@@ -130,6 +136,9 @@ bool smarttag_tx_recover_on_boot(
 
     if (stored_tx_state == TX_STATE_COMMITTED) {
         if (!stored_committed_payload || stored_committed_payload[0] == '\0') {
+            if (persist_cb) {
+                persist_cb(TX_STATE_IDLE, NULL, "", user_ctx);
+            }
             return false;
         }
         SmartTagRecord rec;
@@ -142,6 +151,10 @@ bool smarttag_tx_recover_on_boot(
             strncpy(coord->committed_raw_payload, stored_committed_payload, SMARTTAG_MAX_PAYLOAD_LEN);
             coord->committed_raw_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
             return true;
+        }
+        // Corrupted committed payload: safe fallback to IDLE
+        if (persist_cb) {
+            persist_cb(TX_STATE_IDLE, NULL, "", user_ctx);
         }
         return false;
     }
@@ -201,6 +214,24 @@ bool smarttag_tx_recover_on_boot(
             persist_cb(TX_STATE_IDLE, NULL, "", user_ctx);
         }
         return false;
+    }
+
+    if (stored_tx_state == TX_STATE_IDLE && stored_committed_payload && stored_committed_payload[0] != '\0') {
+        // Legacy backward compatibility: unversioned NVS with valid payload
+        SmartTagRecord legacy_rec;
+        SmartTagParseResult res = smarttag_parse_payload(stored_committed_payload, strlen(stored_committed_payload), &legacy_rec);
+        if (res == SMARTTAG_OK) {
+            coord->committed_record = legacy_rec;
+            coord->has_committed_record = true;
+            coord->tx_state = TX_STATE_COMMITTED;
+            coord->has_pending_record = false;
+            strncpy(coord->committed_raw_payload, stored_committed_payload, SMARTTAG_MAX_PAYLOAD_LEN);
+            coord->committed_raw_payload[SMARTTAG_MAX_PAYLOAD_LEN] = '\0';
+            if (persist_cb) {
+                persist_cb(TX_STATE_COMMITTED, &legacy_rec, stored_committed_payload, user_ctx);
+            }
+            return true;
+        }
     }
 
     return false;

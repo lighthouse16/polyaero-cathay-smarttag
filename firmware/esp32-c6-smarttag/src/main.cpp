@@ -195,24 +195,42 @@ static bool hardware_persist_callback(
             return false;
         }
         // Keep committed "payload" intact until display refresh finishes.
-        ok = ok && (s_prefs.putString("p_payload", raw_payload) > 0);
-        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_PENDING) > 0);
+        // Write candidate staging payload first.
+        if (s_prefs.putString("p_payload", raw_payload) == 0) {
+            ok = false;
+        } else if (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_PENDING) == 0) {
+            // Roll back p_payload if marker update failed so no partial PENDING leaks.
+            if (s_prefs.isKey("p_payload")) {
+                s_prefs.remove("p_payload");
+            }
+            ok = false;
+        }
     } else if (state == TX_STATE_COMMITTED) {
         if (!raw_payload || raw_payload[0] == '\0' || !rec) {
             s_prefs.end();
             return false;
         }
-        ok = ok && (s_prefs.putString("payload", raw_payload) > 0);
-        ok = ok && (s_prefs.putUInt("revision", rec->revision) == sizeof(uint32_t));
-        ok = ok && (s_prefs.putString("tag_id", rec->tag_id) > 0);
-        ok = ok && (s_prefs.putString("bag_id", rec->bag_id) > 0);
-        ok = ok && (s_prefs.putString("flight", rec->flight) > 0);
-        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_COMMITTED) > 0);
-        if (s_prefs.isKey("p_payload")) {
-            s_prefs.remove("p_payload");
+        // Minimize flash wear: skip rewriting committed payload & metadata on rollback if already identical
+        String current_payload = s_prefs.getString("payload", "");
+        if (current_payload != raw_payload) {
+            ok = ok && (s_prefs.putString("payload", raw_payload) > 0);
+            ok = ok && (s_prefs.putUInt("revision", rec->revision) == sizeof(uint32_t));
+            ok = ok && (s_prefs.putString("tag_id", rec->tag_id) > 0);
+            ok = ok && (s_prefs.putString("bag_id", rec->bag_id) > 0);
+            ok = ok && (s_prefs.putString("flight", rec->flight) > 0);
+        }
+        if (ok) {
+            if (!s_prefs.isKey("tx_state") || s_prefs.getUChar("tx_state", 0) != (uint8_t)TX_STATE_COMMITTED) {
+                ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_COMMITTED) > 0);
+            }
+            if (ok && s_prefs.isKey("p_payload")) {
+                s_prefs.remove("p_payload");
+            }
         }
     } else if (state == TX_STATE_IDLE) {
-        ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_IDLE) > 0);
+        if (!s_prefs.isKey("tx_state") || s_prefs.getUChar("tx_state", 0) != (uint8_t)TX_STATE_IDLE) {
+            ok = ok && (s_prefs.putUChar("tx_state", (uint8_t)TX_STATE_IDLE) > 0);
+        }
         if (s_prefs.isKey("p_payload")) {
             s_prefs.remove("p_payload");
         }
