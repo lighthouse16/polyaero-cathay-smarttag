@@ -486,6 +486,23 @@ export interface KeyValueStorageAdapter {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+  isPersistedToDisk?(key: string): boolean;
+  getLastStorageError?(): string | null;
+  readonly isMemoryOnlyFallback?: boolean;
+}
+
+export interface PersistenceCommitResult {
+  committed: boolean;
+  persisted: boolean;
+  error: string | null;
+}
+
+export class StoragePersistenceError extends Error {
+  public readonly code = 'STORAGE_WRITE_FAILED';
+  constructor(message: string) {
+    super(message);
+    this.name = 'StoragePersistenceError';
+  }
 }
 
 export interface SmartTagRepositorySnapshot {
@@ -638,6 +655,9 @@ export interface SmartTagRepository {
 
   // Demo reset (developer-only control)
   resetDemoState(options?: { populateDemoBooking?: boolean }): void;
+
+  // Persistence health & verification
+  getLastPersistenceResult?(): PersistenceCommitResult;
 }
 
 const STORAGE_KEY = 'polyaero.smarttag.passenger.v2';
@@ -773,19 +793,70 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
     }
   }
 
-  private commit(next: SmartTagRepositorySnapshot): void {
-    this.state = {
+  private lastCommitResult: PersistenceCommitResult = {
+    committed: true,
+    persisted: false,
+    error: null,
+  };
+
+  public getLastPersistenceResult(): PersistenceCommitResult {
+    return this.lastCommitResult;
+  }
+
+  private commit(
+    next: SmartTagRepositorySnapshot,
+    options?: { requireDurablePersistence?: boolean }
+  ): PersistenceCommitResult {
+    const prevState = this.state;
+    const candidateState: SmartTagRepositorySnapshot = {
       ...next,
       version: this.state.version + 1,
     };
-    if (this.storage) {
-      try {
-        this.storage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-      } catch {
-        // Ignore storage quota errors
-      }
+
+    if (!this.storage || this.storage.isMemoryOnlyFallback) {
+      this.state = candidateState;
+      this.lastCommitResult = { committed: true, persisted: false, error: null };
+      this.listeners.forEach((listener) => listener());
+      return this.lastCommitResult;
     }
+
+    let persisted = true;
+    let storageError: string | null = null;
+    try {
+      this.storage.setItem(STORAGE_KEY, JSON.stringify(candidateState));
+      if (typeof this.storage.isPersistedToDisk === 'function') {
+        persisted = this.storage.isPersistedToDisk(STORAGE_KEY);
+      }
+      const reportedError = this.storage.getLastStorageError?.();
+      if (reportedError) {
+        persisted = false;
+        storageError = reportedError;
+      } else if (!persisted) {
+        storageError = 'PERSISTENT_STORAGE_WRITE_VERIFICATION_FAILED';
+      }
+    } catch (err) {
+      persisted = false;
+      storageError = err instanceof Error ? err.message : String(err);
+    }
+
+    if (!persisted && options?.requireDurablePersistence) {
+      this.state = prevState;
+      this.lastCommitResult = {
+        committed: false,
+        persisted: false,
+        error: storageError ?? 'PERSISTENT_STORAGE_WRITE_FAILED',
+      };
+      return this.lastCommitResult;
+    }
+
+    this.state = candidateState;
+    this.lastCommitResult = {
+      committed: true,
+      persisted,
+      error: storageError,
+    };
     this.listeners.forEach((listener) => listener());
+    return this.lastCommitResult;
   }
 
   public getSnapshot(): SmartTagRepositorySnapshot {
@@ -1009,13 +1080,22 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
       b.id === bagSetupId ? updatedBag : b
     );
 
-    this.commit({
-      ...this.state,
-      bagSetupsByItinerary: {
-        ...this.state.bagSetupsByItinerary,
-        [existing.itineraryId]: list,
+    const commitResult = this.commit(
+      {
+        ...this.state,
+        bagSetupsByItinerary: {
+          ...this.state.bagSetupsByItinerary,
+          [existing.itineraryId]: list,
+        },
       },
-    });
+      { requireDurablePersistence: true }
+    );
+
+    if (!commitResult.committed) {
+      throw new StoragePersistenceError(
+        commitResult.error ?? 'Failed to persist physical NFC pairing to durable storage.'
+      );
+    }
 
     return updatedBag;
   }

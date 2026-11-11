@@ -456,3 +456,169 @@ test('Native persistent storage adapter reads, writes, and survives adapter re-i
   adapter2.removeItem('polyaero.smarttag.passenger.v2');
   assert.equal(adapter2.getItem('polyaero.smarttag.passenger.v2'), null);
 });
+
+test('End-to-end pairing persistence integrity: failed disk write during NFC pairing rolls back state and prevents false PAIRED display', async () => {
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const repoTs = ts.transpileModule(
+    fs.readFileSync(path.resolve('packages/shared/src/smarttag/repository.ts'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }
+  ).outputText;
+
+  const repoMod = { exports: {} };
+  vm.runInNewContext(repoTs, {
+    exports: repoMod.exports,
+    require: (id) => {
+      if (id.includes('types/domain') || id.includes('services/nfc') || id.includes('./types')) {
+        return {
+          DEMO_BOOKING_REFERENCE: '8K3F7D',
+          DEMO_ITINERARY_ID: 'trip_1',
+          DEMO_PASSENGER_ID: 'pass_1',
+          DEMO_FLIGHT_ID: 'flt_1',
+          DEMO_FLIGHT_CX548: { flightNumber: 'CX548', origin: 'HKG', destination: 'NRT' },
+          DEMO_BOOKING_CX548: { bookingReference: '8K3F7D' },
+          DEMO_ITINERARY_CX548: { id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } },
+          DEMO_OWNED_SMARTTAGS: [{ smartTagCode: 'ST-2048', smartTag: { id: 'st1', tagUid: '04:A2:3B:4C:5D:6E:70' } }],
+          DEFAULT_DECLARATIONS: { checkInConfirmed: true, dangerousGoodsDeclared: true, tagSecuredToLuggage: true, airportAcceptanceUnderstood: true },
+          allocateBaggageIdentity: () => ({ displayBagCode: 'CX880123456', licensePlate10Digit: '0160123456' }),
+          areDeclarationsComplete: () => true,
+          buildNfcPayloadForBag: () => ({}),
+          buildBaggageJourneyView: () => null,
+          deriveOperationsState: () => 'CHECKED_IN',
+          mapRecoveryStatusToProgress: () => 'CASE_SUBMITTED',
+        };
+      }
+      return {};
+    },
+  });
+
+  // Storage adapter with simulated disk failure
+  let diskWriteFails = true;
+  const virtualDisk = new Map();
+  const failingStorage = {
+    getItem: (key) => virtualDisk.get(key) ?? null,
+    setItem: (key, val) => {
+      if (diskWriteFails) {
+        throw new Error('Disk IO write failure: device storage read-only');
+      }
+      virtualDisk.set(key, val);
+    },
+    removeItem: (key) => virtualDisk.delete(key),
+    isPersistedToDisk: () => !diskWriteFails,
+    getLastStorageError: () => (diskWriteFails ? 'NATIVE_STORAGE_WRITE_VERIFICATION_FAILED' : null),
+  };
+
+  const realRepo = new repoMod.exports.InMemorySmartTagRepository({
+    storage: failingStorage,
+    populateDemoBookingOnInit: true,
+  });
+
+  const { bags } = realRepo.prepareBagsForItinerary({
+    itineraryId: 'itin-cx548-hkg-nrt',
+    bagCount: 1,
+    declarations: { checkInConfirmed: true, dangerousGoodsDeclared: true, tagSecuredToLuggage: true, airportAcceptanceUnderstood: true },
+  });
+  const activeBag = bags[0];
+  assert.ok(activeBag, 'Prepared bag must exist');
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const screenMod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: screenMod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({
+            tagUid: '04:DD:EE:FF:11:22:33',
+            techTypes: ['android.nfc.tech.NfcA'],
+            ndefText: null,
+            isMockSimulation: false,
+          }),
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) {
+        return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      }
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: realRepo.getSnapshot(),
+          }),
+          smartTagRepository: realRepo,
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return screenMod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+
+  // 1. Initial screen state before scan
+  assert.equal(realRepo.getBagSetup(activeBag.id).pairedPhysicalUid, null);
+
+  // 2. Trigger scan with failing disk storage
+  const scanBtn = nodes(render()).find((n) => n.props.testID === 'btn-read-physical-nfc');
+  assert.ok(scanBtn, 'Scan button must be present');
+  await scanBtn.props.onPress();
+
+  // 3. Screen inspection: must display chip read success, must NOT display SMARTTAG_PAIRED
+  const renderedJson = JSON.stringify(render());
+  assert.match(renderedJson, /NFC_CHIP_READ_SUCCESS/);
+  assert.match(renderedJson, /04:DD:EE:FF:11:22:33/);
+  assert.doesNotMatch(renderedJson, /SMARTTAG_PAIRED/, 'Must not claim SMARTTAG_PAIRED when disk write fails');
+  assert.match(renderedJson, /Pairing unsuccessful/);
+  assert.match(renderedJson, /Disk IO write failure/);
+
+  // 4. Repository integrity: candidate state must have rolled back
+  assert.equal(realRepo.getBagSetup(activeBag.id).pairedPhysicalUid, null, 'Repository must roll back pairedPhysicalUid to null');
+  assert.equal(realRepo.getLastPersistenceResult().committed, false);
+  assert.equal(realRepo.getLastPersistenceResult().persisted, false);
+
+  // 5. Simulated restart: re-instantiate repo from storage
+  const restartedRepo = new repoMod.exports.InMemorySmartTagRepository({
+    storage: failingStorage,
+    populateDemoBookingOnInit: false,
+  });
+  assert.equal(restartedRepo.getBagSetup(activeBag.id), undefined, 'Failed disk write never persisted');
+});

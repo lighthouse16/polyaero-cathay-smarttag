@@ -1,3 +1,20 @@
+/**
+ * PolyAero Cathay SmartTag — Native Persistent Storage Adapter
+ *
+ * Persists repository state across Android application restarts using
+ * `expo-file-system` on `Paths.document`.
+ *
+ * Persistence characteristics:
+ * - Writes synchronously and verifies committed state via immediate readback.
+ *   Note: native `writeSync()` writes directly to the destination stream and is
+ *   not guaranteed atomic across unhandled process crashes mid-write.
+ * - Key normalization appends a 32-bit FNV-1a digest to reduce character
+ *   replacement collision risk for app keys (though 32-bit digests are not
+ *   mathematically collision-free across arbitrary key spaces).
+ * - Read verification catches truncated or corrupted files safely without
+ *   crashing the host application.
+ */
+
 import { File, Paths } from 'expo-file-system';
 import type { KeyValueStorageAdapter } from '@polyaero/shared';
 
@@ -6,7 +23,6 @@ export interface PersistentStorageAdapter extends KeyValueStorageAdapter {
   getLastStorageError(): string | null;
 }
 
-const memoryFallback = new Map<string, string>();
 const persistedKeys = new Set<string>();
 let lastStorageError: string | null = null;
 
@@ -35,7 +51,7 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
       try {
         const file = getStorageFile(key);
         if (!file.exists) {
-          return memoryFallback.get(key) ?? null;
+          return null;
         }
         const text = file.textSync();
         if (text.startsWith('{') || text.startsWith('[')) {
@@ -50,15 +66,18 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
         return text;
       } catch {
         lastStorageError = 'NATIVE_STORAGE_READ_ERROR';
-        return memoryFallback.get(key) ?? null;
+        return null;
       }
     },
 
     setItem(key: string, value: string): void {
       lastStorageError = null;
+      let existedBefore = false;
+      let file: File | null = null;
       try {
-        const file = getStorageFile(key);
-        if (!file.exists) {
+        file = getStorageFile(key);
+        existedBefore = file.exists;
+        if (!existedBefore) {
           file.create({ intermediates: true, overwrite: true });
         }
         file.writeSync(value);
@@ -67,17 +86,22 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
           throw new Error('Storage write verification mismatch');
         }
         persistedKeys.add(key);
-        memoryFallback.set(key, value);
       } catch {
         persistedKeys.delete(key);
         lastStorageError = 'NATIVE_STORAGE_WRITE_VERIFICATION_FAILED';
-        memoryFallback.set(key, value);
+        // Clean up empty file remnant if create succeeded before write failed
+        if (!existedBefore && file && file.exists) {
+          try {
+            file.delete();
+          } catch {
+            // Ignore delete error during cleanup
+          }
+        }
       }
     },
 
     removeItem(key: string): void {
       lastStorageError = null;
-      memoryFallback.delete(key);
       persistedKeys.delete(key);
       try {
         const file = getStorageFile(key);
@@ -92,7 +116,7 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
     isPersistedToDisk(key: string): boolean {
       try {
         const file = getStorageFile(key);
-        return file.exists && persistedKeys.has(key);
+        return file.exists && persistedKeys.has(key) && lastStorageError === null;
       } catch {
         return false;
       }

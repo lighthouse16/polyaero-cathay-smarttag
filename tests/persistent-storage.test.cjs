@@ -96,7 +96,7 @@ test('PersistentStorageAdapter does NOT claim isPersistedToDisk when disk write 
 
   assert.equal(adapter.isPersistedToDisk('failing_key'), false, 'Must not claim disk persistence on write failure');
   assert.equal(adapter.getLastStorageError(), 'NATIVE_STORAGE_WRITE_VERIFICATION_FAILED');
-  assert.equal(adapter.getItem('failing_key'), 'some_value', 'Memory fallback serves current session');
+  assert.equal(adapter.getItem('failing_key'), null, 'Failed disk write must not be silently cached in memory fallback');
 
   // Restarting app should NOT have the data because disk write failed
   harness.setDiskWriteFails(false);

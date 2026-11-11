@@ -7,6 +7,7 @@ import {
   DEMO_BOOKING_REFERENCE,
   DEMO_ITINERARY_ID,
   DEFAULT_DECLARATIONS,
+  StoragePersistenceError,
   resolveBookingSmartTagEntry,
   runSmartTagSync,
   MockNfcService,
@@ -168,6 +169,73 @@ describe('Phase 2 SmartTag Repository & Passenger Flow State Model', () => {
 
     const reloaded = repo.getBagSetup(bag.id);
     expect(reloaded?.smartTag.tagUid).toBe('04:77:88:99:AA:BB:CC');
+  });
+
+  it('rolls back physical NFC pairing state and throws StoragePersistenceError when storage adapter write fails', () => {
+    let writeFails = false;
+    let storageError: string | null = null;
+    const store = new Map<string, string>();
+
+    const failingStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (writeFails) {
+          storageError = 'NATIVE_STORAGE_WRITE_VERIFICATION_FAILED';
+          throw new Error('Simulated disk write failure');
+        }
+        store.set(key, value);
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+      isPersistedToDisk: () => !writeFails,
+      getLastStorageError: () => storageError,
+    };
+
+    const repo = new InMemorySmartTagRepository({
+      storage: failingStorage,
+      populateDemoBookingOnInit: true,
+    });
+
+    const { bags } = repo.prepareBagsForItinerary({
+      itineraryId: DEMO_ITINERARY_ID,
+      bagCount: 1,
+      declarations: DEFAULT_DECLARATIONS,
+    });
+    const bag = bags[0];
+    const initialVersion = repo.getSnapshot().version;
+
+    let listenerCalled = false;
+    repo.subscribe(() => {
+      listenerCalled = true;
+    });
+
+    writeFails = true;
+    expect(() => {
+      repo.pairPhysicalTagToBag(bag.id, '04:FA:11:22:33:44:55');
+    }).toThrow(StoragePersistenceError);
+
+    const bagAfterFailure = repo.getBagSetup(bag.id);
+    expect(bagAfterFailure?.pairedPhysicalUid).toBeNull();
+    expect(bagAfterFailure?.smartTag.tagUid).toBe('04:A2:3B:4C:5D:6E:70');
+    expect(repo.getSnapshot().version).toBe(initialVersion);
+    expect(listenerCalled).toBe(false);
+
+    const persistenceResult = repo.getLastPersistenceResult();
+    expect(persistenceResult).toEqual({
+      committed: false,
+      persisted: false,
+      error: 'Simulated disk write failure',
+    });
+
+    writeFails = false;
+    storageError = null;
+    const paired = repo.pairPhysicalTagToBag(bag.id, '04:FA:11:22:33:44:55');
+    expect(paired.pairedPhysicalUid).toBe('04:FA:11:22:33:44:55');
+    expect(repo.getBagSetup(bag.id)?.pairedPhysicalUid).toBe('04:FA:11:22:33:44:55');
+    expect(repo.getLastPersistenceResult()?.committed).toBe(true);
+    expect(repo.getLastPersistenceResult()?.persisted).toBe(true);
+    expect(listenerCalled).toBe(true);
   });
 });
 

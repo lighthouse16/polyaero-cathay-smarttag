@@ -39,7 +39,7 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
       },
       isPersistedToDisk: (key: string): boolean => {
         try {
-          return window.localStorage.getItem(key) !== null;
+          return lastStorageError === null && window.localStorage.getItem(key) !== null;
         } catch {
           return false;
         }
@@ -49,6 +49,7 @@ export const createPersistentStorageAdapter = (): PersistentStorageAdapter => {
   }
 
   return {
+    isMemoryOnlyFallback: true,
     getItem: (key: string): string | null => memoryFallback.get(key) ?? null,
     setItem: (key: string, value: string): void => {
       memoryFallback.set(key, value);

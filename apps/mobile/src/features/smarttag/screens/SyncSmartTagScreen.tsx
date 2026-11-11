@@ -142,6 +142,35 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'WRITING' ||
     machineState === 'VERIFYING';
 
+  const tryCommitPhysicalPairing = (bagId: string, uid: string): boolean => {
+    let pairingCommitted = false;
+    let pairingErrorMsg: string | null = null;
+    try {
+      const paired = smartTagRepository.pairPhysicalTagToBag?.(bagId, uid);
+      const persistence = smartTagRepository.getLastPersistenceResult?.();
+      if (paired && (!persistence || persistence.committed)) {
+        pairingCommitted = true;
+      } else {
+        pairingErrorMsg =
+          persistence?.error ?? 'Could not verify persistent storage write for NFC pairing.';
+      }
+    } catch (pairErr) {
+      pairingCommitted = false;
+      const msg = (pairErr as { message?: string } | null)?.message;
+      pairingErrorMsg = msg ?? 'Could not write NFC pairing to persistent storage.';
+    }
+
+    if (pairingCommitted) {
+      setPairedPhysicalUid(uid);
+      setScanStage('PAIRED');
+    } else {
+      setPairedPhysicalUid(null);
+      setScanStage('UID_READ');
+      setPhysicalScanError(pairingErrorMsg ?? 'Could not pair NFC tag to baggage setup.');
+    }
+    return pairingCommitted;
+  };
+
   const handleScanChip = async () => {
     if (isBusy || isReadingChip || session.current) return;
     setPhysicalScanError(null);
@@ -157,14 +186,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       setScanStage('UID_READ');
 
       setScanStage('PAIRING');
-      const paired = smartTagRepository.pairPhysicalTagToBag?.(activeBag.id, result.tagUid);
-      if (paired) {
-        setPairedPhysicalUid(result.tagUid);
-        setScanStage('PAIRED');
-      } else {
-        setScanStage('UID_READ');
-        setPhysicalScanError('Could not pair NFC tag to baggage setup.');
-      }
+      tryCommitPhysicalPairing(activeBag.id, result.tagUid);
     } catch (error) {
       const code = (error as { code?: string } | null)?.code;
       if (code === 'NFC_UNAVAILABLE') {
@@ -233,11 +255,9 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         setMachineState(step.state);
         setStatusMessage(step.statusMessage);
         if (physicalService && step.state === 'TAG_DETECTED' && step.detectedUid) {
-          smartTagRepository.pairPhysicalTagToBag?.(bag.id, step.detectedUid);
           setPhysicalTagUid(step.detectedUid);
-          setPairedPhysicalUid(step.detectedUid);
           setPhysicalScanDetails({ tagUid: step.detectedUid, isMockSimulation: false });
-          setScanStage('PAIRED');
+          tryCommitPhysicalPairing(bag.id, step.detectedUid);
         }
         if (step.failure) setFailure(step.failure);
       },
