@@ -45,10 +45,11 @@ import {
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 
 export type PhysicalScanStage =
-  | 'IDLE'
+  | 'READY'
   | 'SCANNING'
   | 'TAG_DETECTED'
-  | 'READ_SUCCESS'
+  | 'UID_READ'
+  | 'PAIRING'
   | 'PAIRED'
   | 'DISABLED'
   | 'UNAVAILABLE'
@@ -82,7 +83,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const persistedPairedUid = activeBag?.pairedPhysicalUid ?? null;
   const [isReadingChip, setIsReadingChip] = useState(false);
   const [scanStage, setScanStage] = useState<PhysicalScanStage>(
-    persistedPairedUid ? 'PAIRED' : 'IDLE'
+    persistedPairedUid ? 'PAIRED' : 'READY'
   );
   const [physicalTagUid, setPhysicalTagUid] = useState<string | null>(persistedPairedUid);
   const [physicalScanDetails, setPhysicalScanDetails] = useState<PhysicalTagScanDetails | null>(
@@ -91,6 +92,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [pairedPhysicalUid, setPairedPhysicalUid] = useState<string | null>(persistedPairedUid);
   const [physicalScanError, setPhysicalScanError] = useState<string | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
+
   useEffect(() => () => {
     if (session.current) {
       session.current.cancelled = true;
@@ -98,6 +100,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
     void cancelPhysicalTagScan().catch(() => {});
   }, []);
+
   const cancelSync = async () => {
     if (!session.current) return;
     session.current.cancelled = true;
@@ -131,7 +134,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     );
   }
 
-
   const isBusy =
     machineState === 'CHECKING_AVAILABILITY' ||
     machineState === 'READY_TO_SCAN' ||
@@ -152,11 +154,16 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       });
       setPhysicalTagUid(result.tagUid);
       setPhysicalScanDetails(result);
-      setScanStage('READ_SUCCESS');
+      setScanStage('UID_READ');
+
+      setScanStage('PAIRING');
       const paired = smartTagRepository.pairPhysicalTagToBag?.(activeBag.id, result.tagUid);
       if (paired) {
         setPairedPhysicalUid(result.tagUid);
         setScanStage('PAIRED');
+      } else {
+        setScanStage('UID_READ');
+        setPhysicalScanError('Could not pair NFC tag to baggage setup.');
       }
     } catch (error) {
       const code = (error as { code?: string } | null)?.code;
@@ -250,6 +257,20 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
   };
 
+  const getPrimaryButtonLabel = (): string => {
+    if (isReadingChip) {
+      if (scanStage === 'SCANNING') return 'Scanning… (tap to cancel)';
+      if (scanStage === 'TAG_DETECTED') return 'Tag detected…';
+      if (scanStage === 'UID_READ') return 'UID read — pairing…';
+      if (scanStage === 'PAIRING') return 'Pairing SmartTag…';
+      return 'Cancel chip scan';
+    }
+    if (pairedPhysicalUid || scanStage === 'PAIRED') {
+      return 'Rescan / pair another NFC chip';
+    }
+    return 'Read & pair real NFC chip (UID)';
+  };
+
   return (
     <View style={styles.root}>
       <HeaderSoftWave />
@@ -277,11 +298,11 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           />
         </View>
 
-        {/* Text Instruction */}
+        {/* Text Instruction - Accurate & Honesty-compliant */}
         <View style={styles.textWrap}>
           <Text style={styles.instructionTitle}>Tap your SmartTag</Text>
           <Text style={styles.instructionSubtitle}>
-            Hold the back of your phone close to the SmartTag to write your baggage details onto the e-ink display.
+            Hold the back of your phone close to your SmartTag to read its physical NFC chip UID and pair it to this baggage.
           </Text>
         </View>
 
@@ -289,7 +310,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         <View style={styles.hintBox}>
           <Ionicons name="information-circle-outline" size={20} color={CATHAY_JADE} style={styles.hintIcon} />
           <Text style={styles.hintText}>
-            Keep the tag steady until the sync is complete (about 3–5 seconds).
+            Keep the tag steady against your phone until the chip is read and paired.
           </Text>
         </View>
 
@@ -325,116 +346,115 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
               <Text style={styles.demoLinkText}>Cancel NFC sync</Text>
             </TouchableOpacity>
           )}
+
+          {/* Capability A — Real Hardware Primary Action */}
           <CathayPrimaryButton
-            label={isBusy ? statusMessage : 'Start NFC sync'}
-            onPress={() => handleStartSync(false)}
+            label={getPrimaryButtonLabel()}
+            onPress={() => {
+              if (isReadingChip) {
+                return cancelPhysicalTagScan();
+              }
+              return handleScanChip();
+            }}
             disabled={isBusy}
             style={styles.primaryCta}
-            testID="btn-start-sync"
+            testID="btn-read-physical-nfc"
           />
 
-          <TouchableOpacity
-            style={styles.demoLinkBtn}
-            onPress={() => handleStartSync(true)}
-            disabled={isBusy}
-            accessibilityRole="button"
-            activeOpacity={0.7}
-            testID="btn-demo-sync"
-          >
-            <Text style={styles.demoLinkText}>Run demo simulation</Text>
-          </TouchableOpacity>
+          {isReadingChip && scanStage === 'SCANNING' && (
+            <View style={styles.busyBox}>
+              <Text style={styles.busyText}>
+                Waiting for NFC tag — hold phone against chip...
+              </Text>
+            </View>
+          )}
 
-          {Platform.OS !== 'web' && (
-            <View style={styles.nativeNfcWrap}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                testID="btn-read-physical-nfc"
-                disabled={isBusy}
-                onPress={() => {
-                  if (isReadingChip) {
-                    return cancelPhysicalTagScan();
-                  }
-                  return handleScanChip();
-                }}
-                style={styles.demoLinkBtn}
-              >
-                <Text style={styles.demoLinkText}>
-                  {isReadingChip
-                    ? 'Cancel chip scan'
-                    : pairedPhysicalUid
-                      ? 'Rescan / pair another NFC chip'
-                      : 'Read & pair real NFC chip (UID)'}
+          {isReadingChip && scanStage === 'TAG_DETECTED' && (
+            <View style={styles.busyBox}>
+              <Text style={styles.busyText}>
+                NFC tag detected — reading chip UID...
+              </Text>
+            </View>
+          )}
+
+          {physicalTagUid && (scanStage === 'PAIRED' || scanStage === 'UID_READ') && (
+            <View style={styles.pairedCard} testID="physical-nfc-paired-card">
+              <Text style={styles.pairedTitle}>
+                NFC_CHIP_READ_SUCCESS · UID {physicalTagUid}
+              </Text>
+              {scanStage === 'PAIRED' && (
+                <Text style={styles.pairedSubtitle}>
+                  SMARTTAG_PAIRED · {activeBag.smartTagCode} linked to {activeBag.displayBagCode} ({itinerary.booking.bookingReference})
                 </Text>
-              </TouchableOpacity>
-
-              {isReadingChip && scanStage === 'SCANNING' && (
-                <View style={styles.busyBox}>
-                  <Text style={styles.busyText}>
-                    Waiting for NFC tag — hold phone against chip...
-                  </Text>
-                </View>
               )}
+              {physicalScanDetails?.ndefText ? (
+                <Text style={styles.pairedMeta}>NDEF: {physicalScanDetails.ndefText}</Text>
+              ) : null}
+              <Text style={styles.pairedNotice}>
+                {scanStage === 'PAIRED'
+                  ? 'Chip UID read and paired only. '
+                  : 'Chip UID read only (not paired to bag). '}
+                Updating the passive E-ink screen requires its vendor APDU protocol; run demo simulation above to preview the display flow.
+              </Text>
+            </View>
+          )}
 
-              {isReadingChip && scanStage === 'TAG_DETECTED' && (
-                <View style={styles.busyBox}>
-                  <Text style={styles.busyText}>
-                    NFC tag detected — reading chip UID...
-                  </Text>
-                </View>
-              )}
-
-              {physicalTagUid && (scanStage === 'PAIRED' || scanStage === 'READ_SUCCESS') && (
-                <View style={styles.pairedCard} testID="physical-nfc-paired-card">
-                  <Text style={styles.pairedTitle}>
-                    NFC_CHIP_READ_SUCCESS · UID {physicalTagUid}
-                  </Text>
-                  {scanStage === 'PAIRED' && (
-                    <Text style={styles.pairedSubtitle}>
-                      SMARTTAG_PAIRED · {activeBag.smartTagCode} linked to {activeBag.displayBagCode} ({itinerary.booking.bookingReference})
-                    </Text>
-                  )}
-                  {physicalScanDetails?.ndefText ? (
-                    <Text style={styles.pairedMeta}>NDEF: {physicalScanDetails.ndefText}</Text>
-                  ) : null}
-                  <Text style={styles.pairedNotice}>
-                    {scanStage === 'PAIRED'
-                      ? 'Chip UID read and paired only. '
-                      : 'Chip UID read only (not paired to bag). '}
-                    Updating the passive E-ink screen requires its vendor APDU protocol; run demo simulation above to preview the display flow.
-                  </Text>
-                </View>
-              )}
-
-              {physicalScanError && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorTitle}>
-                    {scanStage === 'UNAVAILABLE'
-                      ? 'No NFC hardware'
-                      : scanStage === 'UNSUPPORTED_TAG'
-                        ? 'Unsupported tag'
-                        : scanStage === 'DISABLED'
-                          ? 'NFC disabled'
-                          : scanStage === 'TIMEOUT'
-                            ? 'Scan timed out'
-                            : scanStage === 'CANCELLED'
-                              ? 'Scan cancelled'
-                              : 'NFC scan failed'}
-                  </Text>
-                  <Text style={styles.errorText}>{physicalScanError}</Text>
-                  {scanStage === 'DISABLED' && (
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      onPress={() => void openNfcSettings?.()}
-                      style={styles.settingsLinkBtn}
-                      testID="btn-open-nfc-settings-chip"
-                    >
-                      <Text style={styles.settingsLinkText}>Open device NFC settings</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+          {physicalScanError && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorTitle}>
+                {scanStage === 'UNAVAILABLE'
+                  ? 'No NFC hardware'
+                  : scanStage === 'UNSUPPORTED_TAG'
+                    ? 'Unsupported tag'
+                    : scanStage === 'DISABLED'
+                      ? 'NFC disabled'
+                      : scanStage === 'TIMEOUT'
+                        ? 'Scan timed out'
+                        : scanStage === 'CANCELLED'
+                          ? 'Scan cancelled'
+                          : scanStage === 'UID_READ'
+                            ? 'Pairing unsuccessful'
+                            : 'NFC scan failed'}
+              </Text>
+              <Text style={styles.errorText}>{physicalScanError}</Text>
+              {scanStage === 'DISABLED' && (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => void openNfcSettings?.()}
+                  style={styles.settingsLinkBtn}
+                  testID="btn-open-nfc-settings-chip"
+                >
+                  <Text style={styles.settingsLinkText}>Open device NFC settings</Text>
+                </TouchableOpacity>
               )}
             </View>
           )}
+
+          {/* Capability B — Clearly Separated Demonstration Action */}
+          <View style={styles.demoSectionWrap}>
+            <Text style={styles.demoSectionHeading}>Demonstration Simulation</Text>
+            <TouchableOpacity
+              style={styles.demoLinkBtn}
+              onPress={() => handleStartSync(true)}
+              disabled={isBusy}
+              accessibilityRole="button"
+              activeOpacity={0.7}
+              testID="btn-demo-sync"
+            >
+              <Text style={styles.demoLinkText}>Run demo simulation</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.hardwareSyncLinkBtn}
+              onPress={() => handleStartSync(false)}
+              disabled={isBusy}
+              accessibilityRole="button"
+              activeOpacity={0.7}
+              testID="btn-start-sync"
+            >
+              <Text style={styles.hardwareSyncLinkText}>Test vendor E-ink hardware sync</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -558,19 +578,37 @@ const styles = StyleSheet.create({
   primaryCta: {
     width: '100%',
   },
+  demoSectionWrap: {
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  demoSectionHeading: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: CATHAY_TEXT_MUTED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
   demoLinkBtn: {
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   demoLinkText: {
     color: CATHAY_TEXT_MUTED,
     fontSize: 13,
     textDecorationLine: 'underline',
   },
-  nativeNfcWrap: {
-    marginTop: 14,
-    width: '100%',
-    alignItems: 'center',
-    gap: 8,
+  hardwareSyncLinkBtn: {
+    paddingVertical: 4,
+  },
+  hardwareSyncLinkText: {
+    color: CATHAY_TEXT_MUTED,
+    fontSize: 11.5,
+    textDecorationLine: 'underline',
   },
   settingsLinkBtn: {
     marginTop: 8,

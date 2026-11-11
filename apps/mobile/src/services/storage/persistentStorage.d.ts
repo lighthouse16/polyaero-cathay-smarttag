@@ -1,3 +1,8 @@
 import type { KeyValueStorageAdapter } from '@polyaero/shared';
 
-export declare const createPersistentStorageAdapter: () => KeyValueStorageAdapter | null;
+export interface PersistentStorageAdapter extends KeyValueStorageAdapter {
+  isPersistedToDisk(key: string): boolean;
+  getLastStorageError(): string | null;
+}
+
+export declare const createPersistentStorageAdapter: () => PersistentStorageAdapter;

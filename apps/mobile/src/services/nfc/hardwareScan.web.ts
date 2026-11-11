@@ -28,6 +28,10 @@ export async function openNfcSettings(): Promise<boolean> {
   return false;
 }
 
+export function isScanInProgress(): boolean {
+  return false;
+}
+
 export async function scanPhysicalTag(
   _timeoutMs = 15000,
   _callbacks?: ScanPhysicalTagCallbacks

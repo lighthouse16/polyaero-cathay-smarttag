@@ -37,6 +37,10 @@ let cancelled = false;
 let nfcStarted = false;
 let activeCancelReject: ((err: NfcCancelledError) => void) | null = null;
 
+export function isScanInProgress(): boolean {
+  return activeScan;
+}
+
 export function formatTagUid(rawId: string): string {
   const hex = rawId.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
   if (!hex || hex.length % 2 !== 0) {
@@ -92,9 +96,14 @@ export async function isNfcHardwareEnabled(): Promise<boolean> {
   try {
     if (!(await isNfcHardwareSupported())) return false;
     if (!nfcStarted) {
-      await NfcManager.start();
-      nfcStarted = true;
+      try {
+        await NfcManager.start();
+        nfcStarted = true;
+      } catch {
+        return false;
+      }
     }
+    if (typeof NfcManager.isEnabled !== 'function') return false;
     return await NfcManager.isEnabled();
   } catch {
     return false;
@@ -127,8 +136,12 @@ export async function scanPhysicalTag(
       throw new NfcUnavailableError();
     }
     if (!nfcStarted) {
-      await NfcManager.start();
-      nfcStarted = true;
+      try {
+        await NfcManager.start();
+        nfcStarted = true;
+      } catch {
+        throw new NfcUnavailableError('Failed to initialize NFC subsystem on this device.');
+      }
     }
     if (!(await NfcManager.isEnabled())) {
       throw new NfcDisabledError();
@@ -162,7 +175,7 @@ export async function scanPhysicalTag(
 
     const tag = await Promise.race([read, timeout, cancelPromise]);
     if (cancelled) throw new NfcCancelledError();
-    if (!tag || !tag.id) {
+    if (!tag || !tag.id || typeof tag.id !== 'string' || !tag.id.trim()) {
       throw new NfcError(
         'NFC tag detected, but it does not expose a readable UID or supported technology.',
         'NFC_UNSUPPORTED_TAG'
@@ -181,7 +194,7 @@ export async function scanPhysicalTag(
   } finally {
     if (timer) clearTimeout(timer);
     activeCancelReject = null;
-    // Always terminate native NFC technology session to free radio hardware without unnecessary debounce.
+    // Always terminate native NFC technology session to free radio hardware without delay.
     await NfcManager.cancelTechnologyRequest({ throwOnError: false, delayMsAndroid: 0 }).catch(() => undefined);
     activeScan = false;
   }

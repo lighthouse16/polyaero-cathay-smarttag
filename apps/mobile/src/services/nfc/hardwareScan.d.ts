@@ -17,6 +17,5 @@ export declare function scanPhysicalTag(
   callbacks?: ScanPhysicalTagCallbacks
 ): Promise<PhysicalTagScanDetails>;
 export declare function cancelPhysicalTagScan(): Promise<void>;
+export declare function isScanInProgress(): boolean;
 export declare function formatTagUid(rawId: string): string;
-
-
