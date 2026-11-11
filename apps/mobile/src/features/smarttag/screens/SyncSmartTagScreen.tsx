@@ -142,12 +142,17 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     setScanStage('SCANNING');
     setIsReadingChip(true);
     try {
-      const result = await scanPhysicalTag(15000);
+      const result = await scanPhysicalTag(15000, {
+        onTagDetected: () => setScanStage('TAG_DETECTED'),
+      });
       setPhysicalTagUid(result.tagUid);
       setPhysicalScanDetails(result);
-      smartTagRepository.pairPhysicalTagToBag?.(activeBag.id, result.tagUid);
-      setPairedPhysicalUid(result.tagUid);
-      setScanStage('PAIRED');
+      setScanStage('READ_SUCCESS');
+      const paired = smartTagRepository.pairPhysicalTagToBag?.(activeBag.id, result.tagUid);
+      if (paired) {
+        setPairedPhysicalUid(result.tagUid);
+        setScanStage('PAIRED');
+      }
     } catch (error) {
       const code = (error as { code?: string } | null)?.code;
       if (code === 'NFC_UNAVAILABLE') {
@@ -365,19 +370,32 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
                 </View>
               )}
 
+              {isReadingChip && scanStage === 'TAG_DETECTED' && (
+                <View style={styles.busyBox}>
+                  <Text style={styles.busyText}>
+                    NFC tag detected — reading chip UID...
+                  </Text>
+                </View>
+              )}
+
               {physicalTagUid && (scanStage === 'PAIRED' || scanStage === 'READ_SUCCESS') && (
                 <View style={styles.pairedCard} testID="physical-nfc-paired-card">
                   <Text style={styles.pairedTitle}>
                     NFC_CHIP_READ_SUCCESS · UID {physicalTagUid}
                   </Text>
-                  <Text style={styles.pairedSubtitle}>
-                    SMARTTAG_PAIRED · {activeBag.smartTagCode} linked to {activeBag.displayBagCode} ({itinerary.booking.bookingReference})
-                  </Text>
+                  {scanStage === 'PAIRED' && (
+                    <Text style={styles.pairedSubtitle}>
+                      SMARTTAG_PAIRED · {activeBag.smartTagCode} linked to {activeBag.displayBagCode} ({itinerary.booking.bookingReference})
+                    </Text>
+                  )}
                   {physicalScanDetails?.ndefText ? (
                     <Text style={styles.pairedMeta}>NDEF: {physicalScanDetails.ndefText}</Text>
                   ) : null}
                   <Text style={styles.pairedNotice}>
-                    Chip UID read and paired only. Updating the passive E-ink screen requires its vendor APDU protocol; run demo simulation above to preview the display flow.
+                    {scanStage === 'PAIRED'
+                      ? 'Chip UID read and paired only. '
+                      : 'Chip UID read only (not paired to bag). '}
+                    Updating the passive E-ink screen requires its vendor APDU protocol; run demo simulation above to preview the display flow.
                   </Text>
                 </View>
               )}

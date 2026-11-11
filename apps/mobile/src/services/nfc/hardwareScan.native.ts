@@ -28,9 +28,14 @@ export interface PhysicalTagScanDetails extends SmartTagScanResult {
   ndefText?: string | null;
 }
 
+export interface ScanPhysicalTagCallbacks {
+  onTagDetected?: () => void;
+}
+
 let activeScan = false;
 let cancelled = false;
 let nfcStarted = false;
+let activeCancelReject: ((err: NfcCancelledError) => void) | null = null;
 
 export function formatTagUid(rawId: string): string {
   const hex = rawId.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
@@ -108,7 +113,10 @@ export async function openNfcSettings(): Promise<boolean> {
   }
 }
 
-export async function scanPhysicalTag(timeoutMs = 15000): Promise<PhysicalTagScanDetails> {
+export async function scanPhysicalTag(
+  timeoutMs = 15000,
+  callbacks?: ScanPhysicalTagCallbacks
+): Promise<PhysicalTagScanDetails> {
   if (activeScan) throw new NfcOperationInProgressError();
   activeScan = true;
   cancelled = false;
@@ -137,16 +145,22 @@ export async function scanPhysicalTag(timeoutMs = 15000): Promise<PhysicalTagSca
       await NfcManager.requestTechnology(technologies, {
         alertMessage: 'Hold the top or back of your phone near your SmartTag NFC chip.',
       });
+      if (cancelled) throw new NfcCancelledError();
+      callbacks?.onTagDetected?.();
       return NfcManager.getTag({ readNdef: true });
     })();
     // Prevent unhandled rejection if timeout or cancellation wins the race first.
     read.catch(() => undefined);
 
+    const cancelPromise = new Promise<never>((_, reject) => {
+      activeCancelReject = reject;
+    });
+
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new NfcTimeoutError()), timeoutMs);
     });
 
-    const tag = await Promise.race([read, timeout]);
+    const tag = await Promise.race([read, timeout, cancelPromise]);
     if (cancelled) throw new NfcCancelledError();
     if (!tag || !tag.id) {
       throw new NfcError(
@@ -166,13 +180,18 @@ export async function scanPhysicalTag(timeoutMs = 15000): Promise<PhysicalTagSca
     throw mapNativeScanError(error);
   } finally {
     if (timer) clearTimeout(timer);
-    // Always terminate native NFC technology session to free radio hardware.
-    await NfcManager.cancelTechnologyRequest({ throwOnError: false }).catch(() => undefined);
+    activeCancelReject = null;
+    // Always terminate native NFC technology session to free radio hardware without unnecessary debounce.
+    await NfcManager.cancelTechnologyRequest({ throwOnError: false, delayMsAndroid: 0 }).catch(() => undefined);
     activeScan = false;
   }
 }
 
 export async function cancelPhysicalTagScan(): Promise<void> {
   cancelled = true;
-  await NfcManager.cancelTechnologyRequest({ throwOnError: false }).catch(() => undefined);
+  if (activeCancelReject) {
+    activeCancelReject(new NfcCancelledError());
+    activeCancelReject = null;
+  }
+  await NfcManager.cancelTechnologyRequest({ throwOnError: false, delayMsAndroid: 0 }).catch(() => undefined);
 }

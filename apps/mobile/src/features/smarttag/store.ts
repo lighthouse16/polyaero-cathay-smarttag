@@ -18,7 +18,7 @@ import {
   SmartTagRepositorySnapshot,
   DEMO_ITINERARY_ID,
   DEFAULT_DECLARATIONS,
-  backendClient,
+  ApiSmartTagRepository,
 } from '@polyaero/shared';
 
 export type SmartTagScreenRoute =
@@ -98,7 +98,7 @@ class MobileSmartTagController {
     this.combinedSnapshot = {
       repo: this.repository.getSnapshot(),
       nav: this.nav,
-      isLiveBackendConfigured: backendClient.isConfigured(),
+      isLiveBackendConfigured: new ApiSmartTagRepository().isConfiguredForDevice(),
     };
 
     this.repository.subscribe(() => {
@@ -171,7 +171,7 @@ class MobileSmartTagController {
     this.combinedSnapshot = {
       repo: this.repository.getSnapshot(),
       nav: this.nav,
-      isLiveBackendConfigured: backendClient.isConfigured(),
+      isLiveBackendConfigured: new ApiSmartTagRepository().isConfiguredForDevice(),
     };
   }
 

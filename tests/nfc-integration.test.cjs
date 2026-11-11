@@ -46,12 +46,19 @@ function createAndroidHarness(mockOverrides = {}) {
     useEffect() {},
   };
 
-  const scanPhysicalTagMock = mockOverrides.scanPhysicalTag || (async () => ({
-    tagUid: '04:E1:92:AA:BB:CC:DD',
-    techTypes: ['android.nfc.tech.NfcA', 'android.nfc.tech.Ndef'],
-    ndefText: 'Cathay SmartTag Prototype ST-2048',
-    isMockSimulation: false,
-  }));
+  let tagDetectedCallCount = 0;
+  const scanPhysicalTagMock = mockOverrides.scanPhysicalTag || (async (timeoutMs, callbacks) => {
+    if (callbacks && typeof callbacks.onTagDetected === 'function') {
+      tagDetectedCallCount++;
+      callbacks.onTagDetected();
+    }
+    return {
+      tagUid: '04:E1:92:AA:BB:CC:DD',
+      techTypes: ['android.nfc.tech.NfcA', 'android.nfc.tech.Ndef'],
+      ndefText: 'Cathay SmartTag Prototype ST-2048',
+      isMockSimulation: false,
+    };
+  });
 
   const code = ts.transpileModule(
     fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
@@ -124,6 +131,7 @@ function createAndroidHarness(mockOverrides = {}) {
     get cancelScanCalls() { return cancelScanCalls; },
     get pairedUid() { return pairedUid; },
     get openSettingsCalls() { return openSettingsCalls; },
+    get tagDetectedCallCount() { return tagDetectedCallCount; },
   };
 }
 
@@ -175,4 +183,139 @@ test('Physical NFC scan displays timeout state when no tag is presented', async 
 
   const renderedJson = JSON.stringify(h.render());
   assert.match(renderedJson, /Scan timed out/);
+});
+
+test('Physical NFC scan invokes onTagDetected callback during scanning', async () => {
+  const h = createAndroidHarness();
+  const btn = h.find('btn-read-physical-nfc');
+  await btn.props.onPress();
+  assert.equal(h.tagDetectedCallCount, 1, 'onTagDetected callback must be fired on physical tag discovery');
+});
+
+test('Physical NFC scan handles hardware unavailable (NFC_UNAVAILABLE)', async () => {
+  const unavailError = new Error('No NFC hardware');
+  unavailError.code = 'NFC_UNAVAILABLE';
+
+  const h = createAndroidHarness({
+    scanPhysicalTag: async () => { throw unavailError; },
+  });
+
+  const btn = h.find('btn-read-physical-nfc');
+  await btn.props.onPress();
+
+  const renderedJson = JSON.stringify(h.render());
+  assert.match(renderedJson, /No NFC hardware/);
+});
+
+test('Physical NFC scan handles user cancellation (NFC_CANCELLED)', async () => {
+  const cancelError = new Error('Cancelled');
+  cancelError.code = 'NFC_CANCELLED';
+
+  const h = createAndroidHarness({
+    scanPhysicalTag: async () => { throw cancelError; },
+  });
+
+  const btn = h.find('btn-read-physical-nfc');
+  await btn.props.onPress();
+
+  const renderedJson = JSON.stringify(h.render());
+  assert.match(renderedJson, /Scan cancelled/);
+});
+
+test('Mandatory honesty rule: NFC_CHIP_READ_SUCCESS without pairing does not display SMARTTAG_PAIRED', async () => {
+  const h = createAndroidHarness();
+  // Override pairPhysicalTagToBag to return false (unpaired)
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({
+      type,
+      props: props || {},
+      children: children.flat(Infinity),
+    }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(
+            ['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])
+          ),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({
+            tagUid: '04:99:88:77:66:55:44',
+            techTypes: ['android.nfc.tech.NfcA'],
+            isMockSimulation: false,
+          }),
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) {
+        return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      }
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: { trip_1: [{ id: 'bag_1', smartTagCode: 'ST-2048', displayBagCode: 'CX880123456', setupState: 'PENDING_PHYSICAL_WRITE', smartTag: { tagUid: '' } }] },
+            },
+          }),
+          smartTagRepository: {
+            pairPhysicalTagToBag: () => false, // Pairing rejected
+            recordSyncOutcome: () => {},
+          },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return mod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+  const btn = nodes(render()).find((n) => n.props.testID === 'btn-read-physical-nfc');
+  await btn.props.onPress();
+
+  const renderedJson = JSON.stringify(render());
+  assert.match(renderedJson, /NFC_CHIP_READ_SUCCESS/);
+  assert.doesNotMatch(renderedJson, /SMARTTAG_PAIRED/, 'Must not claim SMARTTAG_PAIRED when pairing was rejected');
 });
