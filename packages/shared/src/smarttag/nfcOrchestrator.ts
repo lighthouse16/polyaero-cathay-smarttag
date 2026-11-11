@@ -127,6 +127,27 @@ export function mapNfcErrorToFailureInfo(error: unknown): SmartTagFailureInfo {
           canSwitchToDemo: false,
           canOpenSettings: false,
         };
+      case 'NFC_UNSUPPORTED_TAG':
+      case 'NFC_UID_UNAVAILABLE':
+        return {
+          code: 'NFC_UNSUPPORTED_TAG',
+          title: 'Unsupported NFC tag',
+          message: error.message || 'The detected NFC chip does not expose a readable UID or supported technology.',
+          recoveryHint: 'Hold a standard ISO 14443-A or NDEF tag near the phone, or use demo simulation.',
+          canRetry: true,
+          canSwitchToDemo: true,
+          canOpenSettings: false,
+        };
+      case 'HARDWARE_DRIVER_NOT_INSTALLED':
+        return {
+          code: 'HARDWARE_DRIVER_NOT_INSTALLED',
+          title: 'Physical E-ink display writer not active in this build',
+          message: error.message || 'Updating a 2.9-inch passive E-ink SmartTag requires the vendor ISO 14443-A display protocol.',
+          recoveryHint: 'Select "Use demo simulation" to walk through the simulated sync flow.',
+          canRetry: false,
+          canSwitchToDemo: true,
+          canOpenSettings: false,
+        };
       default:
         return {
           code: 'INVALID_PAYLOAD',
@@ -343,7 +364,7 @@ export async function runSmartTagSync(options: RunSmartTagSyncOptions): Promise<
         payload,
       };
     }
-    if (failure.code === 'NFC_UNAVAILABLE') {
+    if (failure.code === 'NFC_UNAVAILABLE' || failure.code === 'HARDWARE_DRIVER_NOT_INSTALLED') {
       emit('UNSUPPORTED', failure.title, { failure });
       return {
         finalState: 'UNSUPPORTED',

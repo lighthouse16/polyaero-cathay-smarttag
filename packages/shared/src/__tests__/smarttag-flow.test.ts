@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   InMemorySmartTagRepository,
+  DemoSmartTagRepository,
+  ApiSmartTagRepository,
   SmartTagFlowNavigator,
   DEMO_BOOKING_REFERENCE,
   DEMO_ITINERARY_ID,
@@ -146,6 +148,27 @@ describe('Phase 2 SmartTag Repository & Passenger Flow State Model', () => {
     // Simulated write must not set physical lastWrittenAt
     expect(simUpdated.smartTag.lastWrittenAt).toBeNull();
   });
+
+  it('safely pairs a physical NFC chip UID to an active bag setup without confusing chip ID with ownership', () => {
+    const repo = new InMemorySmartTagRepository({ populateDemoBookingOnInit: true });
+    const { bags } = repo.prepareBagsForItinerary({
+      itineraryId: DEMO_ITINERARY_ID,
+      bagCount: 1,
+      declarations: DEFAULT_DECLARATIONS,
+    });
+    const bag = bags[0];
+    expect(bag.smartTagCode).toBe('ST-2048');
+    expect(bag.smartTag.tagUid).toBe('04:A2:3B:4C:5D:6E:70');
+
+    // Pair a real scanned chip UID
+    const paired = repo.pairPhysicalTagToBag(bag.id, '04:77:88:99:AA:BB:CC');
+    expect(paired.smartTagCode).toBe('ST-2048'); // Logical code stays invariant
+    expect(paired.smartTag.tagUid).toBe('04:77:88:99:AA:BB:CC'); // Mapped physical chip
+    expect(paired.baggage.bookingReference).toBe(DEMO_BOOKING_REFERENCE);
+
+    const reloaded = repo.getBagSetup(bag.id);
+    expect(reloaded?.smartTag.tagUid).toBe('04:77:88:99:AA:BB:CC');
+  });
 });
 
 describe('NFC Sync State Machine & Honesty Guarantees', () => {
@@ -249,6 +272,37 @@ describe('NFC Sync State Machine & Honesty Guarantees', () => {
     expect(outcome.finalState).toBe('SUCCESS');
     expect(outcome.setupState).toBe('PHYSICALLY_WRITTEN_AND_VERIFIED');
     expect(outcome.writeRecord?.verifiedHardwareReadback).toBe(true);
+  });
+
+  it('honestly reports UNSUPPORTED when physical hardware service throws HARDWARE_DRIVER_NOT_INSTALLED on write', async () => {
+    const uninstalledEinkDriverStub: INfcService = {
+      isAvailable: async () => true,
+      isEnabled: async () => true,
+      readTagUid: async (): Promise<SmartTagScanResult> => ({
+        tagUid: samplePayload.tagUid,
+        isMockSimulation: false,
+      }),
+      writeEinkDisplay: async (): Promise<SmartTagWriteResult> => {
+        throw new (await import('../services/nfc')).NfcError(
+          'Passive E-ink driver not installed',
+          'HARDWARE_DRIVER_NOT_INSTALLED'
+        );
+      },
+      cancelScan: async () => {},
+    };
+
+    const outcome = await runSmartTagSync({
+      mode: 'PHYSICAL_HARDWARE',
+      service: uninstalledEinkDriverStub,
+      payload: samplePayload,
+      expectedTagUid: samplePayload.tagUid,
+      stepDelayMs: 0,
+    });
+
+    expect(outcome.finalState).toBe('UNSUPPORTED');
+    expect(outcome.setupState).toBe('PENDING_PHYSICAL_WRITE');
+    expect(outcome.writeRecord).toBeNull();
+    expect(outcome.failure?.code).toBe('HARDWARE_DRIVER_NOT_INSTALLED');
   });
 
   it('handles NFC disabled, timeout, cancellation, write failure, and wrong tag UID without marking tag synchronized', async () => {
@@ -465,5 +519,20 @@ describe('Baggage Journey Timeline & Recovery Case Lifecycle', () => {
     expect(nav.getState().currentRoute).toBe('sync');
     expect(nav.goBack()).toBe(true);
     expect(nav.getState().currentRoute).toBe('bookings');
+  });
+
+  it('preserves clean DemoSmartTagRepository and ApiSmartTagRepository boundaries without faking 501 routes', () => {
+    expect(DemoSmartTagRepository).toBe(InMemorySmartTagRepository);
+
+    const apiRepo = new ApiSmartTagRepository({ baseUrl: 'https://api.polyaero.internal' });
+    expect(apiRepo.isConfiguredForDevice()).toBe(true);
+    expect(apiRepo.implementedRoutes).toContain('/health');
+    expect(apiRepo.implementedRoutes).toContain('/api/v1/auth/signin');
+
+    const localhostRepo = new ApiSmartTagRepository({ baseUrl: 'http://localhost:8000' });
+    expect(localhostRepo.isConfiguredForDevice()).toBe(false);
+
+    expect(() => apiRepo.assertEndpointImplemented('/api/v1/baggage')).toThrow(/501 Not Implemented/);
+    expect(() => apiRepo.assertEndpointImplemented('/api/v1/tags')).toThrow(/501 Not Implemented/);
   });
 });

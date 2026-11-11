@@ -613,6 +613,7 @@ export interface SmartTagRepository {
     declarations: SmartTagDeclarations;
     selectedSmartTagCode?: string;
   }): { bags: BagSetupRecord[]; validationError?: string };
+  pairPhysicalTagToBag(bagSetupId: string, physicalTagUid: string): BagSetupRecord;
   recordSyncOutcome(bagSetupId: string, outcome: NfcSyncOutcome): BagSetupRecord;
 
   // Baggage events & demo progression
@@ -985,6 +986,38 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
     return { bags: nextBags };
   }
 
+  public pairPhysicalTagToBag(bagSetupId: string, physicalTagUid: string): BagSetupRecord {
+    const existing = this.getBagSetup(bagSetupId);
+    if (!existing) {
+      throw new Error(`Bag setup ${bagSetupId} not found.`);
+    }
+
+    const cleanUid = physicalTagUid.trim().toUpperCase();
+    const updatedSmartTag: SmartTag = {
+      ...existing.smartTag,
+      tagUid: cleanUid,
+    };
+
+    const updatedBag: BagSetupRecord = {
+      ...existing,
+      smartTag: updatedSmartTag,
+    };
+
+    const list = this.getBagsForItinerary(existing.itineraryId).map((b) =>
+      b.id === bagSetupId ? updatedBag : b
+    );
+
+    this.commit({
+      ...this.state,
+      bagSetupsByItinerary: {
+        ...this.state.bagSetupsByItinerary,
+        [existing.itineraryId]: list,
+      },
+    });
+
+    return updatedBag;
+  }
+
   public recordSyncOutcome(bagSetupId: string, outcome: NfcSyncOutcome): BagSetupRecord {
     const existing = this.getBagSetup(bagSetupId);
     if (!existing) {
@@ -1350,5 +1383,56 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
       }
     }
     this.commit(this.buildCleanState(Boolean(options?.populateDemoBooking)));
+  }
+}
+
+export const DemoSmartTagRepository = InMemorySmartTagRepository;
+
+export interface FastApiBackendConfig {
+  baseUrl?: string;
+}
+
+/**
+ * FastAPI backend boundary for PolyAero SmartTag.
+ * On origin/main: /api/v1/auth/* and /health are implemented, while
+ * /api/v1/baggage/* and /api/v1/tags/* return HTTP 501 Not Implemented.
+ * Never silently spoofs unimplemented remote writes as successful.
+ */
+export class ApiSmartTagRepository {
+  public readonly baseUrl: string;
+  public readonly implementedRoutes = [
+    '/health',
+    '/api/v1/auth/signup/initiate',
+    '/api/v1/auth/signup/verify',
+    '/api/v1/auth/signin',
+    '/api/v1/auth/signin/verify',
+    '/api/v1/auth/refresh',
+    '/api/v1/auth/logout',
+    '/api/v1/auth/me',
+  ] as const;
+  public readonly unimplementedRoutes = [
+    '/api/v1/baggage',
+    '/api/v1/tags',
+  ] as const;
+
+  constructor(config?: FastApiBackendConfig) {
+    const raw =
+      config?.baseUrl ??
+      (typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_URL : undefined) ??
+      '';
+    this.baseUrl = raw.trim().replace(/\/+$/, '');
+  }
+
+  public isConfiguredForDevice(): boolean {
+    if (!this.baseUrl) return false;
+    return !/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(this.baseUrl);
+  }
+
+  public assertEndpointImplemented(path: string): void {
+    if (path.startsWith('/api/v1/baggage') || path.startsWith('/api/v1/tags')) {
+      throw new Error(
+        `FastAPI endpoint ${path} returns HTTP 501 Not Implemented on origin/main; use DemoSmartTagRepository in explicit demo mode.`
+      );
+    }
   }
 }
