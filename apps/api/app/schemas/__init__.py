@@ -13,6 +13,8 @@ from app.schemas.auth import (
     UserUpdate,
 )
 from app.schemas.baggage import BaggageCreate, BaggageRead, BaggageUpdate
+from app.schemas.booking import BookingCreate, BookingRead, LinkTagRequest
+from app.schemas.flight import FlightRead
 from app.schemas.passkey import (
     PasskeyAuthenticateOptionsRequest,
     PasskeyAuthenticateVerifyRequest,
@@ -41,6 +43,10 @@ __all__ = [
     "BaggageCreate",
     "BaggageRead",
     "BaggageUpdate",
+    "BookingCreate",
+    "BookingRead",
+    "LinkTagRequest",
+    "FlightRead",
     "TagCreate",
     "TagRead",
     "TagUpdate",
