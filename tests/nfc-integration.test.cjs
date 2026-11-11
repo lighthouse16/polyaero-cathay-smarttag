@@ -948,3 +948,133 @@ test('NDEF write detects MIFARE Classic tags and recommends NTAG213/215/216', as
   assert.doesNotMatch(renderedJson, /NFC data written and verified\./);
 });
 
+test('SyncSmartTagScreen restores persisted NDEF revision and handles +1 Rev recovery and status toggle', async () => {
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+
+  const react = {
+    createElement: (type, props, ...children) => ({
+      type,
+      props: props || {},
+      children: children.flat(Infinity),
+    }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return (refs[i] ||= { current: initial });
+    },
+    useEffect(fn) {
+      fn();
+    },
+  };
+
+  let committedRev = 0;
+  let persistedRev = 4; // Simulated persisted revision ahead from prior write
+
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+          encodeNfcRecord: (rec) => `PA2|1|ST-2048|0160123456|CX548|HKG|NRT|${rec.status}|${rec.rev}|D082`,
+          decodeNfcRecord: (s) => ({ rev: 5 }),
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({ tagUid: '04:11:22:33:44:55:66', isMockSimulation: false }),
+          writeNdefPayloadToTag: async (payloadText) => ({
+            success: true,
+            bytesWritten: payloadText.length,
+            readbackPayload: payloadText,
+            tagUid: '04:11:22:33:44:55:66',
+          }),
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548', origin: 'HKG', destination: 'NRT' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: {
+                trip_1: [{
+                  id: 'bag_1',
+                  smartTagCode: 'ST-2048',
+                  displayBagCode: 'CX880123456',
+                  setupState: 'PENDING_PHYSICAL_WRITE',
+                  smartTag: { tagUid: '04:A2:3B:4C:5D:6E:70' },
+                  baggage: { tagNumber: '0160123456' },
+                }],
+              },
+            },
+          }),
+          smartTagRepository: {
+            getNextNdefRevision: () => persistedRev,
+            commitVerifiedNdefWrite: (p) => {
+              committedRev = p.rev;
+              return { success: true };
+            },
+            reconcileObservedTagRevision: (p) => {
+              persistedRev = Math.max(persistedRev, p.observedRev || p.observedRevision || 1);
+            },
+            pairPhysicalTagToBag: () => true,
+          },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const render = () => { cursor = 0; return mod.exports.SyncSmartTagScreen({}); };
+  const nodes = (t) => (!t || typeof t !== 'object' ? [] : [t, ...t.children.flatMap(nodes)]);
+
+  // Initial render: revision should be restored as 4 (from persistedRev), not reset to 1
+  let rendered = JSON.stringify(render());
+  assert.match(rendered, /Rev 4/);
+
+  // Press +1 Rev button
+  const bumpBtn = nodes(render()).find((n) => n.props.testID === 'btn-bump-ndef-rev');
+  assert.ok(bumpBtn, 'Expected +1 Rev button to exist');
+  await bumpBtn.props.onPress();
+
+  rendered = JSON.stringify(render());
+  assert.match(rendered, /Rev 5/);
+
+  // Write payload: commits rev 5
+  const writeBtn = nodes(render()).find((n) => n.props.testID === 'btn-write-ndef-nfc');
+  await writeBtn.props.onPress();
+  assert.equal(committedRev, 5);
+});
+
+

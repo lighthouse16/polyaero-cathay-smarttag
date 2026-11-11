@@ -648,4 +648,100 @@ describe('Baggage Journey Timeline & Recovery Case Lifecycle', () => {
     expect(restoredBag?.setupState).toBe('UNREGISTERED');
     expect(restoredBag?.lastWrite).toBeNull();
   });
+
+  it('persists monotonic NDEF revisions across app restart and rolls back on storage failure', () => {
+    const disk = new Map<string, string>();
+    let throwOnWrite = false;
+
+    const storage = {
+      getItem: (key: string) => disk.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (throwOnWrite) throw new Error('Disk I/O Error');
+        disk.set(key, value);
+      },
+      removeItem: (key: string) => {
+        disk.delete(key);
+      },
+    };
+
+    const repo1 = new InMemorySmartTagRepository({ storage, populateDemoBookingOnInit: true });
+    const bag1 = repo1.getBagsForItinerary(DEMO_ITINERARY_ID)[0];
+
+    const basePayload = {
+      smartTagCode: bag1.smartTagCode,
+      physicalUid: '04:11:22:33:44:55:66',
+      bagId: '0160123456',
+      flight: 'CX548',
+      from: 'HKG',
+      to: 'NRT',
+      status: 'TAGGED',
+    };
+
+    // Initial query gives rev 1
+    const nextRev1 = repo1.getNextNdefRevision(basePayload);
+    expect(nextRev1).toBe(1);
+
+    // Commit verified write rev 1
+    repo1.commitVerifiedNdefWrite({
+      ...basePayload,
+      revision: 1,
+    });
+
+    // Same content signature preserves rev 1
+    expect(repo1.getNextNdefRevision(basePayload)).toBe(1);
+
+    // Modified content signature increments to rev 2
+    expect(
+      repo1.getNextNdefRevision({
+        ...basePayload,
+        status: 'PRIORITY_TRANSFER',
+      })
+    ).toBe(2);
+
+    // Commit rev 2
+    repo1.commitVerifiedNdefWrite({
+      ...basePayload,
+      status: 'PRIORITY_TRANSFER',
+      revision: 2,
+    });
+
+    // Simulate app restart with new repository instance reading persisted disk
+    const repo2 = new InMemorySmartTagRepository({ storage, populateDemoBookingOnInit: false });
+    const revAfterRestart = repo2.getNextNdefRevision({
+      ...basePayload,
+      status: 'LOADED',
+    });
+    expect(revAfterRestart).toBe(3); // Never resets to 1!
+
+    // Verify storage write failure triggers rollback
+    throwOnWrite = true;
+    const failRes = repo2.commitVerifiedNdefWrite({
+      ...basePayload,
+      status: 'LOADED',
+      revision: 3,
+    });
+    expect(failRes.success).toBe(false);
+
+    // Rolled back: next rev remains 3, not 4
+    throwOnWrite = false;
+    expect(
+      repo2.getNextNdefRevision({
+        ...basePayload,
+        status: 'LOADED',
+      })
+    ).toBe(3);
+
+    // Reconcile observed tag revision from hardware scan (e.g. tag is ahead at rev 5)
+    repo2.reconcileObservedTagRevision({
+      smartTagCode: bag1.smartTagCode,
+      physicalUid: '04:11:22:33:44:55:66',
+      observedRevision: 5,
+    });
+    expect(
+      repo2.getNextNdefRevision({
+        ...basePayload,
+        status: 'NEW_STATUS',
+      })
+    ).toBe(6);
+  });
 });

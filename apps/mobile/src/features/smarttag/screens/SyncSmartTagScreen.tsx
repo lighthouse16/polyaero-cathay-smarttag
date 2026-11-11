@@ -21,6 +21,7 @@ import {
   SmartTagFailureInfo,
   buildNfcPayloadForBag,
   encodeNfcRecord,
+  decodeNfcRecord,
   runSmartTagSync,
 } from '@polyaero/shared';
 import {
@@ -115,11 +116,34 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [physicalScanError, setPhysicalScanError] = useState<string | null>(null);
   const [isWritingNdef, setIsWritingNdef] = useState(false);
   const [ndefWriteStage, setNdefWriteStage] = useState<NdefWriteStage>('READY');
-  const [ndefRevision, setNdefRevision] = useState<number>(1);
   const [ndefStatusCode, setNdefStatusCode] = useState<'TAGGED' | 'PRIORITY_TRANSFER'>('TAGGED');
+  const [manualRevBump, setManualRevBump] = useState<number>(0);
   const [ndefWriteResult, setNdefWriteResult] = useState<NfcWriteResult | null>(null);
   const [ndefWriteError, setNdefWriteError] = useState<{ title: string; message: string; code?: string } | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
+
+  const rawTagId = activeBag?.smartTagCode || 'ST-2048';
+  const rawBagId =
+    activeBag?.baggage?.tagNumber || activeBag?.displayBagCode || '';
+  const rawFlight = itinerary?.flight?.flightNumber || 'CX548';
+  const rawFrom = itinerary?.flight?.origin || 'HKG';
+  const rawTo = itinerary?.flight?.destination || 'NRT';
+
+  // Compute persisted baseline revision from repository state (P0)
+  const persistedBaseRev =
+    activeBag && smartTagRepository.getNextNdefRevision
+      ? smartTagRepository.getNextNdefRevision({
+          smartTagCode: rawTagId,
+          physicalUid: pairedPhysicalUid ?? activeBag.pairedPhysicalUid,
+          bagId: rawBagId,
+          flight: rawFlight,
+          from: rawFrom,
+          to: rawTo,
+          status: ndefStatusCode,
+        })
+      : 1;
+
+  const ndefRevision = persistedBaseRev + manualRevBump;
 
   useEffect(() => () => {
     if (session.current) {
@@ -213,6 +237,23 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       setPhysicalScanDetails(result);
       setScanStage('UID_READ');
 
+      // P0 Recovery: if scanned tag carries PA payload with rev >= ndefRevision, reconcile
+      if (result.ndefText && result.ndefText.startsWith('PA')) {
+        try {
+          const parsed = decodeNfcRecord(result.ndefText);
+          if (parsed && parsed.rev >= ndefRevision && smartTagRepository.reconcileObservedTagRevision) {
+            smartTagRepository.reconcileObservedTagRevision({
+              smartTagCode: rawTagId,
+              physicalUid: result.tagUid,
+              observedRev: parsed.rev,
+            });
+            setManualRevBump(0);
+          }
+        } catch {
+          // non-blocking
+        }
+      }
+
       setScanStage('PAIRING');
       tryCommitPhysicalPairing(activeBag.id, result.tagUid);
     } catch (error) {
@@ -242,12 +283,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   };
 
   const buildCanonicalPayloadText = (): string => {
-    const rawTagId = activeBag.smartTagCode || 'ST-2048';
-    const rawBagId = activeBag.baggage?.tagNumber || activeBag.displayBagCode || '0160123456';
-    const rawFlight = itinerary.flight?.flightNumber || 'CX548';
-    const rawFrom = itinerary.flight?.origin || 'HKG';
-    const rawTo = itinerary.flight?.destination || 'NRT';
-
     if (typeof encodeNfcRecord === 'function') {
       return encodeNfcRecord({
         v: 1,
@@ -298,6 +333,31 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         ndefText: result.readbackPayload,
         isMockSimulation: false,
       });
+
+      // Commit verified revision to durable storage (P0)
+      if (smartTagRepository.commitVerifiedNdefWrite) {
+        const revCommitRes = smartTagRepository.commitVerifiedNdefWrite({
+          smartTagCode: rawTagId,
+          physicalUid: result.tagUid,
+          bagId: rawBagId,
+          flight: rawFlight,
+          from: rawFrom,
+          to: rawTo,
+          status: ndefStatusCode,
+          rev: ndefRevision,
+          payloadText,
+        });
+
+        if (!revCommitRes.success) {
+          setNdefWriteError({
+            title: 'Revision persistence failed',
+            message: revCommitRes.error ?? 'Could not persist verified NDEF revision to durable storage.',
+            code: 'PERSISTENCE_FAILED',
+          });
+          return;
+        }
+        setManualRevBump(0);
+      }
 
       // Attempt durable UID-to-bag pairing commit without masking write verification.
       tryCommitPhysicalPairing(activeBag.id, result.tagUid);
@@ -513,23 +573,39 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
               <Text style={styles.ndefSectionTitle}>
                 Write Payload to NFC Tag (Rev {ndefRevision})
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setNdefStatusCode((prev) =>
-                    prev === 'TAGGED' ? 'PRIORITY_TRANSFER' : 'TAGGED'
-                  );
-                  setNdefRevision((r) => r + 1);
-                  setNdefWriteStage('READY');
-                  setNdefWriteResult(null);
-                }}
-                disabled={isWritingNdef || isReadingChip || isBusy}
-                style={styles.ndefToggleChip}
-                testID="btn-toggle-ndef-status"
-              >
-                <Text style={styles.ndefToggleChipText}>
-                  {ndefStatusCode} · Bump Rev
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.ndefControlsRow}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setNdefStatusCode((prev) =>
+                      prev === 'TAGGED' ? 'PRIORITY_TRANSFER' : 'TAGGED'
+                    );
+                    setManualRevBump(0);
+                    setNdefWriteStage('READY');
+                    setNdefWriteResult(null);
+                  }}
+                  disabled={isWritingNdef || isReadingChip || isBusy}
+                  style={styles.ndefToggleChip}
+                  testID="btn-toggle-ndef-status"
+                >
+                  <Text style={styles.ndefToggleChipText}>
+                    {ndefStatusCode}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setManualRevBump((b) => b + 1);
+                    setNdefWriteStage('READY');
+                    setNdefWriteResult(null);
+                  }}
+                  disabled={isWritingNdef || isReadingChip || isBusy}
+                  style={styles.ndefBumpChip}
+                  testID="btn-bump-ndef-rev"
+                  accessibilityLabel="Bump revision number"
+                >
+                  <Text style={styles.ndefBumpChipText}>+1 Rev</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <Text style={styles.ndefStageBar} testID="ndef-stage-indicator">
@@ -918,6 +994,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: CATHAY_JADE,
+  },
+  ndefControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ndefBumpChip: {
+    backgroundColor: '#E0EAE9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ndefBumpChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: CATHAY_TEXT_PRIMARY,
   },
   ndefStageBar: {
     fontSize: 10,

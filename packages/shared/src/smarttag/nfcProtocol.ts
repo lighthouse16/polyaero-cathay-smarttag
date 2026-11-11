@@ -158,6 +158,36 @@ export function encodeNfcRecordJson(record: SmartTagNfcRecord): string {
 }
 
 /**
+ * Validates whether a string is a standard 10-digit IATA baggage license plate
+ * compliant with IATA Resolution 740/753 and Interleaved 2 of 5 barcode symbology.
+ */
+export function isValidIataBaggageLicensePlate(bagId: string): boolean {
+  if (!bagId) return false;
+  return /^\d{10}$/.test(bagId.trim());
+}
+
+/**
+ * Resolves a canonical 10-digit IATA baggage license plate from available baggage fields.
+ * Throws NfcProtocolError if no valid 10-digit numeric identifier is available.
+ */
+export function canonicalizeBaggageLicensePlate(
+  candidateId: string,
+  baggageTagNumber?: string
+): string {
+  if (baggageTagNumber && isValidIataBaggageLicensePlate(baggageTagNumber)) {
+    return baggageTagNumber.trim();
+  }
+  if (candidateId && isValidIataBaggageLicensePlate(candidateId)) {
+    return candidateId.trim();
+  }
+  throw new NfcProtocolError(
+    `Baggage identifier "${candidateId || baggageTagNumber}" is invalid. ` +
+      'Must be exactly 10 numeric digits compliant with IATA Resolution 740/753 for E-paper barcode rendering.',
+    'INVALID_FIELD'
+  );
+}
+
+/**
  * Validates individual fields strictly.
  */
 export function validateNfcRecordFields(record: Partial<SmartTagNfcRecord>): void {
@@ -175,9 +205,9 @@ export function validateNfcRecordFields(record: Partial<SmartTagNfcRecord>): voi
     );
   }
 
-  if (!record.bagId || !/^[A-Z0-9]{6,14}$/i.test(record.bagId.trim())) {
+  if (!record.bagId || !isValidIataBaggageLicensePlate(record.bagId)) {
     throw new NfcProtocolError(
-      `Invalid bagId "${record.bagId}"; must be 6-14 alphanumeric characters.`,
+      `Invalid bagId "${record.bagId}"; must be exactly 10 numeric digits for IATA Interleaved 2 of 5 barcode compliance.`,
       'INVALID_FIELD'
     );
   }
@@ -207,9 +237,15 @@ export function validateNfcRecordFields(record: Partial<SmartTagNfcRecord>): voi
     throw new NfcProtocolError('Status field cannot be empty.', 'INVALID_FIELD');
   }
 
-  if (record.rev === undefined || typeof record.rev !== 'number' || record.rev < 0 || !Number.isInteger(record.rev)) {
+  if (
+    record.rev === undefined ||
+    typeof record.rev !== 'number' ||
+    record.rev < 0 ||
+    record.rev > 4294967295 ||
+    !Number.isInteger(record.rev)
+  ) {
     throw new NfcProtocolError(
-      `Invalid revision ${record.rev}; must be a non-negative integer.`,
+      `Invalid revision ${record.rev}; must be a non-negative 32-bit integer.`,
       'INVALID_FIELD'
     );
   }
@@ -263,9 +299,9 @@ export function decodeNfcRecord(raw: string): SmartTagNfcRecord {
   // 2. Canonical PA2 Pipe-Delimited Format
   if (trimmed.startsWith('PA2|')) {
     const parts = trimmed.split('|');
-    if (parts.length < 9) {
+    if (parts.length < 9 || parts.length > 10) {
       throw new NfcProtocolError(
-        `Malformed PA2 payload: expected at least 9 pipe-delimited fields, got ${parts.length}.`,
+        `Malformed PA2 payload: expected 9 or 10 pipe-delimited fields, got ${parts.length}.`,
         'MALFORMED_PAYLOAD'
       );
     }
@@ -275,16 +311,32 @@ export function decodeNfcRecord(raw: string): SmartTagNfcRecord {
       throw new NfcProtocolError(`Invalid header "${header}".`, 'MALFORMED_PAYLOAD');
     }
 
+    if (!/^\d+$/.test(vStr.trim())) {
+      throw new NfcProtocolError(`Invalid protocol version "${vStr}".`, 'UNSUPPORTED_VERSION');
+    }
+
+    if (!/^\d+$/.test(revStr.trim())) {
+      throw new NfcProtocolError(`Invalid revision "${revStr}"; must be a non-negative integer.`, 'INVALID_FIELD');
+    }
+
+    const crcClean = crcHex !== undefined ? crcHex.trim().toUpperCase() : undefined;
+    if (crcClean !== undefined && !/^[0-9A-F]{4}$/.test(crcClean)) {
+      throw new NfcProtocolError(
+        `Malformed CRC checksum "${crcHex}"; expected 4 uppercase hex characters.`,
+        'CRC_MISMATCH'
+      );
+    }
+
     const candidate: SmartTagNfcRecord = {
-      v: parseInt(vStr, 10),
+      v: Number(vStr.trim()),
       tagId,
       bagId,
       flight,
       from,
       to,
       status,
-      rev: parseInt(revStr, 10),
-      crc: crcHex ? crcHex.trim().toUpperCase() : undefined,
+      rev: Number(revStr.trim()),
+      crc: crcClean,
     };
     validateNfcRecordFields(candidate);
 
@@ -309,7 +361,7 @@ export function decodeNfcRecord(raw: string): SmartTagNfcRecord {
     if (parts.length >= 4) {
       const [, bagId, route, status] = parts;
       const [from = 'HKG', to = 'NRT'] = (route || 'HKG-NRT').split(/[-→]/);
-      return {
+      const legacyCandidate: SmartTagNfcRecord = {
         v: 1,
         tagId: 'ST-LEGACY',
         bagId: bagId.trim(),
@@ -319,6 +371,8 @@ export function decodeNfcRecord(raw: string): SmartTagNfcRecord {
         status: status.trim().toUpperCase() || 'TAGGED',
         rev: 1,
       };
+      validateNfcRecordFields(legacyCandidate);
+      return legacyCandidate;
     }
   }
 
@@ -355,6 +409,11 @@ export function evaluatePayloadProgression(
     incoming.status === lastValid.status
   ) {
     return 'IDENTICAL';
+  }
+
+  // Same revision with mismatched content is a stale/conflicting reuse; reject!
+  if (incoming.rev <= lastValid.rev) {
+    return 'STALE';
   }
 
   return 'NEW_REVISION';

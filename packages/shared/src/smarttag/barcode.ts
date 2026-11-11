@@ -25,9 +25,36 @@ export interface BarcodeBarModule {
   widthUnits: 1 | 3;
 }
 
+/**
+ * Validates whether the given string is valid for Interleaved 2 of 5 encoding.
+ * Must be non-empty, composed solely of ASCII digits (0-9), and have an even length.
+ */
+export function isValidItfBarcodeDigits(digits: string): boolean {
+  if (!digits) return false;
+  const trimmed = digits.trim();
+  return /^\d+$/.test(trimmed) && trimmed.length % 2 === 0;
+}
+
 export function encodeInterleaved2Of5(digitsRaw: string): BarcodeBarModule[] {
-  const digits = digitsRaw.replace(/\D/g, '');
-  const normalized = digits.length === 0 ? '0160123456' : digits.length % 2 === 1 ? `0${digits}` : digits;
+  if (!digitsRaw) {
+    throw new Error('Interleaved 2 of 5 barcode encoding requires a non-empty numeric string.');
+  }
+
+  const trimmed = digitsRaw.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(
+      `Invalid barcode input "${digitsRaw}": contains non-numeric characters. ` +
+        'Interleaved 2 of 5 only accepts numeric digits (0-9).'
+    );
+  }
+
+  if (trimmed.length % 2 !== 0) {
+    throw new Error(
+      `Invalid barcode length (${trimmed.length} digits): Interleaved 2 of 5 requires an even number of digits.`
+    );
+  }
+
+  const normalized = trimmed;
 
   const modules: BarcodeBarModule[] = [
     // Start pattern: narrow bar, narrow space, narrow bar, narrow space

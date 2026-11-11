@@ -60,6 +60,7 @@ apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/gradle*.log
 *.apk
+artifacts/
 
 # Embedded PlatformIO build caches and host test binaries
 .pio/

@@ -41,13 +41,13 @@
 
 // PN532 SPI / HSU Pins (ESP32-C6)
 #ifndef PIN_PN532_CS
-#define PIN_PN532_CS 15
+#define PIN_PN532_CS 0
 #endif
 #ifndef PIN_PN532_MISO
-#define PIN_PN532_MISO 11
+#define PIN_PN532_MISO 1
 #endif
 
-// Waveshare 4.2inch B/W E-Paper Pins (ESP32-C6)
+// Waveshare 4.2inch B/W E-Paper Pins (ESP32-C6, avoids strapping pins)
 #ifndef PIN_EPD_CS
 #define PIN_EPD_CS 18
 #endif
@@ -61,10 +61,10 @@
 #define PIN_EPD_BUSY 21
 #endif
 #ifndef PIN_EPD_SCK
-#define PIN_EPD_SCK 4
+#define PIN_EPD_SCK 10
 #endif
 #ifndef PIN_EPD_MOSI
-#define PIN_EPD_MOSI 5
+#define PIN_EPD_MOSI 11
 #endif
 
 #ifndef SMARTTAG_FW_VERSION
@@ -102,6 +102,7 @@ static SmartTagRecord s_last_record;
 static bool s_has_last_record = false;
 static bool s_pn532_ready = false;
 static bool s_epd_ready = false;
+static uint32_t s_idle_poll_cycles = 0;
 
 // =============================================================================
 // DISPLAY UPDATE ROUTINE
@@ -111,6 +112,19 @@ void epd_flush_to_screen() {
     if (!s_epd_ready) {
         Serial.println("[SMARTTAG-EPD] Display hardware not initialized, skipping SPI transfer.");
         return;
+    }
+
+    // Sanity check BUSY line before initiating full refresh
+    if (digitalRead(PIN_EPD_BUSY) == HIGH) {
+        Serial.println("[SMARTTAG-EPD] WARNING: EPD BUSY pin is HIGH before refresh; waiting briefly...");
+        unsigned long wait_start = millis();
+        while (digitalRead(PIN_EPD_BUSY) == HIGH && (millis() - wait_start < 5000)) {
+            delay(10);
+        }
+        if (digitalRead(PIN_EPD_BUSY) == HIGH) {
+            Serial.println("[SMARTTAG-EPD] ERROR: EPD BUSY timeout (>5s). Preserving NFC loop and skipping display flush.");
+            return;
+        }
     }
 
     Serial.println("[SMARTTAG-EPD] Transferring 400x300 frame buffer to E-paper...");
@@ -268,12 +282,21 @@ void setup() {
 
 void loop() {
     if (!s_pn532_ready) {
-        Serial.println("[SMARTTAG-PN532] PN532 not ready. Retrying in 3 seconds...");
+        Serial.println("[SMARTTAG-PN532] PN532 not ready. Resetting bus and retrying in 3 seconds...");
         delay(3000);
+#if PN532_MODE_I2C
+        Wire.end();
+        delay(50);
+        Wire.begin(PIN_PN532_SDA, PIN_PN532_SCL);
+#elif PN532_MODE_UART
+        Serial1.begin(115200);
+#endif
+        nfc.begin();
         uint32_t v = nfc.getFirmwareVersion();
         if (v) {
             nfc.SAMConfig();
             s_pn532_ready = true;
+            s_idle_poll_cycles = 0;
             Serial.println("[SMARTTAG-PN532] Re-connection successful!");
         }
         return;
@@ -285,9 +308,20 @@ void loop() {
     bool detected = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uid_len, 250);
 
     if (!detected) {
+        s_idle_poll_cycles++;
+        // Periodic health check every ~120 idle cycles (~40 seconds) to recover from loose jumper wires
+        if (s_idle_poll_cycles >= 120) {
+            s_idle_poll_cycles = 0;
+            if (!nfc.getFirmwareVersion()) {
+                Serial.println("[SMARTTAG-PN532] Health check failed! Marking PN532 offline for recovery...");
+                s_pn532_ready = false;
+                return;
+            }
+        }
         delay(100);
         return;
     }
+    s_idle_poll_cycles = 0;
 
     Serial.printf("\n[SMARTTAG-NFC] Target detected! UID Length: %u bytes, UID: ", (unsigned int)uid_len);
     for (uint8_t i = 0; i < uid_len; i++) {
@@ -301,23 +335,66 @@ void loop() {
         Serial.println("[SMARTTAG-NFC] Recommendation: Use standard NFC Forum Type 2 tag (NTAG213/215/216) or phone HCE.");
     }
 
-    // Read Type 2 user memory (Pages 4 through 39 = 144 bytes)
-    uint8_t user_memory[144];
+    // Dynamic Type 2 Tag reading (NTAG213 / 215 / 216)
+    // Buffer sized up to 256 bytes (64 pages) to handle standard NTAG213..216 capacities
+    uint8_t user_memory[256];
     memset(user_memory, 0, sizeof(user_memory));
     bool read_ok = true;
 
-    for (uint8_t page = 4; page < 4 + (sizeof(user_memory) / 4); page++) {
+    // Phase 1: Read initial 16 bytes (Pages 4 through 7) to parse NDEF TLV header
+    for (uint8_t page = 4; page <= 7; page++) {
         uint8_t page_buf[4];
         if (!nfc.ntag2xx_ReadPage(page, page_buf)) {
             read_ok = false;
-            Serial.printf("[SMARTTAG-NFC] Page %u read failed.\n", (unsigned int)page);
+            Serial.printf("[SMARTTAG-NFC] Phase 1 Page %u read failed.\n", (unsigned int)page);
             break;
         }
         memcpy(user_memory + ((page - 4) * 4), page_buf, 4);
     }
 
     if (!read_ok) {
-        Serial.println("[SMARTTAG-NFC] Failed to read NTAG user memory. Tag removed or unsupported card.");
+        Serial.println("[SMARTTAG-NFC] Failed to read initial NTAG pages. Tag removed early or unsupported card.");
+        delay(1000);
+        return;
+    }
+
+    // Estimate total bytes needed based on TLV header
+    size_t est_bytes = smarttag_estimate_type2_total_bytes(user_memory, 16);
+    uint8_t total_pages = 4; // Already read Pages 4..7 (4 pages)
+
+    if (est_bytes > 0) {
+        if (est_bytes > sizeof(user_memory)) {
+            est_bytes = sizeof(user_memory);
+        }
+        total_pages = (uint8_t)((est_bytes + 3) / 4);
+        if (total_pages < 4) total_pages = 4;
+        if (total_pages > (sizeof(user_memory) / 4)) {
+            total_pages = (uint8_t)(sizeof(user_memory) / 4);
+        }
+        Serial.printf("[SMARTTAG-NFC] Dynamic TLV detected: %u bytes needed (%u pages total).\n",
+                      (unsigned int)est_bytes, (unsigned int)total_pages);
+    } else if (user_memory[0] == 'P' && user_memory[1] == 'A') {
+        // Raw ASCII PA payload starting directly at page 4: read up to 24 pages (96 bytes)
+        total_pages = 24;
+        Serial.println("[SMARTTAG-NFC] Raw ASCII PA header detected at Page 4.");
+    } else {
+        // Fallback default: read standard NTAG213 user memory (36 pages = 144 bytes)
+        total_pages = 36;
+    }
+
+    // Phase 2: Read remaining required pages
+    for (uint8_t page = 8; page < 4 + total_pages; page++) {
+        uint8_t page_buf[4];
+        if (!nfc.ntag2xx_ReadPage(page, page_buf)) {
+            read_ok = false;
+            Serial.printf("[SMARTTAG-NFC] Phase 2 Page %u read failed.\n", (unsigned int)page);
+            break;
+        }
+        memcpy(user_memory + ((page - 4) * 4), page_buf, 4);
+    }
+
+    if (!read_ok) {
+        Serial.println("[SMARTTAG-NFC] Failed to complete tag reading. Tag removed mid-read.");
         delay(1000);
         return;
     }
@@ -326,8 +403,9 @@ void loop() {
     char payload_text[SMARTTAG_MAX_PAYLOAD_LEN + 1];
     memset(payload_text, 0, sizeof(payload_text));
 
+    size_t actual_mem_len = (size_t)total_pages * 4;
     size_t extracted_len = smarttag_extract_text_from_type2_tlv(
-        user_memory, sizeof(user_memory), payload_text, sizeof(payload_text)
+        user_memory, actual_mem_len, payload_text, sizeof(payload_text)
     );
 
     if (extracted_len == 0) {
@@ -361,6 +439,13 @@ void loop() {
         Serial.printf("[SMARTTAG-NFC] REJECTED: Payload invalid: %s (code %d)\n",
                       smarttag_error_string(parse_res), (int)parse_res);
         Serial.println("[SMARTTAG-EPD] Ignoring corrupt/invalid payload. Display preserved.");
+        delay(1500);
+        return;
+    }
+
+    // RF CRC-16 enforcement: PA2 records received over RF must carry valid CRC
+    if (strncmp(payload_text, "PA2|", 4) == 0 && !new_rec.has_crc) {
+        Serial.println("[SMARTTAG-NFC] REJECTED: Protocol PA2 requires 4-hex CRC-16 checksum over RF.");
         delay(1500);
         return;
     }

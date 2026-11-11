@@ -4,7 +4,7 @@
 **Date:** November 2026  
 **Architecture:** PolyAero Aviation Architecture / Cathay SmartTag Prototype  
 **Target Hardware:** ESP32-C6 DevKit + Waveshare PN532 NFC HAT + Waveshare 4.2" B/W E-Paper Module V2  
-**Target Mobile App:** Cathay SmartTag Standalone Android APK (`com.polyaero.cathaysmarttag`)  
+**Target Mobile App:** Cathay SmartTag Standalone Android APK (`com.polyaero.smarttag`)  
 
 ---
 
@@ -48,8 +48,8 @@ The system bridges mobile airline baggage check-in with physical e-paper baggage
 |  |                                                               |  DC:19,     |  |
 |  |                                                               |  RST:20,    |  |
 |  |                                                               |  BUSY:21,   |  |
-|  |                                                               |  SCK:4,     |  |
-|  |                                                               |  MOSI:5)    |  |
+|  |                                                               |  SCK:10,    |  |
+|  |                                                               |  MOSI:11)   |  |
 |  |                                                               v             |  |
 |  |                                                     +--------------------+  |  |
 |  |                                                     | Waveshare 4.2" EPD |  |  |
@@ -71,7 +71,7 @@ The system bridges mobile airline baggage check-in with physical e-paper baggage
 | **E-Paper Display** | Waveshare 4.2-inch E-Paper Module V2 (Black/White) | 400x300 resolution, SSD1683 controller, embedded TXS0108E voltage level translator, partial and full refresh. |
 | **Passive NFC Media** | NTAG213 / NTAG215 / NTAG216 Sticker or Card | **Primary target:** Standard Type 2 NFC tag formatted as NDEF. 144–888 bytes user memory. |
 | **Supplied Key Fob** | Blue NFC Fob (MIFARE Classic 1K) | **Limitation:** Uses proprietary NXP Crypto-1 authentication. Not standard NDEF formatted. Detected by UID scanning; write rejected cleanly with clear guidance. |
-| **Mobile Device** | Android NFC Smartphone (Android 8.0+) | Runs `CathaySmartTag-NFC-Write-Preview.apk`. Standalone offline operation. |
+| **Mobile Device** | Android NFC Smartphone (Android 8.0+) | Runs `CathaySmartTag-NFC-Hardened-Preview.apk`. Standalone offline operation. |
 
 ---
 
@@ -107,7 +107,7 @@ PA2|<version>|<tagId>|<bagId>|<flight>|<from>|<to>|<status>|<revision>|<crc16>
 ```
 PA2|1|ST-2048|0160123456|CX548|HKG|NRT|TAGGED|1|D082
 ```
-Length: 51 ASCII characters (51 bytes).
+Length: 52 ASCII characters (52 bytes).
 
 ### 3.3 CRC-16-CCITT Definition
 - **Polynomial:** `0x1021` ($x^{16} + x^{12} + x^5 + 1$)
@@ -119,13 +119,12 @@ Length: 51 ASCII characters (51 bytes).
 ### 3.4 Type 2 Tag NDEF Memory Layout
 In standard NTAG213 tags, the text record is encoded as an NFC Forum Type 2 NDEF TLV:
 - **Pages 0–3:** Serial Number, Lock bytes, CC (Capability Container = `E1 10 12 00` for NTAG213).
-- **Page 4 (0x04):** `0x03` (NDEF TLV tag), followed by length byte `0x37` (55 bytes).
-- **NDEF Record Header:** `0xD1` (MB=1, ME=1, SR=1, TNF=0x01 Well-Known).
-- **Type:** `0x01` (`'T'` for RTD_TEXT).
-- **Payload:** Status byte `0x02` (UTF-8, 2-byte lang code `'e' 'n'`), followed by 51 bytes of `PA2|...`.
+- **Page 4 (0x04):** `0x03` (NDEF TLV tag), followed by length byte `0x3B` (59 bytes NDEF message).
+- **NDEF Record Header:** `0xD1` (MB=1, ME=1, SR=1, TNF=0x01 Well-Known), Type len `0x01`, Payload len `0x37` (55 bytes), Type `'T'`.
+- **Payload:** Status byte `0x02` (UTF-8, 2-byte lang code `'e' 'n'`), followed by 52 bytes of `PA2|...`.
 - **Terminator:** `0xFE` (Terminator TLV).
 
-Total occupied user memory: 59 bytes. This easily fits in the smallest NTAG213 tag (144 bytes user space, >56% headroom).
+Total occupied user memory: 62 bytes (`0x03 0x3B <59B NDEF> 0xFE`). This easily fits in the smallest NTAG213 tag (144 bytes user space, >56% headroom).
 
 ---
 
@@ -150,15 +149,15 @@ The Waveshare PN532 NFC HAT features an interface selection switch (`I1 / I0`) a
 ### 4.2 Breadboard Wiring Table (ESP32-C6 DevKit)
 
 > [!WARNING]
-> All breadboard jumper connections listed below are the firmware default assignments and must be treated as **UNVERIFIED** until confirmed on your physical bench. Avoid ESP32-C6 strapping pins (GPIO 8, 9, 15) during cold boot if possible.
+> All breadboard jumper connections listed below are the firmware default assignments and must be treated as **UNVERIFIED** until confirmed on your physical bench. Default pins avoid ESP32-C6 strapping pins (`GPIO 4, 5, 8, 9, 15`) and USB D-/D+ (`GPIO 12, 13`).
 
 #### E-Paper Module (Waveshare 4.2" V2):
 | E-Paper Wire | Pin Name | ESP32-C6 GPIO Pin | Electrical Spec |
 | :--- | :--- | :--- | :--- |
 | **Red** | `VCC` | `3V3` | 3.3V Power Supply |
 | **Black** | `GND` | `GND` | Common Ground |
-| **Blue** | `DIN` (MOSI) | `GPIO 5` (`PIN_EPD_MOSI`) | SPI Data Out (Master -> Display) |
-| **Yellow** | `CLK` (SCK) | `GPIO 4` (`PIN_EPD_SCK`) | SPI Clock Out |
+| **Blue** | `DIN` (MOSI) | `GPIO 11` (`PIN_EPD_MOSI`) | SPI Data Out (Master -> Display) |
+| **Yellow** | `CLK` (SCK) | `GPIO 10` (`PIN_EPD_SCK`) | SPI Clock Out |
 | **Orange** | `CS` | `GPIO 18` (`PIN_EPD_CS`) | Active-Low Chip Select |
 | **Green** | `DC` | `GPIO 19` (`PIN_EPD_DC`) | Data / Command Control |
 | **White** | `RST` | `GPIO 20` (`PIN_EPD_RST`) | Active-Low Hardware Reset |
@@ -167,7 +166,7 @@ The Waveshare PN532 NFC HAT features an interface selection switch (`I1 / I0`) a
 #### PN532 Module (I2C Mode — Default):
 | PN532 Pin | ESP32-C6 Pin | Function / Notes |
 | :--- | :--- | :--- |
-| `VCC` | `3V3` or `5V` | Regulated to 3.3V on HAT |
+| `VCC` | `3V3` | Regulated 3.3V from ESP32-C6 DevKit (`<=3.6V` safe logic) |
 | `GND` | `GND` | Common Ground |
 | `SDA` | `GPIO 6` (`PIN_PN532_SDA`) | I2C Data Line (External pull-up to 3.3V on HAT) |
 | `SCL` | `GPIO 7` (`PIN_PN532_SCL`) | I2C Clock Line (External pull-up to 3.3V on HAT) |
@@ -177,10 +176,10 @@ The Waveshare PN532 NFC HAT features an interface selection switch (`I1 / I0`) a
 #### PN532 Module (SPI Alternative Mode):
 | PN532 Pin | ESP32-C6 Pin | Function / Notes |
 | :--- | :--- | :--- |
-| `SCK` | `GPIO 4` | Shared with EPD SCK |
-| `MOSI` | `GPIO 5` | Shared with EPD MOSI |
-| `MISO` | `GPIO 11` | SPI Master In / Slave Out |
-| `NSS` (CS) | `GPIO 15` | Dedicated PN532 Chip Select (Active Low) |
+| `SCK` | `GPIO 10` | Shared with EPD SCK |
+| `MOSI` | `GPIO 11` | Shared with EPD MOSI |
+| `MISO` | `GPIO 1` | SPI Master In / Slave Out |
+| `NSS` (CS) | `GPIO 0` | Dedicated PN532 Chip Select (Active Low) |
 | `RST` | `GPIO 3` | Reset |
 
 ---
@@ -222,13 +221,14 @@ uv tool run platformio device monitor -b 115200
 #### Expected Boot Log:
 ```
 =============================================================
-  Cathay SmartTag NFC-to-E-Paper Gateway (ESP32-C6)
-  Firmware Rev 1.0 — PolyAero Aviation Architecture
+  Cathay SmartTag NFC-to-E-Paper Gateway (ESP32-C6) v2.0.0
+  PolyAero Aviation Architecture — Protocol PA2 (CRC-16)
 =============================================================
-[SMARTTAG-CFG] PN532 Interface: I2C (SDA=6, SCL=7, IRQ=14, RST=15)
-[SMARTTAG-CFG] E-Paper Interface: SPI (CS=23, DC=18, RST=5, BUSY=4, SCK=20, MOSI=22)
+[SMARTTAG-CFG] PN532 Interface: I2C (SDA=6, SCL=7, IRQ=2, RST=3)
+[SMARTTAG-CFG] E-Paper Interface: SPI (CS=18, DC=19, RST=20, BUSY=21, SCK=10, MOSI=11)
 [SMARTTAG-CFG] WARNING: All breadboard pin mappings UNVERIFIED on physical hardware.
-[SMARTTAG-EPD] Initializing Waveshare 4.2" E-paper display...
+[SMARTTAG-CFG] 3.3V Logic Safety: ESP32-C6 GPIOs accept 3.6V max. Power EPD at 3.3V VCC.
+[SMARTTAG-EPD] Configuring ESP32-C6 SPI bus and Waveshare 4.2" E-paper display...
 [SMARTTAG-EPD] Display initialized.
 [SMARTTAG-NVS] Restored valid baggage state from NVS: Tag=ST-2048 Bag=0160123456 Flight=CX548 Rev=1
 [SMARTTAG-EPD] Restoring cached baggage tag from NVS cold-boot...
@@ -243,12 +243,12 @@ uv tool run platformio device monitor -b 115200
 ### 6.1 APK Delivery & Sideloading
 The verified standalone release APK is located at:
 ```
-artifacts/CathaySmartTag-NFC-Write-Preview.apk
+artifacts/CathaySmartTag-NFC-Hardened-Preview.apk
 ```
 
 To install via ADB:
 ```powershell
-adb install -r artifacts/CathaySmartTag-NFC-Write-Preview.apk
+adb install -r artifacts/CathaySmartTag-NFC-Hardened-Preview.apk
 ```
 Or transfer the `.apk` file to the phone's internal storage and open via Android File Manager.
 
@@ -311,26 +311,29 @@ For the live hackathon presentation, follow this strict step-by-step script:
 ## 9. Test Evidence & Verification Record
 
 ### 9.1 Automated Software & Logic Tests (100% Passed)
-- **Protocol & CRC Unit Tests (`packages/shared`):** 10 Vitest tests verified CRC-16 CCITT, pipe serialization, and revision progression.
-- **Node Integration Tests (`tests/nfc-integration.test.cjs`):** 3 tests verified NDEF message generation (59 bytes), state machine transitions, and error boundary handling.
-- **C++ Protocol & TLV Extraction Suite (`test/test_protocol.cpp`):** 7 tests compiled with MSYS2 GCC passed:
-  - CRC-16 CCITT computation against aviation test vectors.
-  - Pipe-delimited parsing of `PA2|...`.
-  - Stale and identical revision rejection.
-  - Live extraction of 51-byte text payload from actual 59-byte `react-native-nfc-manager` Type 2 TLV bytes.
+- **Protocol, Flow & Storage Unit Tests (`packages/shared`, Vitest):** 46 tests passed (13 in `nfcProtocol.test.ts`, 13 in `shared.test.ts`, 20 in `smarttag-flow.test.ts`) verifying CRC-16 CCITT, strict 10-digit IATA numeric plate enforcement, strict ITF-2of5 encoding, monotonic NDEF revision persistence across restarts, and storage write-failure rollback.
+- **Node Integration Tests (`tests/*.test.cjs`):** 32 tests passed verifying NFC UI state machine, NDEF write/readback verification, Blue Fob rejection, persistent storage durability, and `+1 Rev` recovery.
+- **C++ Protocol & TLV Extraction Suite (`test/test_protocol.cpp`):** 9 tests compiled with `-Wall -Wextra` via MSYS2 GCC passed:
+  - CRC-16 CCITT computation against aviation test vectors (`0xD082`).
+  - Strict 10-digit numeric baggage ID enforcement & revision overflow bounds.
+  - Dynamic Type 2 TLV sizing (`smarttag_estimate_type2_total_bytes`) across short and extended TLVs.
+  - Stale, duplicate, and conflicting equal-revision handling + oversized non-truncation guarantee.
+  - Live extraction of 52-byte text payload from actual 59-byte `react-native-nfc-manager` Type 2 TLV bytes.
+- **Monorepo Builds & Static Checks:** `pnpm lint`, `pnpm typecheck`, `pnpm build:staff`, `expo export --platform web`, `expo-doctor` (20/20), PlatformIO ESP32-C6 build, and Android Gradle `assembleRelease` all passed cleanly.
 
-### 9.2 Physical Bench Tests Record
-Due to development environment separation, physical hardware bench tests are cataloged with strict truthfulness:
+### 9.2 Physical Bench Verification Gates (Gates 1–8)
+Due to the absence of locally attached physical devices (`adb devices` empty, no serial `COM` port detected), bench gates are recorded with strict truthfulness:
 
-| Test ID | Description | Execution Status | Evidence / Verification Method |
+| Gate | Description | Status | Notes / Verification Evidence |
 | :---: | :--- | :---: | :--- |
-| **Test A** | Android NDEF write & live RF readback on NTAG213 | **NOT EXECUTED** | Logic verified via Android unit harness & mock NdefHandler. |
-| **Test B** | Blue Fob MIFARE Classic write rejection | **NOT EXECUTED** | Handled by `isMifareClassic` detection in `hardwareScan.native.ts`. |
-| **Test C** | PN532 I2C detection & NTAG213 page read | **NOT EXECUTED** | C++ TLV extractor verified against byte captures; driver compiled. |
-| **Test D** | Waveshare 4.2" E-paper SPI refresh | **NOT EXECUTED** | Framebuffer generator & ITF barcode tested in C++ suite. |
-| **Test E** | Corrupted CRC payload rejection | **NOT EXECUTED** | C++ test `test_corrupt_payload_rejected` PASSED on host. |
-| **Test F** | NVS cold boot state recovery | **NOT EXECUTED** | Preferences logic implemented in `main.cpp`; requires hardware flash. |
-| **Test G** | End-to-end phone -> tag -> receiver -> e-paper | **NOT EXECUTED** | Documented in Section 7 for live hackathon execution. |
+| **Gate 1** | Software Build, Signing & Automated Suites | **PASS** | APK signed (`v2`), firmware `firmware.bin` built, 46 Vitest + 32 Node + 9 C++ tests passed. |
+| **Gate 2** | Breadboard Wiring & 3.3V Logic Level Check | **NOT EXECUTED** | No physical bench connected; GPIO table marked `UNVERIFIED`, avoids strapping pins (`GPIO4/5/8/9/15`). |
+| **Gate 3** | ESP32-C6 Firmware Flash & Serial Boot Log | **NOT EXECUTED** | Requires physical USB-C COM connection; `firmware.bin` binary ready. |
+| **Gate 4** | PN532 I2C Detection & NTAG213 Read Test | **NOT EXECUTED** | Requires PN532 hardware + NTAG213 tag; Type 2 TLV extractor verified on host. |
+| **Gate 5** | Waveshare 4.2" E-Paper SPI Refresh Test | **NOT EXECUTED** | Requires V2 SSD1683 E-paper module; framebuffer + ITF barcode verified on host. |
+| **Gate 6** | Android APK NFC Write & Live Readback | **NOT EXECUTED** | Requires NFC-enabled Android device + NTAG213 sticker. |
+| **Gate 7** | End-to-End Tap (Phone -> Tag -> ESP32 -> EPD) | **NOT EXECUTED** | Full end-to-end physical hardware demonstration pending live bench setup. |
+| **Gate 8** | Power Cycle & NVS Cold-Boot Persistence | **NOT EXECUTED** | ESP32 NVS `Preferences` & mobile `PersistentStorageAdapter` verified via software restart tests only. |
 
 ---
 

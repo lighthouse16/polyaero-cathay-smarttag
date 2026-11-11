@@ -6,6 +6,9 @@ import {
   calculateCrc16Ccitt,
   formatCrc16,
   evaluatePayloadProgression,
+  encodeInterleaved2Of5,
+  isValidIataBaggageLicensePlate,
+  isValidItfBarcodeDigits,
   NfcProtocolError,
   SmartTagNfcRecord,
   CURRENT_NFC_PROTOCOL_VERSION,
@@ -128,5 +131,48 @@ describe('NFC Baggage Payload Protocol (PA2)', () => {
     expect(decoded.tagId).toBe('ST-2048');
     expect(decoded.bagId).toBe('0160123456');
     expect(decoded.crc).toBe(crc);
+  });
+
+  it('strictly enforces 10-digit numeric IATA baggage license plates with leading zeros preserved', () => {
+    expect(isValidIataBaggageLicensePlate('0000123456')).toBe(true);
+    expect(isValidIataBaggageLicensePlate('016012345')).toBe(false); // 9 digits
+    expect(isValidIataBaggageLicensePlate('01601234567')).toBe(false); // 11 digits
+    expect(isValidIataBaggageLicensePlate('016012345A')).toBe(false); // alphanumeric
+
+    const leadingZero = encodeNfcRecord({ ...sampleRecord, bagId: '0000123456' });
+    expect(decodeNfcRecord(leadingZero).bagId).toBe('0000123456');
+
+    expect(() => encodeNfcRecord({ ...sampleRecord, bagId: 'BAG-123456' })).toThrow(NfcProtocolError);
+    expect(() => encodeNfcRecord({ ...sampleRecord, bagId: '016012345' })).toThrow(NfcProtocolError);
+    expect(() => decodeNfcRecord('PA1|BAG123|HKG-NRT|TAGGED|2026-11-10')).toThrow(NfcProtocolError);
+  });
+
+  it('rejects revision overflow and conflicting equal revisions', () => {
+    expect(() =>
+      encodeNfcRecord({ ...sampleRecord, rev: 4294967296 })
+    ).toThrow(NfcProtocolError);
+    expect(() =>
+      decodeNfcRecord('PA2|1|ST-2048|0160123456|CX548|HKG|NRT|TAGGED|1abc|0000')
+    ).toThrow(NfcProtocolError);
+
+    const r1: SmartTagNfcRecord = { ...sampleRecord, rev: 2, status: 'TAGGED' };
+    const r1Conflict: SmartTagNfcRecord = { ...sampleRecord, rev: 2, status: 'LOADED' };
+    expect(evaluatePayloadProgression(r1Conflict, r1)).toBe('STALE');
+  });
+
+  it('strictly validates Interleaved 2 of 5 barcode digits and preserves widths', () => {
+    expect(isValidItfBarcodeDigits('0160123456')).toBe(true);
+    expect(isValidItfBarcodeDigits('016012345')).toBe(false);
+    expect(isValidItfBarcodeDigits('')).toBe(false);
+
+    expect(() => encodeInterleaved2Of5('')).toThrow();
+    expect(() => encodeInterleaved2Of5('123')).toThrow();
+    expect(() => encodeInterleaved2Of5('01601234AB')).toThrow();
+
+    const itf = encodeInterleaved2Of5('0000123456');
+    // Start (4 units) + 5 digit pairs * 18 units + Stop (5 units) = 99 total units
+    const totalUnits = itf.reduce((sum, m) => sum + m.widthUnits, 0);
+    expect(totalUnits).toBe(99);
+    expect(itf.length).toBe(57);
   });
 });

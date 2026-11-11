@@ -505,6 +505,15 @@ export class StoragePersistenceError extends Error {
   }
 }
 
+export interface NdefRevisionState {
+  lastCommittedRev: number;
+  lastCommittedTimestamp: string;
+  lastCommittedBagId?: string;
+  lastCommittedContentSignature?: string;
+  lastCommittedPayload?: string;
+  lastCommittedPhysicalUid?: string;
+}
+
 export interface SmartTagRepositorySnapshot {
   version: number;
   itineraries: PassengerItinerary[];
@@ -512,6 +521,7 @@ export interface SmartTagRepositorySnapshot {
   bagSetupsByItinerary: Record<string, BagSetupRecord[]>;
   eventsByBagId: Record<string, RecordedBaggageEvent[]>;
   recoveryByBagSetupId: Record<string, PassengerRecoveryRecord>;
+  ndefRevisionsByTagKey?: Record<string, NdefRevisionState>;
   activeItineraryId: string | null;
   activeBagSetupId: string | null;
 }
@@ -656,6 +666,34 @@ export interface SmartTagRepository {
   // Demo reset (developer-only control)
   resetDemoState(options?: { populateDemoBooking?: boolean }): void;
 
+  // NDEF Revision Monotonic Persistence (P0)
+  getNdefRevisionState(tagKey: string): NdefRevisionState | null;
+  getNextNdefRevision(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    bagId: string;
+    flight: string;
+    from: string;
+    to: string;
+    status: string;
+  }): number;
+  commitVerifiedNdefWrite(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    bagId: string;
+    flight: string;
+    from: string;
+    to: string;
+    status: string;
+    rev: number;
+    payloadText: string;
+  }): { success: boolean; error?: string };
+  reconcileObservedTagRevision(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    observedRev: number;
+  }): number;
+
   // Persistence health & verification
   getLastPersistenceResult?(): PersistenceCommitResult;
 }
@@ -745,6 +783,7 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
         bagSetupsByItinerary: {},
         eventsByBagId: {},
         recoveryByBagSetupId: {},
+        ndefRevisionsByTagKey: {},
         activeItineraryId: null,
         activeBagSetupId: null,
       };
@@ -773,6 +812,7 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
       },
       eventsByBagId: {},
       recoveryByBagSetupId: {},
+      ndefRevisionsByTagKey: {},
       activeItineraryId: itinerary.id,
       activeBagSetupId: initialBag.id,
     };
@@ -787,7 +827,10 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
       if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.itineraries)) {
         return null;
       }
-      return parsed;
+      return {
+        ...parsed,
+        ndefRevisionsByTagKey: parsed.ndefRevisionsByTagKey ?? {},
+      };
     } catch {
       return null;
     }
@@ -1098,6 +1141,169 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
     }
 
     return updatedBag;
+  }
+
+  // ---------------------------------------------------------------------------
+  // NDEF Revision Monotonic Persistence (P0)
+  // ---------------------------------------------------------------------------
+
+  private getTagKeys(smartTagCode: string, physicalUid?: string | null): string[] {
+    const keys: string[] = [];
+    if (smartTagCode && smartTagCode.trim()) {
+      keys.push(`TAG:${smartTagCode.trim().toUpperCase()}`);
+    }
+    if (physicalUid && physicalUid.trim()) {
+      keys.push(`UID:${physicalUid.trim().toUpperCase()}`);
+    }
+    return keys;
+  }
+
+  public getNdefRevisionState(tagKey: string): NdefRevisionState | null {
+    const store = this.state.ndefRevisionsByTagKey ?? {};
+    return store[tagKey] ?? null;
+  }
+
+  public getNextNdefRevision(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    bagId: string;
+    flight: string;
+    from: string;
+    to: string;
+    status: string;
+  }): number {
+    const store = this.state.ndefRevisionsByTagKey ?? {};
+    const keys = this.getTagKeys(params.smartTagCode, params.physicalUid);
+
+    let maxCommittedRev = 0;
+    let matchedSignatureRev: number | null = null;
+    const contentSig = [
+      params.smartTagCode.trim().toUpperCase(),
+      params.bagId.trim(),
+      params.flight.trim().toUpperCase(),
+      params.from.trim().toUpperCase(),
+      params.to.trim().toUpperCase(),
+      params.status.trim().toUpperCase().replace(/\s+/g, '_'),
+    ].join('|');
+
+    for (const key of keys) {
+      const state = store[key];
+      if (state) {
+        if (state.lastCommittedRev > maxCommittedRev) {
+          maxCommittedRev = state.lastCommittedRev;
+        }
+        if (state.lastCommittedContentSignature === contentSig) {
+          matchedSignatureRev = state.lastCommittedRev;
+        }
+      }
+    }
+
+    if (maxCommittedRev === 0) {
+      return 1;
+    }
+
+    // If identical content was already committed, keep the same revision (avoids needless E-paper flicker)
+    if (matchedSignatureRev !== null && matchedSignatureRev === maxCommittedRev) {
+      return matchedSignatureRev;
+    }
+
+    // Any content change (status, bagId, flight, etc.) monotonically increments beyond highest committed
+    return maxCommittedRev + 1;
+  }
+
+  public commitVerifiedNdefWrite(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    bagId: string;
+    flight: string;
+    from: string;
+    to: string;
+    status: string;
+    rev?: number;
+    revision?: number;
+    payloadText?: string;
+  }): { success: boolean; error?: string } {
+    const store = { ...(this.state.ndefRevisionsByTagKey ?? {}) };
+    const keys = this.getTagKeys(params.smartTagCode, params.physicalUid);
+    const contentSig = [
+      params.smartTagCode.trim().toUpperCase(),
+      params.bagId.trim(),
+      params.flight.trim().toUpperCase(),
+      params.from.trim().toUpperCase(),
+      params.to.trim().toUpperCase(),
+      params.status.trim().toUpperCase().replace(/\s+/g, '_'),
+    ].join('|');
+
+    const effectiveRev = params.rev ?? params.revision ?? 1;
+    const nextRevState: NdefRevisionState = {
+      lastCommittedRev: effectiveRev,
+      lastCommittedTimestamp: new Date().toISOString(),
+      lastCommittedBagId: params.bagId.trim(),
+      lastCommittedContentSignature: contentSig,
+      lastCommittedPayload: params.payloadText ?? '',
+      lastCommittedPhysicalUid: params.physicalUid ? params.physicalUid.trim().toUpperCase() : undefined,
+    };
+
+    for (const key of keys) {
+      store[key] = nextRevState;
+    }
+
+    const commitRes = this.commit(
+      {
+        ...this.state,
+        ndefRevisionsByTagKey: store,
+      },
+      { requireDurablePersistence: true }
+    );
+
+    if (!commitRes.committed) {
+      return {
+        success: false,
+        error: commitRes.error ?? 'FAILED_TO_PERSIST_NDEF_REVISION',
+      };
+    }
+
+    return { success: true };
+  }
+
+  public reconcileObservedTagRevision(params: {
+    smartTagCode: string;
+    physicalUid?: string | null;
+    observedRev?: number;
+    observedRevision?: number;
+  }): number {
+    const effObservedRev = params.observedRev ?? params.observedRevision ?? 1;
+    if (effObservedRev <= 0) return 1;
+    const store = { ...(this.state.ndefRevisionsByTagKey ?? {}) };
+    const keys = this.getTagKeys(params.smartTagCode, params.physicalUid);
+
+    let maxRev = effObservedRev;
+    for (const key of keys) {
+      const cur = store[key];
+      if (cur && cur.lastCommittedRev > maxRev) {
+        maxRev = cur.lastCommittedRev;
+      }
+    }
+
+    const updatedState: NdefRevisionState = {
+      lastCommittedRev: maxRev,
+      lastCommittedTimestamp: new Date().toISOString(),
+      lastCommittedPhysicalUid: params.physicalUid ? params.physicalUid.trim().toUpperCase() : undefined,
+    };
+
+    for (const key of keys) {
+      store[key] = { ...(store[key] ?? {}), ...updatedState };
+    }
+
+    this.commit(
+      {
+        ...this.state,
+        ndefRevisionsByTagKey: store,
+      },
+      { requireDurablePersistence: true }
+    );
+
+    return maxRev;
   }
 
   public recordSyncOutcome(bagSetupId: string, outcome: NfcSyncOutcome): BagSetupRecord {

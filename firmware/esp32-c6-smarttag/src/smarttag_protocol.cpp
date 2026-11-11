@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 
 uint16_t smarttag_crc16_ccitt(const char *data, size_t len) {
     uint16_t crc = 0xFFFF;
@@ -72,7 +74,7 @@ SmartTagParseResult smarttag_parse_payload(const char *raw, size_t len, SmartTag
             }
         }
 
-        if (field_count < 9) {
+        if (field_count < 9 || field_count > 10) {
             return SMARTTAG_ERR_FORMAT;
         }
 
@@ -87,7 +89,18 @@ SmartTagParseResult smarttag_parse_payload(const char *raw, size_t len, SmartTag
         // fields[8] = rev
         // fields[9] = crc16 (optional)
 
-        int version = atoi(fields[1]);
+        // Validate protocol version string strictly numeric
+        char ver_buf[8];
+        trim_and_copy(ver_buf, fields[1], sizeof(ver_buf));
+        if (strlen(ver_buf) == 0 || !isdigit((unsigned char)ver_buf[0])) {
+            return SMARTTAG_ERR_VERSION;
+        }
+        for (size_t i = 0; ver_buf[i] != '\0'; i++) {
+            if (!isdigit((unsigned char)ver_buf[i])) {
+                return SMARTTAG_ERR_VERSION;
+            }
+        }
+        int version = atoi(ver_buf);
         if (version != SMARTTAG_PROTOCOL_VERSION) {
             return SMARTTAG_ERR_VERSION;
         }
@@ -100,20 +113,64 @@ SmartTagParseResult smarttag_parse_payload(const char *raw, size_t len, SmartTag
         trim_and_copy(out_record->to, fields[6], sizeof(out_record->to));
         trim_and_copy(out_record->status, fields[7], sizeof(out_record->status));
 
-        out_record->revision = (uint32_t)strtoul(fields[8], NULL, 10);
+        // Validate revision contains only digits and does not overflow uint32
+        char rev_buf[16];
+        trim_and_copy(rev_buf, fields[8], sizeof(rev_buf));
+        size_t rev_len = strlen(rev_buf);
+        if (rev_len == 0 || rev_len > 10) {
+            return SMARTTAG_ERR_FIELD_INVALID;
+        }
+        for (size_t i = 0; i < rev_len; i++) {
+            if (!isdigit((unsigned char)rev_buf[i])) {
+                return SMARTTAG_ERR_FIELD_INVALID;
+            }
+        }
+        errno = 0;
+        char *endptr = NULL;
+        unsigned long long rev_val = strtoull(rev_buf, &endptr, 10);
+        if (errno == ERANGE || endptr == rev_buf || *endptr != '\0' || rev_val > 4294967295ULL) {
+            return SMARTTAG_ERR_FIELD_INVALID;
+        }
+        out_record->revision = (uint32_t)rev_val;
 
-        if (strlen(out_record->tag_id) == 0 || strlen(out_record->bag_id) == 0 ||
-            strlen(out_record->flight) == 0 || strlen(out_record->from) != 3 ||
-            strlen(out_record->to) != 3 || strlen(out_record->status) == 0) {
+        if (strlen(out_record->tag_id) < 3 || strlen(out_record->tag_id) > 16 ||
+            strlen(out_record->flight) < 2 || strlen(out_record->flight) > 7 ||
+            strlen(out_record->from) != 3 || strlen(out_record->to) != 3 ||
+            strlen(out_record->status) == 0) {
             return SMARTTAG_ERR_FIELD_INVALID;
         }
 
-        if (field_count >= 10 && strlen(fields[9]) >= 4) {
-            out_record->crc16 = parse_hex4(fields[9]);
+        for (int i = 0; i < 3; i++) {
+            if (!isalpha((unsigned char)out_record->from[i]) || !isalpha((unsigned char)out_record->to[i])) {
+                return SMARTTAG_ERR_FIELD_INVALID;
+            }
+        }
+
+        // Strictly enforce 10 numeric digits for IATA Interleaved 2 of 5 barcode compliance
+        if (strlen(out_record->bag_id) != 10) {
+            return SMARTTAG_ERR_FIELD_INVALID;
+        }
+        for (int i = 0; i < 10; i++) {
+            if (!isdigit((unsigned char)out_record->bag_id[i])) {
+                return SMARTTAG_ERR_FIELD_INVALID;
+            }
+        }
+
+        if (field_count >= 10) {
+            char crc_buf[8];
+            trim_and_copy(crc_buf, fields[9], sizeof(crc_buf));
+            if (strlen(crc_buf) != 4) {
+                return SMARTTAG_ERR_CRC_MISMATCH;
+            }
+            for (int i = 0; i < 4; i++) {
+                if (!isxdigit((unsigned char)crc_buf[i])) {
+                    return SMARTTAG_ERR_CRC_MISMATCH;
+                }
+            }
+            out_record->crc16 = parse_hex4(crc_buf);
             out_record->has_crc = true;
 
             // Reconstruct canonical prefix up to rev to compute expected CRC
-            // Find last pipe '|' in raw string
             const char *last_pipe = strrchr(raw, '|');
             if (last_pipe) {
                 size_t prefix_len = (size_t)(last_pipe - raw);
@@ -152,6 +209,14 @@ SmartTagParseResult smarttag_parse_payload(const char *raw, size_t len, SmartTag
             out_record->version = 1;
             strcpy(out_record->tag_id, "ST-LEGACY");
             trim_and_copy(out_record->bag_id, fields[1], sizeof(out_record->bag_id));
+            if (strlen(out_record->bag_id) != 10) {
+                return SMARTTAG_ERR_FIELD_INVALID;
+            }
+            for (int i = 0; i < 10; i++) {
+                if (!isdigit((unsigned char)out_record->bag_id[i])) {
+                    return SMARTTAG_ERR_FIELD_INVALID;
+                }
+            }
             strcpy(out_record->flight, "CX548");
 
             // Split route e.g. "HKG-NRT"
@@ -182,14 +247,16 @@ SmartTagProgression smarttag_evaluate_progression(const SmartTagRecord *incoming
         return PROG_STALE;
     }
 
-    if (incoming->revision == last_valid->revision &&
-        strcmp(incoming->tag_id, last_valid->tag_id) == 0 &&
-        strcmp(incoming->bag_id, last_valid->bag_id) == 0 &&
-        strcmp(incoming->flight, last_valid->flight) == 0 &&
-        strcmp(incoming->from, last_valid->from) == 0 &&
-        strcmp(incoming->to, last_valid->to) == 0 &&
-        strcmp(incoming->status, last_valid->status) == 0) {
-        return PROG_IDENTICAL;
+    if (incoming->revision == last_valid->revision) {
+        if (strcmp(incoming->tag_id, last_valid->tag_id) == 0 &&
+            strcmp(incoming->bag_id, last_valid->bag_id) == 0 &&
+            strcmp(incoming->flight, last_valid->flight) == 0 &&
+            strcmp(incoming->from, last_valid->from) == 0 &&
+            strcmp(incoming->to, last_valid->to) == 0 &&
+            strcmp(incoming->status, last_valid->status) == 0) {
+            return PROG_IDENTICAL;
+        }
+        return PROG_STALE;
     }
 
     return PROG_NEW_REVISION;
@@ -263,10 +330,12 @@ size_t smarttag_extract_text_from_ndef_message(
             uint8_t lang_len = status_byte & 0x3F;
             if ((size_t)(1 + lang_len) <= payload_len) {
                 size_t text_len = payload_len - 1 - lang_len;
-                size_t copy_len = (text_len < out_max - 1) ? text_len : (out_max - 1);
-                memcpy(out_text, payload_ptr + 1 + lang_len, copy_len);
-                out_text[copy_len] = '\0';
-                return copy_len;
+                if (text_len >= out_max) {
+                    return 0; // Oversized payload must not be silently truncated
+                }
+                memcpy(out_text, payload_ptr + 1 + lang_len, text_len);
+                out_text[text_len] = '\0';
+                return text_len;
             }
         }
 
@@ -315,6 +384,42 @@ size_t smarttag_extract_text_from_type2_tlv(
                 out_max
             );
             if (extracted > 0) return extracted;
+        }
+
+        idx += len;
+    }
+
+    return 0;
+}
+
+size_t smarttag_estimate_type2_total_bytes(
+    const uint8_t *header_mem,
+    size_t header_len
+) {
+    if (!header_mem || header_len < 2) return 0;
+
+    size_t idx = 0;
+    while (idx < header_len) {
+        uint8_t tag = header_mem[idx++];
+        if (tag == 0x00) {
+            continue; // NULL TLV
+        }
+        if (tag == 0xFE) {
+            // Immediate terminator; total bytes is up to this terminator
+            return idx;
+        }
+        if (idx >= header_len) return 0; // Incomplete TLV header
+
+        size_t len = header_mem[idx++];
+        if (len == 0xFF) {
+            if (idx + 2 > header_len) return 0; // Incomplete 3-byte length
+            len = ((size_t)header_mem[idx] << 8) | (size_t)header_mem[idx + 1];
+            idx += 2;
+        }
+
+        if (tag == 0x03) {
+            // Found NDEF TLV: needed bytes = header offset + payload length + 1 (for 0xFE)
+            return idx + len + 1;
         }
 
         idx += len;

@@ -85,6 +85,16 @@ size_t smarttag_extract_text_from_type2_tlv(
     size_t out_max
 );
 
+/**
+ * Inspects initial Type 2 Tag user memory (e.g. first 16 bytes / Pages 4..7)
+ * to estimate total bytes needed to read full NDEF message TLV.
+ * Returns required total byte count, or 0 if header is incomplete/invalid.
+ */
+size_t smarttag_estimate_type2_total_bytes(
+    const uint8_t *header_mem,
+    size_t header_len
+);
+
 #ifdef __cplusplus
 }
 #endif
