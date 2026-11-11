@@ -319,3 +319,140 @@ test('Mandatory honesty rule: NFC_CHIP_READ_SUCCESS without pairing does not dis
   assert.match(renderedJson, /NFC_CHIP_READ_SUCCESS/);
   assert.doesNotMatch(renderedJson, /SMARTTAG_PAIRED/, 'Must not claim SMARTTAG_PAIRED when pairing was rejected');
 });
+
+test('SyncSmartTagScreen initializes in PAIRED state when persisted pairedPhysicalUid exists on restart', async () => {
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/features/smarttag/screens/SyncSmartTagScreen.tsx'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }
+  ).outputText;
+
+  const state = [];
+  const refs = [];
+  let cursor = 0;
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity) }),
+    useState(initial) {
+      const i = cursor++;
+      if (!(i in state)) state[i] = typeof initial === 'function' ? initial() : initial;
+      return [state[i], (v) => { state[i] = typeof v === 'function' ? v(state[i]) : v; }];
+    },
+    useRef(initial) {
+      const i = cursor++;
+      return refs[i] ||= { current: initial };
+    },
+    useEffect() {},
+  };
+
+  const mod = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod.exports,
+    require(id) {
+      if (id === 'react') return react;
+      if (id === 'react-native') {
+        return {
+          StyleSheet: { create: (v) => v },
+          Platform: { OS: 'android' },
+          ...Object.fromEntries(['View', 'Text', 'Image', 'ScrollView', 'TouchableOpacity', 'Modal'].map((n) => [n, n])),
+        };
+      }
+      if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+      if (id === '@polyaero/shared') {
+        return {
+          NfcCancelledError: class extends Error {},
+          NFC_STATE_MESSAGES: { IDLE: 'Ready', CANCELLED: 'Cancelled' },
+          buildNfcPayloadForBag: () => ({}),
+          runSmartTagSync: async () => ({ finalState: 'SUCCESS' }),
+        };
+      }
+      if (id.includes('services/nfc/hardwareScan')) {
+        return {
+          scanPhysicalTag: async () => ({ tagUid: '04:AA:BB:CC:DD:EE:FF', isMockSimulation: false }),
+          cancelPhysicalTagScan: async () => {},
+          openNfcSettings: async () => true,
+          formatTagUid: (s) => s.toUpperCase(),
+        };
+      }
+      if (id.includes('services/nfc')) {
+        return { demoNfcService: {}, getPhysicalNfcService: () => null };
+      }
+      if (id === '../store') {
+        return {
+          useSmartTagStore: () => ({
+            repo: {
+              itineraries: [{ id: 'trip_1', booking: { bookingReference: '8K3F7D' }, flight: { flightNumber: 'CX548' } }],
+              activeItineraryId: 'trip_1',
+              activeBagSetupId: 'bag_1',
+              bagSetupsByItinerary: {
+                trip_1: [{
+                  id: 'bag_1',
+                  smartTagCode: 'ST-2048',
+                  displayBagCode: 'CX880123456',
+                  setupState: 'PENDING_PHYSICAL_WRITE',
+                  smartTag: { tagUid: '04:AA:BB:CC:DD:EE:FF' },
+                  pairedPhysicalUid: '04:AA:BB:CC:DD:EE:FF',
+                }],
+              },
+            },
+          }),
+          smartTagRepository: {
+            pairPhysicalTagToBag: () => {},
+            recordSyncOutcome: () => {},
+          },
+          smartTagController: { navigateTo() {}, goBack() {} },
+        };
+      }
+      return new Proxy({}, { get: (_, n) => n });
+    },
+  });
+
+  const screenNodes = mod.exports.SyncSmartTagScreen({});
+  const renderedJson = JSON.stringify(screenNodes);
+  assert.match(renderedJson, /NFC_CHIP_READ_SUCCESS/);
+  assert.match(renderedJson, /04:AA:BB:CC:DD:EE:FF/);
+  assert.match(renderedJson, /SMARTTAG_PAIRED/);
+  assert.match(renderedJson, /Rescan \/ pair another NFC chip/);
+});
+
+test('Native persistent storage adapter reads, writes, and survives adapter re-instantiation via file backend', () => {
+  const virtualDisk = new Map();
+  class MockFile {
+    constructor(dir, name) { this.path = `${dir}/${name}`; }
+    get exists() { return virtualDisk.has(this.path); }
+    create() { if (!virtualDisk.has(this.path)) virtualDisk.set(this.path, ''); }
+    writeSync(val) { virtualDisk.set(this.path, val); }
+    textSync() { return virtualDisk.get(this.path) ?? ''; }
+    delete() { virtualDisk.delete(this.path); }
+  }
+
+  const code = ts.transpileModule(
+    fs.readFileSync(path.resolve('apps/mobile/src/services/storage/persistentStorage.native.ts'), 'utf8'),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }
+  ).outputText;
+
+  const mod1 = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod1.exports,
+    require(id) {
+      if (id === 'expo-file-system') return { File: MockFile, Paths: { document: 'file:///data/doc' } };
+      return {};
+    },
+  });
+  const adapter1 = mod1.exports.createPersistentStorageAdapter();
+  adapter1.setItem('polyaero.smarttag.passenger.v2', JSON.stringify({ uid: '04:11:22:33:44:55:66' }));
+
+  // Re-instantiate native storage module on fresh memory map (app restart)
+  const mod2 = { exports: {} };
+  vm.runInNewContext(code, {
+    exports: mod2.exports,
+    require(id) {
+      if (id === 'expo-file-system') return { File: MockFile, Paths: { document: 'file:///data/doc' } };
+      return {};
+    },
+  });
+  const adapter2 = mod2.exports.createPersistentStorageAdapter();
+  const loaded = JSON.parse(adapter2.getItem('polyaero.smarttag.passenger.v2'));
+  assert.equal(loaded.uid, '04:11:22:33:44:55:66');
+
+  adapter2.removeItem('polyaero.smarttag.passenger.v2');
+  assert.equal(adapter2.getItem('polyaero.smarttag.passenger.v2'), null);
+});

@@ -79,11 +79,16 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
+  const persistedPairedUid = activeBag?.pairedPhysicalUid ?? null;
   const [isReadingChip, setIsReadingChip] = useState(false);
-  const [scanStage, setScanStage] = useState<PhysicalScanStage>('IDLE');
-  const [physicalTagUid, setPhysicalTagUid] = useState<string | null>(null);
-  const [physicalScanDetails, setPhysicalScanDetails] = useState<PhysicalTagScanDetails | null>(null);
-  const [pairedPhysicalUid, setPairedPhysicalUid] = useState<string | null>(null);
+  const [scanStage, setScanStage] = useState<PhysicalScanStage>(
+    persistedPairedUid ? 'PAIRED' : 'IDLE'
+  );
+  const [physicalTagUid, setPhysicalTagUid] = useState<string | null>(persistedPairedUid);
+  const [physicalScanDetails, setPhysicalScanDetails] = useState<PhysicalTagScanDetails | null>(
+    persistedPairedUid ? { tagUid: persistedPairedUid, isMockSimulation: false } : null
+  );
+  const [pairedPhysicalUid, setPairedPhysicalUid] = useState<string | null>(persistedPairedUid);
   const [physicalScanError, setPhysicalScanError] = useState<string | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
   useEffect(() => () => {

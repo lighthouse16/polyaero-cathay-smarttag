@@ -121,6 +121,8 @@ export interface BagSetupRecord {
   preparedAt: string | null;
   lastWrite: SmartTagWriteRecord | null;
   lastError: SmartTagFailureInfo | null;
+  /** Physical NFC chip UID scanned and paired to this baggage setup, surviving restarts. */
+  pairedPhysicalUid?: string | null;
 }
 
 // ---------------------------------------------------------------------------

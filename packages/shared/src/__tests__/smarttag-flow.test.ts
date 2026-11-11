@@ -534,5 +534,46 @@ describe('Baggage Journey Timeline & Recovery Case Lifecycle', () => {
 
     expect(() => apiRepo.assertEndpointImplemented('/api/v1/baggage')).toThrow(/501 Not Implemented/);
     expect(() => apiRepo.assertEndpointImplemented('/api/v1/tags')).toThrow(/501 Not Implemented/);
+
+    const status = apiRepo.getIntegrationStatus();
+    expect(status.isConfigured).toBe(true);
+    expect(status.isDeviceCompatible).toBe(true);
+    expect(status.hasActiveAppHttpCalls).toBe(false);
+    expect(status.activeMode).toBe('STANDALONE_DEMO');
+    expect(status.unimplementedBusinessRoutes).toContain('/api/v1/baggage');
+  });
+
+  it('persists physical NFC chip UID pairing across repository restarts without fabricating E-ink write state', () => {
+    const disk = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => disk.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        disk.set(key, value);
+      },
+      removeItem: (key: string) => {
+        disk.delete(key);
+      },
+    };
+
+    const firstLaunch = new InMemorySmartTagRepository({
+      storage,
+      populateDemoBookingOnInit: true,
+    });
+    const bag = firstLaunch.getBagsForItinerary(DEMO_ITINERARY_ID)[0];
+    expect(bag.pairedPhysicalUid).toBeNull();
+
+    firstLaunch.pairPhysicalTagToBag(bag.id, '04:aa:bb:cc:dd:ee:ff');
+    expect(firstLaunch.getBagSetup(bag.id)?.pairedPhysicalUid).toBe('04:AA:BB:CC:DD:EE:FF');
+
+    // Simulate app restart
+    const relaunched = new InMemorySmartTagRepository({
+      storage,
+      populateDemoBookingOnInit: false,
+    });
+    const restoredBag = relaunched.getBagSetup(bag.id);
+    expect(restoredBag?.pairedPhysicalUid).toBe('04:AA:BB:CC:DD:EE:FF');
+    expect(restoredBag?.smartTag.tagUid).toBe('04:AA:BB:CC:DD:EE:FF');
+    expect(restoredBag?.setupState).toBe('UNREGISTERED');
+    expect(restoredBag?.lastWrite).toBeNull();
   });
 });

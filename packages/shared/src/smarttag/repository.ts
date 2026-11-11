@@ -688,6 +688,7 @@ function createInitialBagSetup(
     preparedAt,
     lastWrite: null,
     lastError: null,
+    pairedPhysicalUid: null,
   };
 }
 
@@ -1001,6 +1002,7 @@ export class InMemorySmartTagRepository implements SmartTagRepository {
     const updatedBag: BagSetupRecord = {
       ...existing,
       smartTag: updatedSmartTag,
+      pairedPhysicalUid: cleanUid,
     };
 
     const list = this.getBagsForItinerary(existing.itineraryId).map((b) =>
@@ -1392,6 +1394,17 @@ export interface FastApiBackendConfig {
   baseUrl?: string;
 }
 
+export interface BackendIntegrationStatus {
+  baseUrl: string;
+  isConfigured: boolean;
+  isDeviceCompatible: boolean;
+  /** True ONLY if live authenticated HTTP calls are actively made by the application layer. */
+  hasActiveAppHttpCalls: boolean;
+  activeMode: 'STANDALONE_DEMO' | 'LIVE_BACKEND';
+  implementedAuthRoutes: readonly string[];
+  unimplementedBusinessRoutes: readonly string[];
+}
+
 /**
  * FastAPI backend boundary for PolyAero SmartTag.
  * On origin/main: /api/v1/auth/* and /health are implemented, while
@@ -1426,6 +1439,65 @@ export class ApiSmartTagRepository {
   public isConfiguredForDevice(): boolean {
     if (!this.baseUrl) return false;
     return !/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(this.baseUrl);
+  }
+
+  public getIntegrationStatus(): BackendIntegrationStatus {
+    const isConfigured = Boolean(this.baseUrl);
+    const isDeviceCompatible = this.isConfiguredForDevice();
+    return {
+      baseUrl: this.baseUrl,
+      isConfigured,
+      isDeviceCompatible,
+      // Honest boundary: mobile passenger SmartTag workflow runs via DemoSmartTagRepository;
+      // no live HTTP calls are made for baggage/tags since those endpoints return HTTP 501.
+      hasActiveAppHttpCalls: false,
+      activeMode: 'STANDALONE_DEMO',
+      implementedAuthRoutes: this.implementedRoutes,
+      unimplementedBusinessRoutes: this.unimplementedRoutes,
+    };
+  }
+
+  /**
+   * Real HTTP client method for backend health endpoint.
+   */
+  public async healthCheck(): Promise<{ ok: boolean; status?: string; error?: string }> {
+    if (!this.baseUrl) {
+      return { ok: false, error: 'No backend API URL configured.' };
+    }
+    try {
+      const res = await fetch(`${this.baseUrl}/health`);
+      if (!res.ok) {
+        return { ok: false, error: `Health check responded with HTTP ${res.status}` };
+      }
+      const data = (await res.json()) as { status?: string };
+      return { ok: true, status: data.status ?? 'ok' };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
+   * Real HTTP client method for authenticated current user endpoint.
+   */
+  public async fetchCurrentUser(accessToken: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+    if (!this.baseUrl) {
+      return { ok: false, error: 'No backend API URL configured.' };
+    }
+    try {
+      const res = await fetch(`${this.baseUrl}/api/v1/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
+      if (!res.ok) {
+        return { ok: false, error: `Auth me responded with HTTP ${res.status}` };
+      }
+      const data = await res.json();
+      return { ok: true, data };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 
   public assertEndpointImplemented(path: string): void {

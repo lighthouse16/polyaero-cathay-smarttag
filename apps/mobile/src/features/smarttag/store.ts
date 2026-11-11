@@ -13,13 +13,14 @@ import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import {
   InMemorySmartTagRepository,
-  KeyValueStorageAdapter,
   SmartTagRepository,
   SmartTagRepositorySnapshot,
   DEMO_ITINERARY_ID,
   DEFAULT_DECLARATIONS,
   ApiSmartTagRepository,
+  type BackendIntegrationStatus,
 } from '@polyaero/shared';
+import { createPersistentStorageAdapter } from '../../services/storage';
 
 export type SmartTagScreenRoute =
   | 'bookings'
@@ -34,17 +35,6 @@ export interface SmartTagNavigationState {
   history: SmartTagScreenRoute[];
 }
 
-const createWebStorageAdapter = (): KeyValueStorageAdapter | null => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
-    return {
-      getItem: (key: string) => window.localStorage.getItem(key),
-      setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
-      removeItem: (key: string) => window.localStorage.removeItem(key),
-    };
-  }
-  return null;
-};
-
 class MobileSmartTagController {
   public readonly repository: SmartTagRepository;
   private nav: SmartTagNavigationState = {
@@ -56,12 +46,13 @@ class MobileSmartTagController {
     repo: SmartTagRepositorySnapshot;
     nav: SmartTagNavigationState;
     isLiveBackendConfigured: boolean;
+    backendStatus: BackendIntegrationStatus;
   };
 
   constructor() {
     const initialUrl = this.readInitialWebParams();
     this.repository = new InMemorySmartTagRepository({
-      storage: createWebStorageAdapter(),
+      storage: createPersistentStorageAdapter(),
       populateDemoBookingOnInit: true,
     });
 
@@ -95,10 +86,12 @@ class MobileSmartTagController {
       };
     }
 
+    const apiRepo = new ApiSmartTagRepository();
     this.combinedSnapshot = {
       repo: this.repository.getSnapshot(),
       nav: this.nav,
-      isLiveBackendConfigured: new ApiSmartTagRepository().isConfiguredForDevice(),
+      isLiveBackendConfigured: apiRepo.isConfiguredForDevice(),
+      backendStatus: apiRepo.getIntegrationStatus(),
     };
 
     this.repository.subscribe(() => {
@@ -168,10 +161,12 @@ class MobileSmartTagController {
   }
 
   private refreshCombinedSnapshot(): void {
+    const apiRepo = new ApiSmartTagRepository();
     this.combinedSnapshot = {
       repo: this.repository.getSnapshot(),
       nav: this.nav,
-      isLiveBackendConfigured: new ApiSmartTagRepository().isConfiguredForDevice(),
+      isLiveBackendConfigured: apiRepo.isConfiguredForDevice(),
+      backendStatus: apiRepo.getIntegrationStatus(),
     };
   }
 
