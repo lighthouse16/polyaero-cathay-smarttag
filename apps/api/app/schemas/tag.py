@@ -27,5 +27,10 @@ class TagRead(TagBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    user_id: UUID | None
+    pnr: str | None
+    baggage_barcode: str | None
+    tag_status: str
+    last_synced_at: datetime | None
     created_at: datetime
     updated_at: datetime

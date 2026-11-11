@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,12 +56,16 @@ async def link_tag(
     if tag is None or not tag.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not found")
 
+    # One tag per booking: release any other tag already pointing at this PNR.
     await db.execute(
-        update(Booking)
-        .where(Booking.tag_id == link_in.tag_id, Booking.id != booking.id)
-        .values(tag_id=None)
+        update(Tag)
+        .where(Tag.pnr == booking.pnr, Tag.id != tag.id)
+        .values(pnr=None, user_id=None, tag_status="UNLINKED")
     )
-    booking.tag_id = link_in.tag_id
+    tag.user_id = current_user.id
+    tag.pnr = booking.pnr
+    tag.tag_status = "CHECKED_IN"
+    tag.last_synced_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(booking)
     return booking

@@ -35,6 +35,17 @@ class Tag(Base):
     firmware_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     hardware_revision: Mapped[str | None] = mapped_column(String(20), nullable=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    pnr: Mapped[str | None] = mapped_column(
+        String(10), ForeignKey("bookings.pnr"), nullable=True, index=True
+    )
+    baggage_barcode: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tag_status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="UNLINKED", server_default="UNLINKED"
+    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
