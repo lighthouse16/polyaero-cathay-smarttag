@@ -2,12 +2,10 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 
 from app.core.database import async_session_maker
 from app.main import app
 from app.models.baggage import Tag
-from app.models.booking import Booking
 
 
 @pytest.fixture
@@ -125,7 +123,7 @@ async def test_create_booking_and_reject_duplicate_pnr(client: AsyncClient, monk
     created = await client.post("/api/v1/bookings", json=payload, headers=headers)
     assert created.status_code == 201, created.text
     assert created.json()["booking_status"] == "CONFIRMED"
-    assert created.json()["tag_id"] is None
+    assert "tag_id" not in created.json()
 
     duplicate = await client.post("/api/v1/bookings", json=payload, headers=headers)
     assert duplicate.status_code == 409
@@ -152,30 +150,50 @@ async def test_link_tag_errors(client: AsyncClient, monkeypatch):
 
 async def test_link_tag_binds_and_rebinds(client: AsyncClient, monkeypatch):
     headers = await member_headers(client, monkeypatch)
-    tag_id = await make_tag()
+    first_tag = await make_tag()
+    second_tag = await make_tag()
 
     first = await client.post("/api/v1/bookings", json=booking_payload(), headers=headers)
     second = await client.post("/api/v1/bookings", json=booking_payload(), headers=headers)
+    first_pnr = first.json()["pnr"]
+    second_pnr = second.json()["pnr"]
 
     linked = await client.post(
         "/api/v1/bookings/link-tag",
-        json={"pnr": first.json()["pnr"], "tag_id": str(tag_id)},
+        json={"pnr": first_pnr, "tag_id": str(first_tag)},
         headers=headers,
     )
     assert linked.status_code == 200, linked.text
-    assert linked.json()["tag_id"] == str(tag_id)
-
-    rebound = await client.post(
-        "/api/v1/bookings/link-tag",
-        json={"pnr": second.json()["pnr"], "tag_id": str(tag_id)},
-        headers=headers,
-    )
-    assert rebound.status_code == 200
-    assert rebound.json()["tag_id"] == str(tag_id)
 
     async with async_session_maker() as session:
-        old = await session.scalar(
-            select(Booking).where(Booking.id == UUID(first.json()["id"]))
-        )
-        assert old is not None
-        assert old.tag_id is None
+        bound = await session.get(Tag, first_tag)
+        assert bound is not None
+        assert bound.pnr == first_pnr
+        assert bound.user_id is not None
+        assert bound.tag_status == "CHECKED_IN"
+        assert bound.last_synced_at is not None
+
+    # A second tag on the same booking releases the first one.
+    await client.post(
+        "/api/v1/bookings/link-tag",
+        json={"pnr": first_pnr, "tag_id": str(second_tag)},
+        headers=headers,
+    )
+    async with async_session_maker() as session:
+        released = await session.get(Tag, first_tag)
+        rebound = await session.get(Tag, second_tag)
+        assert released is not None and released.pnr is None
+        assert released.tag_status == "UNLINKED"
+        assert rebound is not None and rebound.pnr == first_pnr
+
+    # Reusing the tag on another booking moves it there.
+    moved = await client.post(
+        "/api/v1/bookings/link-tag",
+        json={"pnr": second_pnr, "tag_id": str(second_tag)},
+        headers=headers,
+    )
+    assert moved.status_code == 200
+    async with async_session_maker() as session:
+        tag = await session.get(Tag, second_tag)
+        assert tag is not None
+        assert tag.pnr == second_pnr

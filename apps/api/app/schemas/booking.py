@@ -25,7 +25,6 @@ class BookingRead(BookingBase):
 
     id: UUID
     user_id: UUID
-    tag_id: UUID | None
     created_at: datetime
     updated_at: datetime
 

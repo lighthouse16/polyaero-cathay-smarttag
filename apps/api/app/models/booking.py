@@ -30,9 +30,6 @@ class Booking(Base):
     booking_status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="CONFIRMED", server_default="CONFIRMED"
     )
-    tag_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("tags.id"), nullable=True, index=True
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
