@@ -66,3 +66,19 @@ coverage/
 # Next.js build output
 .next/
 *.tsbuildinfo
+
+
+# ESP32 Wi-Fi secrets
+apps/firmware/esp32-display/secrets.h
+apps/firmware/esp32-display/build/
+# Local Python virtual environments & caches
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local environment overrides
+.env
+**/.env
+.expo/
