@@ -82,3 +82,4 @@ __pycache__/
 .env
 **/.env
 .expo/
+apps/api/data/
