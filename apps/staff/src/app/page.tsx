@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const STAFF_ID = 'STF-8821';
-const STATION = 'HKG-T1 Ramp Operations';
+const STATION = 'HKG-T1 Baggage Recovery Copilot Desk';
 
 interface BaggageEventItem {
   id: string;
@@ -21,6 +21,7 @@ interface LiveBag {
   id: string;
   tag_number: string;
   tag_code: string;
+  tag_interface?: string;
   booking_reference: string;
   passenger_name: string;
   tier_status: string;
@@ -30,13 +31,16 @@ interface LiveBag {
   arrival_airport: string;
   seat_number: string;
   weight_kg: number;
+  connection_minutes?: number;
   status: string;
   last_known_location: string;
   carousel_assigned: string;
   is_rush_bag: boolean;
   risk_score: number;
   risk_level: string;
-  conveyor_action: string;
+  recommended_action: string;
+  copilot_approval_status?: string;
+  passenger_recovery_choice?: string | null;
   eink_banner: string;
   updated_at: string;
   events: BaggageEventItem[];
@@ -46,7 +50,7 @@ interface RiskPrediction {
   risk_score: number;
   risk_level: string;
   priority_sequence: number;
-  conveyor_action: string;
+  recommended_action: string;
   passenger_alert: string | null;
   factors: string[];
 }
@@ -104,7 +108,7 @@ export default function StaffDashboardPage() {
   }, [fetchBags]);
 
   const selectedBag = bags.find((b) => b.tag_number === selectedTagNum) || bags[0] || null;
-  const conveyorQueue = [...bags].sort((a, b) => b.risk_score - a.risk_score);
+  const recoveryQueue = [...bags].sort((a, b) => b.risk_score - a.risk_score);
 
   const handleResetDemo = async () => {
     setIsSyncing(true);
@@ -114,7 +118,26 @@ export default function StaffDashboardPage() {
         const fresh: LiveBag[] = await res.json();
         setBags(fresh);
         setRiskResult(null);
-        setActionBanner('Demo State Reset: All SmartTags restored to clean baseline for stage rehearsal.');
+        setActionBanner('Demo Reset: All itineraries & SmartTags restored to baseline.');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleApproveCopilotPlan = async () => {
+    if (!selectedBag) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/copilot/approve`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const updated: LiveBag = await res.json();
+        setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
+        setActionBanner(
+          `HUMAN-IN-THE-LOOP APPROVED: Recovery options pushed to ${updated.passenger_name}'s Cathay App!`
+        );
       }
     } finally {
       setIsSyncing(false);
@@ -134,13 +157,13 @@ export default function StaffDashboardPage() {
           station_name: STATION,
           scanner_type: 'NFC_TAP',
           staff_id: STAFF_ID,
-          notes: `Ground staff updated status to ${newStatus} & queued E-ink refresh`,
+          notes: `Ground staff updated status to ${newStatus}`,
         }),
       });
       if (res.ok) {
         const updated: LiveBag = await res.json();
         setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
-        setActionBanner(`Synced ${updated.tag_number} → ${newStatus} (E-Ink Banner: ${updated.eink_banner})`);
+        setActionBanner(`Synced ${updated.tag_number} → ${newStatus}`);
       }
     } finally {
       setIsSyncing(false);
@@ -174,14 +197,14 @@ export default function StaffDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           new_flight_number: nextFlight,
-          reason: 'Automated IRROPS rebooking — Express Transfer & E-Ink Reroute',
+          reason: 'Schedule disruption detected — Copilot queued recovery options for staff approval',
         }),
       });
       if (res.ok) {
         const updated: LiveBag = await res.json();
         setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
         setActionBanner(
-          `IRROPS REROUTE PUSHED: ${updated.tag_number} reassigned to ${nextFlight} • E-Ink now displays "${updated.eink_banner}"`
+          `IRROPS DETECTED: ${updated.tag_number} flagged for ${nextFlight} • Click "Approve Copilot Recovery Plan" to dispatch!`
         );
       }
     } finally {
@@ -210,7 +233,7 @@ export default function StaffDashboardPage() {
         setRiskResult(result);
         await fetchBags();
         setActionBanner(
-          `AI Risk Applied to ${selectedBag.tag_number}: Score ${result.risk_score}/100 (${result.conveyor_action})`
+          `Check-In Risk Model Evaluated ${selectedBag.tag_number}: Score ${result.risk_score}/100 (${result.risk_level})`
         );
       }
     } catch {
@@ -259,9 +282,11 @@ export default function StaffDashboardPage() {
             POLYAERO
           </div>
           <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 600 }}>Cathay SmartTag Ground Staff Operations</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: 600 }}>
+              Baggage Recovery Copilot • Operations & SmartTag Hub
+            </h1>
             <p style={{ fontSize: '12px', opacity: 0.85 }}>
-              Station: HKG (Hong Kong International Airport) • Terminal 1 Ramp & Baggage Intelligence
+              Software-First Decision Support (Zero Airport Hardware Interference) • Station: HKG T1
             </p>
           </div>
         </div>
@@ -304,7 +329,7 @@ export default function StaffDashboardPage() {
               fontWeight: 700,
             }}
           >
-            {isLiveConnected ? '● LIVE API + ESP32 SYNC' : '○ API DISCONNECTED (START PORT 8000)'}
+            {isLiveConnected ? '● COPILOT + SMARTTAG LIVE' : '○ API DISCONNECTED (START PORT 8000)'}
           </span>
         </div>
       </header>
@@ -335,7 +360,6 @@ export default function StaffDashboardPage() {
           </div>
         )}
 
-        {/* KPI Cards */}
         <div
           style={{
             display: 'grid',
@@ -345,19 +369,19 @@ export default function StaffDashboardPage() {
           }}
         >
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>ACTIVE SMARTTAGS</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>MONITORED ITINERARIES</div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#006564', marginTop: '4px' }}>{totalTracked}</div>
-            <div style={{ fontSize: '11px', color: '#00875A', marginTop: '4px' }}>Connected to E-Ink Cloud</div>
+            <div style={{ fontSize: '11px', color: '#00875A', marginTop: '4px' }}>Digital + SmartTag E-Ink</div>
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>LOADED / MANIFESTED</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>VERIFIED LOADED</div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>
               {loadedCount} / {totalTracked}
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>ULD container verified</div>
+            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Zero infrastructure changes</div>
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>PRIORITY / IRROPS REROUTES</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>AT-RISK / IRROPS QUEUE</div>
             <div
               style={{
                 fontSize: '28px',
@@ -369,23 +393,21 @@ export default function StaffDashboardPage() {
               {atRiskCount}
             </div>
             <div style={{ fontSize: '11px', color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
-              Auto-diverted on BHS conveyor
+              Human-in-the-Loop Copilot active
             </div>
           </div>
           <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>PAPER TAGS SAVED</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>KIOSK PAPER ELIMINATED</div>
             <div style={{ fontSize: '28px', fontWeight: 700, color: '#C49A45', marginTop: '4px' }}>100%</div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Zero kiosk thermal waste</div>
+            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Digital + Reusable SmartTag</div>
           </div>
         </div>
 
-        {/* Main 2-Column Layout */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '24px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Live Registry */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Live SmartTag Baggage Registry</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Live Baggage & Itinerary Registry</h2>
                 <input
                   type="text"
                   placeholder="Search Tag, PNR, Passenger, Flight..."
@@ -404,11 +426,11 @@ export default function StaffDashboardPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
-                    <th style={{ padding: '10px 8px' }}>Tag Number</th>
+                    <th style={{ padding: '10px 8px' }}>Tag / Interface</th>
                     <th style={{ padding: '10px 8px' }}>Passenger</th>
                     <th style={{ padding: '10px 8px' }}>Flight</th>
                     <th style={{ padding: '10px 8px' }}>Status</th>
-                    <th style={{ padding: '10px 8px' }}>E-Ink Banner</th>
+                    <th style={{ padding: '10px 8px' }}>Pax Choice</th>
                     <th style={{ padding: '10px 8px' }}>Action</th>
                   </tr>
                 </thead>
@@ -421,7 +443,14 @@ export default function StaffDashboardPage() {
                         backgroundColor: selectedBag?.tag_number === bag.tag_number ? '#F0F9F9' : 'transparent',
                       }}
                     >
-                      <td style={{ padding: '12px 8px', fontWeight: 700 }}>{bag.tag_number}</td>
+                      <td style={{ padding: '12px 8px' }}>
+                        <div style={{ fontWeight: 700 }}>{bag.tag_number}</div>
+                        <div style={{ fontSize: '10px', color: '#C49A45', fontWeight: 700 }}>
+                          {bag.tag_interface === 'SMARTTAG_EINK_EXCLUSIVE'
+                            ? '★ SMARTTAG E-INK'
+                            : 'DIGITAL APP TAG'}
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 8px' }}>
                         {bag.passenger_name}{' '}
                         <span style={{ fontSize: '11px', color: '#006564', fontWeight: 600 }}>({bag.tier_status})</span>
@@ -453,8 +482,12 @@ export default function StaffDashboardPage() {
                           {bag.status}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 8px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700 }}>
-                        {bag.eink_banner}
+                      <td style={{ padding: '12px 8px', fontSize: '11px', fontWeight: 700, color: '#0B2545' }}>
+                        {bag.passenger_recovery_choice
+                          ? bag.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT'
+                            ? '✓ EXPRESS FLIGHT'
+                            : '✓ HOTEL COURIER'
+                          : '—'}
                       </td>
                       <td style={{ padding: '12px 8px' }}>
                         <button
@@ -478,16 +511,15 @@ export default function StaffDashboardPage() {
               </table>
             </div>
 
-            {/* Automated Conveyor Priority Queue */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>
-                Automated BHS Conveyor Priority Queue
+                Human-in-the-Loop Copilot Recovery Queue
               </h2>
               <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px' }}>
-                Real-time transfer sequence generated by the AI Mishandling Risk Engine
+                Evaluates schedules, connection windows & check-in events to recommend recovery actions for staff approval
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {conveyorQueue.map((bag, idx) => (
+                {recoveryQueue.map((bag, idx) => (
                   <div
                     key={bag.tag_number}
                     style={{
@@ -504,6 +536,9 @@ export default function StaffDashboardPage() {
                       <span style={{ fontWeight: 800, marginRight: '10px', color: '#0B2545' }}>#{idx + 1}</span>
                       <span style={{ fontWeight: 700 }}>{bag.tag_number}</span> • {bag.passenger_name} (
                       {bag.flight_number})
+                      <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px', marginLeft: '26px' }}>
+                        Copilot Recommendation: <strong>{bag.recommended_action}</strong>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
                       <span style={{ fontWeight: 700, color: bag.risk_score >= 65 ? '#DE350B' : '#006564' }}>
@@ -513,13 +548,14 @@ export default function StaffDashboardPage() {
                         style={{
                           padding: '3px 8px',
                           borderRadius: '4px',
-                          backgroundColor: bag.risk_score >= 65 ? '#DE350B' : '#006564',
+                          backgroundColor:
+                            bag.copilot_approval_status === 'PENDING_STAFF_APPROVAL' ? '#DE350B' : '#006564',
                           color: '#FFFFFF',
                           fontWeight: 700,
-                          fontSize: '11px',
+                          fontSize: '10px',
                         }}
                       >
-                        {bag.conveyor_action}
+                        {bag.copilot_approval_status || 'AUTO_CLEARED'}
                       </span>
                     </div>
                   </div>
@@ -527,13 +563,12 @@ export default function StaffDashboardPage() {
               </div>
             </div>
 
-            {/* AI Risk Simulator */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div>
-                  <h2 style={{ fontSize: '18px', fontWeight: 600 }}>AI Mishandling Risk & Conveyor Simulator</h2>
+                  <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Check-In & Itinerary Risk Classification Model</h2>
                   <p style={{ fontSize: '12px', color: '#64748B' }}>
-                    Applies risk prediction directly to selected bag ({selectedBag?.tag_number || '0160892012'})
+                    Scores real-time mishandling risk for {selectedBag?.tag_number || '0160892012'}
                   </p>
                 </div>
                 <button
@@ -549,13 +584,13 @@ export default function StaffDashboardPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Apply AI Risk to Bag
+                  Evaluate Check-In Risk
                 </button>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Transfer Window (min)</label>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Connection Window (min)</label>
                   <input
                     type="number"
                     value={transferMins}
@@ -586,7 +621,7 @@ export default function StaffDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Hub Congestion (1-5)</label>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Hub Density (1-5)</label>
                   <input
                     type="number"
                     min={1}
@@ -611,7 +646,7 @@ export default function StaffDashboardPage() {
                     <span>
                       RISK SCORE: {riskResult.risk_score}/100 ({riskResult.risk_level})
                     </span>
-                    <span>CONVEYOR: {riskResult.conveyor_action}</span>
+                    <span>{riskResult.recommended_action}</span>
                   </div>
                   <ul style={{ marginTop: '8px', paddingLeft: '18px', fontSize: '12px', color: '#334155' }}>
                     {riskResult.factors.map((f, i) => (
@@ -623,12 +658,24 @@ export default function StaffDashboardPage() {
             </div>
           </div>
 
-          {/* Right Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
-                Physical SmartTag E-Ink Live State
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Optional SmartTag E-Ink Mirror</h2>
+                <span
+                  style={{
+                    backgroundColor: '#FFF8E7',
+                    color: '#7A5200',
+                    border: '1px solid #C49A45',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  HIGH-YIELD EXCLUSIVE
+                </span>
+              </div>
 
               {selectedBag && (
                 <>
@@ -683,7 +730,6 @@ export default function StaffDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                     <button
                       onClick={handleTriggerIrrops}
@@ -700,7 +746,25 @@ export default function StaffDashboardPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      ⚡ Trigger IRROPS Rebooking & Push E-Ink Update
+                      1. Simulate Flight Disruption (IRROPS Alert)
+                    </button>
+
+                    <button
+                      onClick={handleApproveCopilotPlan}
+                      disabled={isSyncing}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#C49A45',
+                        color: '#0B2545',
+                        border: 'none',
+                        padding: '11px',
+                        borderRadius: '6px',
+                        fontWeight: 800,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      2. ✓ Approve Copilot Recovery Plan (Push to Pax App)
                     </button>
 
                     <button
@@ -718,7 +782,7 @@ export default function StaffDashboardPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      📱 Simulate Handheld NFC Tap (Verify Owner & Recover)
+                      3. 📱 Ramp Handheld NFC Tap (Verify & Load)
                     </button>
                   </div>
 
@@ -751,7 +815,7 @@ export default function StaffDashboardPage() {
             </div>
 
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>Live Audit & Scan Trail</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>Copilot Decision & Scan Audit</h2>
               {selectedBag?.events.map((ev) => (
                 <div
                   key={ev.id}

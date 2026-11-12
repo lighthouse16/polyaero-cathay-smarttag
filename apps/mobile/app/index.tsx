@@ -22,24 +22,28 @@ const PASSENGER_PROFILES = [
     tagUid: '04:A2:3B:4C:5D:6E:70',
     displayName: 'Timothy Chan',
     apiName: 'CHAN/TIMOTHY',
+    tierLabel: 'DIAMOND • E-INK SMARTTAG EXCLUSIVE',
     defaultFlight: 'CX888',
     origin: 'HKG',
     dest: 'YVR',
     cityDest: 'Vancouver',
     cabin: 'PRIORITY J',
     weight: 22.4,
+    isHardwareTag: true,
   },
   {
     tagNumber: '0160892014',
     tagUid: '04:B3:7C:1D:9E:2F:81',
     displayName: 'Victor Wong',
     apiName: 'WONG/VICTOR',
+    tierLabel: 'GOLD • UNIVERSAL DIGITAL BAG TAG',
     defaultFlight: 'CX255',
     origin: 'HKG',
     dest: 'NRT',
     cityDest: 'Tokyo Narita',
     cabin: 'BUSINESS',
     weight: 28.5,
+    isHardwareTag: false,
   },
 ];
 
@@ -71,6 +75,8 @@ interface LiveBagState {
   is_rush_bag: boolean;
   risk_score: number;
   risk_level: string;
+  copilot_approval_status?: string;
+  passenger_recovery_choice?: string | null;
   eink_banner: string;
   updated_at: string;
   events: BaggageEventItem[];
@@ -85,6 +91,7 @@ export default function PassengerSmartTagScreen() {
   const [termsAccepted, setTermsAccepted] = useState(true);
   const [isSyncingNfc, setIsSyncingNfc] = useState(false);
   const [isDroppingBag, setIsDroppingBag] = useState(false);
+  const [isChoosing, setIsChoosing] = useState(false);
   const [nfcFeedback, setNfcFeedback] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'TRIP' | 'BAG_DROP' | 'JOURNEY'>('TRIP');
 
@@ -108,7 +115,7 @@ export default function PassengerSmartTagScreen() {
 
   const handleNfcSync = async () => {
     if (!termsAccepted) {
-      setNfcFeedback('Please accept the SmartTag Carriage Terms & Conditions first.');
+      setNfcFeedback('Please accept the Carriage Terms & Conditions first.');
       return;
     }
     setIsSyncingNfc(true);
@@ -137,17 +144,39 @@ export default function PassengerSmartTagScreen() {
           arrival_airport: bag?.arrival_airport || profile.dest,
           cabin_class: profile.cabin,
           weight_kg: profile.weight,
+          connection_minutes: profile.isHardwareTag ? 95 : 35,
         }),
       });
       if (res.ok) {
         const updated: LiveBagState = await res.json();
         setBag(updated);
       }
-      setNfcFeedback('✓ NFC Write Complete: E-Ink display & Cloud synchronized!');
+      setNfcFeedback(
+        profile.isHardwareTag
+          ? '✓ Check-In Risk Scored & Diamond SmartTag E-Ink Updated!'
+          : '✓ Check-In Risk Scored & Universal Digital Bag Tag Activated!'
+      );
     } catch (err: unknown) {
-      setNfcFeedback(err instanceof Error ? err.message : 'NFC Sync completed in offline mode.');
+      setNfcFeedback(err instanceof Error ? err.message : 'Check-in sync completed.');
     } finally {
       setIsSyncingNfc(false);
+    }
+  };
+
+  const handlePassengerChoice = async (choice: 'EXPRESS_NEXT_FLIGHT' | 'DIRECT_HOTEL_DELIVERY') => {
+    setIsChoosing(true);
+    try {
+      const res = await fetch(`${API_BASE}/baggage/${profile.tagNumber}/passenger/choice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice }),
+      });
+      if (res.ok) {
+        const updated: LiveBagState = await res.json();
+        setBag(updated);
+      }
+    } finally {
+      setIsChoosing(false);
     }
   };
 
@@ -162,7 +191,7 @@ export default function PassengerSmartTagScreen() {
           location_code: 'HKG-T1-SBD-04',
           station_name: 'HKIA Self Bag-Drop Counter 04',
           scanner_type: 'OPTICAL_BARCODE',
-          notes: `Boarding pass, biometric face ID, E-Tag barcode & ${profile.weight} kg scale verified`,
+          notes: `Boarding pass, biometric face ID, digital barcode & ${profile.weight} kg scale verified`,
         }),
       });
       if (res.ok) {
@@ -185,17 +214,16 @@ export default function PassengerSmartTagScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.topBar}>
         <View>
-          <Text style={styles.brandEyebrow}>CATHAY PACIFIC • POLYAERO SMARTTAG</Text>
+          <Text style={styles.brandEyebrow}>CATHAY • BAGGAGE RECOVERY COPILOT</Text>
           <Text style={styles.headerGreeting}>Hello, {profile.displayName}</Text>
         </View>
         <View style={[styles.connPill, isLive ? styles.connPillLive : styles.connPillOffline]}>
           <Text style={[styles.connPillText, isLive ? styles.connTextLive : styles.connTextOffline]}>
-            {isLive ? '● LIVE SYNC' : '○ LOCAL'}
+            {isLive ? '● COPILOT LIVE' : '○ LOCAL'}
           </Text>
         </View>
       </View>
 
-      {/* Passenger / Trip Switcher */}
       <View style={styles.profileSwitcher}>
         {PASSENGER_PROFILES.map((p, idx) => (
           <TouchableOpacity
@@ -207,7 +235,7 @@ export default function PassengerSmartTagScreen() {
             }}
           >
             <Text style={[styles.profileChipText, profileIdx === idx && styles.profileChipTextActive]}>
-              {p.displayName} ({p.defaultFlight})
+              {p.displayName} ({p.isHardwareTag ? 'SmartTag' : 'Digital Tag'})
             </Text>
           </TouchableOpacity>
         ))}
@@ -215,16 +243,48 @@ export default function PassengerSmartTagScreen() {
 
       {isRerouted && (
         <View style={styles.irropsBanner}>
-          <Text style={styles.irropsTitle}>⚡ PRIORITY REROUTE & E-INK UPDATED</Text>
+          <Text style={styles.irropsTitle}>⚡ BAGGAGE RECOVERY COPILOT ALERT</Text>
           <Text style={styles.irropsBody}>
-            SmartTag {profile.tagNumber} dynamically updated to {currentFlight} ({origin} → {destination}). No paper re-tagging required!
+            Schedule disruption detected on {profile.tagNumber} ({currentFlight} {origin}→{destination}). Select your preferred recovery option:
           </Text>
+
+          <View style={styles.choiceRow}>
+            <TouchableOpacity
+              style={[
+                styles.choiceBtn,
+                bag?.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT' && styles.choiceBtnSelected,
+              ]}
+              onPress={() => handlePassengerChoice('EXPRESS_NEXT_FLIGHT')}
+              disabled={isChoosing}
+            >
+              <Text style={styles.choiceBtnText}>
+                {bag?.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT'
+                  ? `✓ Express Transfer (${currentFlight})`
+                  : `Option A: Express Transfer (${currentFlight})`}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.choiceBtn,
+                bag?.passenger_recovery_choice === 'DIRECT_HOTEL_DELIVERY' && styles.choiceBtnSelected,
+              ]}
+              onPress={() => handlePassengerChoice('DIRECT_HOTEL_DELIVERY')}
+              disabled={isChoosing}
+            >
+              <Text style={styles.choiceBtnText}>
+                {bag?.passenger_recovery_choice === 'DIRECT_HOTEL_DELIVERY'
+                  ? '✓ Direct Hotel Delivery'
+                  : 'Option B: Deliver to Hotel'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       <View style={styles.tabRow}>
         {[
-          { key: 'TRIP', label: '1. NFC Sync' },
+          { key: 'TRIP', label: '1. Check-In Sync' },
           { key: 'BAG_DROP', label: '2. Self Bag-Drop' },
           { key: 'JOURNEY', label: '3. Live Journey' },
         ].map((tab) => (
@@ -241,11 +301,9 @@ export default function PassengerSmartTagScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.flightCard}>
           <View style={styles.flightHeader}>
-            <Text style={styles.pnrText}>BOOKING REF: {bag?.booking_reference || 'CX7K9M'}</Text>
+            <Text style={styles.pnrText}>PNR: {bag?.booking_reference || 'CX7K9M'}</Text>
             <View style={styles.tierBadge}>
-              <Text style={styles.tierText}>
-                {bag?.tier_status || 'DIAMOND'} • {bag?.cabin_class || profile.cabin}
-              </Text>
+              <Text style={styles.tierText}>{profile.tierLabel}</Text>
             </View>
           </View>
 
@@ -268,8 +326,12 @@ export default function PassengerSmartTagScreen() {
 
         <View style={styles.smartTagContainer}>
           <View style={styles.smartTagHeader}>
-            <Text style={styles.smartTagTitle}>DIGITAL SMARTTAG E-INK TWIN</Text>
-            <Text style={styles.smartTagMeta}>PASSIVE RF • {profile.tagUid}</Text>
+            <Text style={styles.smartTagTitle}>
+              {profile.isHardwareTag
+                ? 'OPTIONAL SMARTTAG E-INK INTERFACE'
+                : 'UNIVERSAL DIGITAL APP BAG TAG'}
+            </Text>
+            <Text style={styles.smartTagMeta}>{profile.tagUid}</Text>
           </View>
 
           <View style={styles.einkScreen}>
@@ -306,9 +368,11 @@ export default function PassengerSmartTagScreen() {
 
         {activeTab === 'TRIP' && (
           <View style={styles.actionCard}>
-            <Text style={styles.cardHeading}>Home-to-Gate NFC Provisioning</Text>
+            <Text style={styles.cardHeading}>Digital Check-In & Risk Evaluation</Text>
             <Text style={styles.cardSub}>
-              Confirm dangerous goods & SmartTag carriage rules, then tap your phone to power and write your E-Ink display.
+              {profile.isHardwareTag
+                ? 'Triggers AI mishandling risk scoring at check-in and wirelessly updates your Diamond E-Ink SmartTag via NFC.'
+                : 'Triggers AI mishandling risk scoring at check-in and activates your universal digital bag tag — no physical tag required.'}
             </Text>
 
             <TouchableOpacity style={styles.termsRow} onPress={() => setTermsAccepted(!termsAccepted)}>
@@ -316,7 +380,7 @@ export default function PassengerSmartTagScreen() {
                 {termsAccepted && <Text style={styles.checkboxTick}>✓</Text>}
               </View>
               <Text style={styles.termsText}>
-                I confirm no restricted lithium batteries/dangerous goods and agree to Cathay SmartTag Terms.
+                I confirm no restricted dangerous goods and agree to Cathay Baggage Copilot Terms.
               </Text>
             </TouchableOpacity>
 
@@ -328,7 +392,11 @@ export default function PassengerSmartTagScreen() {
               {isSyncingNfc ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryBtnText}>📲 NFC Tap to Sync SmartTag</Text>
+                <Text style={styles.primaryBtnText}>
+                  {profile.isHardwareTag
+                    ? '📲 Check-In & NFC Sync SmartTag'
+                    : '📲 Check-In & Activate Digital Tag'}
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -344,14 +412,14 @@ export default function PassengerSmartTagScreen() {
           <View style={styles.actionCard}>
             <Text style={styles.cardHeading}>HKIA Self Bag-Drop Verification</Text>
             <Text style={styles.cardSub}>
-              Skip the paper tag kiosk completely. Place your SmartTag-equipped bag on the belt:
+              Skip paper tag printing kiosks completely. Place your bag on the drop belt:
             </Text>
 
             {[
               '1. Mobile Boarding Pass scanned',
               '2. HKIA Biometric Face Token verified',
-              '3. E-Ink Code 128 Barcode optically read',
-              `4. Conveyor scale weight logged (${bag?.weight_kg ?? profile.weight} kg)`,
+              '3. Digital / E-Ink IATA Barcode optically read',
+              `4. Scale weight logged (${bag?.weight_kg ?? profile.weight} kg)`,
             ].map((step, idx) => (
               <View key={idx} style={styles.checkRow}>
                 <Text style={styles.checkMark}>✓</Text>
@@ -377,7 +445,7 @@ export default function PassengerSmartTagScreen() {
           <View style={styles.actionCard}>
             <View style={styles.journeyHeader}>
               <Text style={styles.cardHeading}>Real-Time Baggage Journey</Text>
-              <Text style={styles.riskChip}>AI Risk: {bag?.risk_level || 'LOW'}</Text>
+              <Text style={styles.riskChip}>Copilot Risk: {bag?.risk_level || 'LOW'}</Text>
             </View>
 
             {(bag?.events || []).map((ev, index) => (
@@ -431,9 +499,22 @@ const styles = StyleSheet.create({
   profileChipActive: { backgroundColor: '#C49A45' },
   profileChipText: { color: '#E2E8F0', fontSize: 11, fontWeight: '600' },
   profileChipTextActive: { color: '#0B2545', fontWeight: '700' },
-  irropsBanner: { backgroundColor: '#DE350B', padding: spacing.md },
-  irropsTitle: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+  irropsBanner: { backgroundColor: '#B91C1C', padding: spacing.md },
+  irropsTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
   irropsBody: { color: '#FFFFFF', fontSize: 12, marginTop: 2 },
+  choiceRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  choiceBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  choiceBtnSelected: { backgroundColor: '#006564', borderColor: '#E3FCEF' },
+  choiceBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', textAlign: 'center' },
   tabRow: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -457,7 +538,7 @@ const styles = StyleSheet.create({
   flightHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   pnrText: { fontSize: 11, fontWeight: '700', color: colors.text.secondary },
   tierBadge: { backgroundColor: colors.brand.goldLight, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  tierText: { fontSize: 10, fontWeight: '700', color: '#7A5200' },
+  tierText: { fontSize: 9, fontWeight: '800', color: '#7A5200' },
   routeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iataCode: { fontSize: 28, fontWeight: '800', color: colors.text.primary },
   cityLabel: { fontSize: 12, color: colors.text.secondary },
@@ -475,7 +556,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   smartTagHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  smartTagTitle: { fontSize: 11, fontWeight: '700', color: colors.brand.jadePrimary },
+  smartTagTitle: { fontSize: 10, fontWeight: '800', color: colors.brand.jadePrimary },
   smartTagMeta: { fontSize: 10, fontWeight: '600', color: colors.text.muted },
   einkScreen: {
     backgroundColor: colors.eink.displayBackground,
