@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const STAFF_ID = 'STF-8821';
 const STATION = 'HKIA Terminal 1 · Baggage Operations';
 
@@ -39,6 +39,7 @@ interface LiveBag {
   is_rush_bag: boolean;
   risk_score: number;
   risk_level: string;
+  model_version?: string;
   recommended_action: string;
   passenger_recovery_choice?: string | null;
   recovery_flight_number?: string | null;
