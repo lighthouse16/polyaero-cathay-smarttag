@@ -13,7 +13,10 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    await init_db()
+    try:
+        await init_db()
+    except Exception as exc:
+        print(f"[WARN] PostgreSQL not connected ({exc}); running with live in-memory store.")
     yield
 
 
@@ -29,7 +32,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,31 +1,39 @@
+
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --color-brand-jade: #006564;
-  --color-brand-jade-dark: #004B4A;
-  --color-brand-jade-light: #E6F0F0;
-  --color-gold: #C49A45;
-  --color-bg: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-text-main: #0F172A;
-  --color-text-muted: #64748B;
-  --color-border: #E2E8F0;
+  --cathay-jade: #006564;
+  --cathay-jade-dark: #004B4A;
+  --cathay-pine: #284239;
+  --cathay-mint: #EBF4F1;
+  --cathay-gold: #C49A45;
+  --cathay-bg: #F6F8F8;
+  --cathay-text-primary: #1C2024;
+  --cathay-text-secondary: #4A5568;
+  --cathay-text-muted: #718096;
 }
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--color-bg);
-  color: var(--color-text-main);
-  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  background-color: var(--cathay-bg);
+  color: var(--cathay-text-primary);
+  font-family: var(--font-cathay), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+button {
+  font-family: inherit;
+  transition: all 0.16s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(0.96);
+  transform: translateY(-0.5px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
 }
