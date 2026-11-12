@@ -2,13 +2,14 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_db
+from app.services.baggage import find_tag, normalize_status, record_event
 from app.services.demo_state import (
     LIVE_BAGS,
-    RiskPredictionRequest,
-    RiskPredictionResponse,
     reset_demo_bags,
 )
 from app.services.risk_engine import (
@@ -98,7 +99,9 @@ async def get_baggage_by_tag(tag_number: str) -> dict[str, Any]:
 
 
 @router.post("/sync")
-async def sync_smarttag_from_mobile(payload: SyncTagRequest) -> dict[str, Any]:
+async def sync_smarttag_from_mobile(
+    payload: SyncTagRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     now = datetime.now(UTC).isoformat()
     existing = LIVE_BAGS.get(payload.tag_number)
     events = list(existing["events"]) if existing else []
@@ -181,11 +184,27 @@ async def sync_smarttag_from_mobile(payload: SyncTagRequest) -> dict[str, Any]:
         "events": events,
     }
     LIVE_BAGS[payload.tag_number] = bag_record
+
+    tag = await find_tag(db, payload.tag_code) or await find_tag(db, payload.tag_number)
+    if tag is not None:
+        await record_event(
+            db,
+            tag,
+            "SYNCHRONIZED" if is_synced else "TAG_TAPPED",
+            location_code="MOBILE-APP",
+            station_name="Cathay App SmartTag Sync",
+            scanner_type="APP",
+            notes=f"Mobile sync · risk {assessment.risk_score}/100",
+        )
+        await db.commit()
+
     return bag_record
 
 
 @router.post("/{tag_number}/scan")
-async def record_baggage_scan(tag_number: str, payload: ScanEventRequest) -> dict[str, Any]:
+async def record_baggage_scan(
+    tag_number: str, payload: ScanEventRequest, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
     bag = LIVE_BAGS.get(tag_number)
     if not bag:
         raise HTTPException(status_code=404, detail=f"Baggage tag {tag_number} not found")
@@ -237,6 +256,25 @@ async def record_baggage_scan(tag_number: str, payload: ScanEventRequest) -> dic
             "notes": payload.notes or f"Milestone updated to {status_upper}",
         }
     )
+
+    tag = await find_tag(db, tag_number)
+    if tag is not None:
+        try:
+            event_type = normalize_status(status_upper)
+        except ValueError:
+            event_type = "TAG_TAPPED"
+        await record_event(
+            db,
+            tag,
+            event_type,
+            location_code=payload.location_code,
+            station_name=payload.station_name,
+            reader_id=payload.staff_id,
+            scanner_type=payload.scanner_type,
+            notes=payload.notes or f"Mirrored staff scan: {status_upper}",
+        )
+        await db.commit()
+
     return bag
 
 
