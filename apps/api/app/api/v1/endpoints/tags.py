@@ -128,7 +128,16 @@ async def hardware_nfc_tap(
             )
         now = datetime.now(UTC).isoformat()
         if tap.next_status:
-            bag["status"] = tap.next_status.upper()
+            raw = tap.next_status.upper()
+            try:
+                normalized = normalize_status(raw)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+                ) from exc
+            bag["status"] = normalized
+            bag["eink_banner"] = banner_for(normalized)
+            bag["is_rush_bag"] = is_rush(normalized)
         bag["updated_at"] = now
         bag["events"].insert(
             0,

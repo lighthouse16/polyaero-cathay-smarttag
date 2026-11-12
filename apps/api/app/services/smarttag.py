@@ -33,7 +33,7 @@ def build_ndef_record(
         "flight": flight.flight_number,
         "route": f"{flight.origin}-{flight.destination}",
         "barcode": barcode,
-        "status": "SYNCHRONIZED",
+        "status": "TAGGED",
         "at": datetime.now(UTC).isoformat(),
     }
     return json.dumps(record, separators=(",", ":"), sort_keys=True)

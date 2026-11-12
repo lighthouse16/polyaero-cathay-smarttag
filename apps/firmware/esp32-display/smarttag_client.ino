@@ -240,10 +240,22 @@ String extractNdefText() {
     char c = (char)ndefFile[i];
     if (c >= 32 && c < 127) text += c;
   }
-  int start = text.indexOf('{');
-  int stop = text.lastIndexOf('}');
-  if (start >= 0 && stop > start) return text.substring(start, stop + 1);
-  return "";
+  return text;
+}
+
+bool parsePa1(const String& s, String& bagId, String& status) {
+  int p1 = s.indexOf('|');
+  if (p1 < 0) return false;
+  String prefix = s.substring(0, p1);
+  if (prefix != "PA1") return false;
+  int p2 = s.indexOf('|', p1 + 1);
+  int p3 = s.indexOf('|', p2 + 1);
+  int p4 = s.indexOf('|', p3 + 1);
+  if (p2 < 0 || p3 < 0 || p4 < 0) return false;
+  bagId = s.substring(p1 + 1, p2);
+  String route = s.substring(p2 + 1, p3);
+  status = s.substring(p3 + 1, p4);
+  return bagId.length() > 0 && status.length() > 0;
 }
 
 bool listenForNdef(String& payload) {
@@ -374,14 +386,32 @@ void renderDisplay(JsonObject data) {
 
 void syncTap(const String& ndefPayload) {
   HTTPClient http;
-  String url = String(API_BASE_URL) + "/tags/" + String(TAG_UID) + "/tap";
+
+  String bagId, status, url;
+  bool isJson = ndefPayload.length() > 0 && ndefPayload[0] == '{';
+
+  if (isJson) {
+    url = String(API_BASE_URL) + "/tags/" + String(TAG_UID) + "/tap";
+    Serial.println("[NFC] JSON payload");
+  } else if (parsePa1(ndefPayload, bagId, status)) {
+    url = String(API_BASE_URL) + "/tags/" + bagId + "/tap";
+    Serial.printf("[NFC] PA1 bagId=%s status=%s\n", bagId.c_str(), status.c_str());
+  } else {
+    Serial.println("[NFC] Unknown payload format");
+    return;
+  }
+
   http.begin(url);
   http.setTimeout(4000);
   http.addHeader("Content-Type", "application/json");
   if (strlen(DEVICE_KEY) > 0) http.addHeader("X-Device-Key", DEVICE_KEY);
 
   JsonDocument request;
-  request["ndef_payload"] = ndefPayload;
+  if (isJson) {
+    request["ndef_payload"] = ndefPayload;
+  } else {
+    request["next_status"] = status;
+  }
   request["reader_id"] = "ESP32-PN532-01";
   request["location_code"] = "HKG-STAGE-DEMO";
   String body;

@@ -20,9 +20,15 @@ API verifies the tag/barcode, writes a baggage_event, updates tags.tag_status
 GET /api/v1/tags/{TAG_UID}/display every 3s  ──> app-side changes reach the screen
 ```
 
-The phone writes the `ndef_record` returned by `POST /api/v1/smarttag/sync/payload`.
-That record contains the tag/booking UUIDs, flight, route, barcode, and status — never
-the PNR or passenger name.
+The phone (or any NFC writer) writes a record to the PN532. Two formats are accepted:
+
+1. **JSON NDEF** — the `ndef_record` from `POST /api/v1/smarttag/sync/payload` (contains
+   tag UUID, tag_code, booking UUID, flight, route, barcode, status).
+2. **PA1 text record** — `PA1|<bagId>|<route>|<status>|<timestamp>` as produced by
+   `apps/staff/src/lib/nfcWriter.ts` and any generic NFC tag writer app.
+
+The sketch auto-detects the format, posts to `/tags/{id}/tap`, and renders the returned
+display payload.
 
 ## 1. Hardware
 
@@ -139,6 +145,17 @@ move the milestone.
 | `HTTP 422` on `/tap` | NDEF payload is not JSON, or `next_status` is unknown |
 | Phone cannot write | PN532 HAT must be in UART mode and the phone must support Web NFC (Android Chrome over HTTPS) |
 | Screen never updates | Check Wi-Fi, `API_BASE_URL`, and the serial log for PN532 frames |
+| Tap does nothing | Serial shows `[NFC] Unknown payload format` — tag content is neither JSON nor `PA1|...` |
+
+**Serial debug lines**
+
+| Line | Meaning |
+|---|---|
+| `[NFC] JSON payload` | Valid JSON NDEF detected; posting as `ndef_payload` |
+| `[NFC] PA1 bagId=0160892012 status=LOADED` | PA1 record parsed; posting as `next_status` |
+| `[NFC] Unknown payload format` | Tag content not recognised |
+| `[TAP] POST ... -> HTTP 200` | Tap succeeded, display refreshed |
+| `[DISPLAY] GET ... -> HTTP 200` | Poll succeeded, display refreshed |
 
 ## 8. Known limits
 

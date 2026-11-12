@@ -262,3 +262,41 @@ async def test_staff_scan_mirrors_into_database(client: AsyncClient, monkeypatch
             .order_by(BaggageEvent.created_at.desc())
         )
         assert event is not None and event.event_type == "MISROUTED"
+
+
+async def test_normalize_status_aliases():
+    from app.services.baggage import normalize_status
+    assert normalize_status("priority_transfer") == "MISROUTED"
+    assert normalize_status("PRIORITY_TRANSFER") == "MISROUTED"
+
+
+async def test_demo_tap_updates_banner_and_rush(client: AsyncClient):
+    tap = await client.post(
+        "/api/v1/tags/0160892012/tap",
+        json={"next_status": "MISROUTED", "reader_id": "TEST-READER"},
+    )
+    assert tap.status_code == 200, tap.text
+    display = tap.json()["display"]
+    assert display["status"] == "MISROUTED"
+    assert display["banner"] == "MISROUTED - REROUTING"
+    assert display["is_rush"] is True
+
+
+async def test_smarttag_sync_payload_status_is_tagged(client: AsyncClient, monkeypatch):
+    headers = await member_headers(client, monkeypatch)
+    flight = await seeded_flight()
+    booking = await create_booking(client, headers, flight.id)
+    tag_id, tag_code = await make_tag()
+    await client.post(
+        "/api/v1/bookings/link-tag",
+        json={"pnr": booking["pnr"], "tag_id": str(tag_id)},
+        headers=headers,
+    )
+    synced = await client.post(
+        "/api/v1/smarttag/sync/payload",
+        json={"booking_id": booking["id"]},
+        headers=headers,
+    )
+    assert synced.status_code == 200, synced.text
+    ndef = json.loads(synced.json()["ndef_record"])
+    assert ndef["status"] == "TAGGED"

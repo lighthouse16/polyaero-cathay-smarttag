@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { writeToTag, webNfcSupported } from '@/lib/nfcWriter';
+import { buildTagPayload } from '@/lib/tagWriter';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const STAFF_ID = 'STF-8821';
@@ -46,6 +48,7 @@ interface LiveBag {
   delivery_address?: string | null;
   eink_banner: string;
   updated_at: string;
+  model_version?: string;
   events: BaggageEventItem[];
 }
 
@@ -176,6 +179,29 @@ export default function StaffDashboardPage() {
         setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
         setToast(`${updated.passenger_name} · ${formatMilestoneLabel(newStatus)}`);
       }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleWriteToTag = async () => {
+    if (!selectedBag) return;
+    setIsSyncing(true);
+    try {
+      const flight = {
+        origin: selectedBag.departure_airport,
+        destination: selectedBag.arrival_airport,
+        flightNumber: selectedBag.flight_number,
+      };
+      const payload = buildTagPayload(
+        selectedBag as any,
+        flight as any,
+        new Date()
+      );
+      const result = await writeToTag(payload);
+      setToast(`Tag write: ${result.mode} — ${result.record}`);
+    } catch (err: any) {
+      setToast(`Tag write failed: ${err.message}`);
     } finally {
       setIsSyncing(false);
     }
@@ -846,6 +872,40 @@ export default function StaffDashboardPage() {
                     {selectedBag.eink_banner}
                   </div>
                 </div>
+
+                {/* Write NDEF to SmartTag */}
+                <button
+                  onClick={handleWriteToTag}
+                  disabled={isSyncing || !webNfcSupported()}
+                  style={{
+                    marginTop: '10px',
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: webNfcSupported() ? '#FFFFFF' : '#F1F5F9',
+                    color: webNfcSupported() ? '#006564' : '#94A3B8',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: webNfcSupported() ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  {webNfcSupported() ? (
+                    <>
+                      <span style={{ fontSize: '14px' }}>📱</span>
+                      Write NDEF to SmartTag (Web NFC)
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: '14px' }}>⚠</span>
+                      Web NFC not available — use Android Chrome on HTTPS
+                    </>
+                  )}
+                </button>
               </div>
             )}
 

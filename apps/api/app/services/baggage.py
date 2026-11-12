@@ -43,6 +43,10 @@ BANNERS = {
 
 def normalize_status(value: str) -> str:
     status = value.strip().upper()
+    alias = {
+        "PRIORITY_TRANSFER": "MISROUTED",
+    }
+    status = alias.get(status, status)
     if status not in EVENT_TYPES:
         raise ValueError(f"Unknown baggage status: {value}")
     return status
