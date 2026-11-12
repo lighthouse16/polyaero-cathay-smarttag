@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface BaggageEventItem {
   id: string;
@@ -78,119 +78,129 @@ interface FlightRiskAssessment {
   factors: string[];
 }
 
-const STORE_FILE = path.join(os.tmpdir(), 'polyaero_demo_bags_v1.json');
+// ponytail: Demo ephemeral in-memory + os.tmpdir() JSON store.
+// Ceiling: Node process restarts and serverless cold starts reload from tmp file or initial fixtures. Not durable multi-node storage, no ACID transactions.
+// Upgrade path: Migrate to Supabase / PostgreSQL with row-level locks and write-ahead log.
+const STORE_FILE = path.join(os.tmpdir(), "polyaero_demo_bags_v1.json");
 
 function createInitialBags(): Record<string, LiveBag> {
   const now = new Date().toISOString();
   return {
-    '0160892012': {
-      id: 'bag_01',
-      tag_number: '0160892012',
-      tag_code: '04:A2:3B:4C:5D:6E:70',
-      tag_interface: 'SMARTTAG_EINK_EXCLUSIVE',
-      booking_reference: 'CX7K9M',
-      passenger_name: 'CHAN/TIMOTHY',
-      tier_status: 'DIAMOND',
-      cabin_class: 'PRIORITY J',
-      flight_number: 'CX888',
-      departure_airport: 'HKG',
-      arrival_airport: 'YVR',
-      departure_time: '2026-11-14T16:30:00Z',
-      seat_number: '12A',
+    "0160892012": {
+      id: "bag_01",
+      tag_number: "0160892012",
+      tag_code: "04:A2:3B:4C:5D:6E:70",
+      tag_interface: "SMARTTAG_EINK_EXCLUSIVE",
+      booking_reference: "CX7K9M",
+      passenger_name: "CHAN/TIMOTHY",
+      tier_status: "DIAMOND",
+      cabin_class: "PRIORITY J",
+      flight_number: "CX888",
+      departure_airport: "HKG",
+      arrival_airport: "YVR",
+      departure_time: "2026-11-14T16:30:00Z",
+      seat_number: "12A",
       weight_kg: 22.4,
       connection_minutes: 95,
-      status: 'LOADED',
+      status: "LOADED",
       is_tag_synced: true,
-      last_known_location: 'HKG-T1-GATE-36-ULD-AK7291',
-      carousel_assigned: 'Carousel 7',
+      last_known_location: "HKG-T1-GATE-36-ULD-AK7291",
+      carousel_assigned: "Carousel 7",
       is_rush_bag: false,
       risk_score: 24,
-      risk_level: 'LOW',
-      recommended_action: 'STANDARD DIGITAL ITINERARY FLOW',
-      copilot_approval_status: 'AUTO_CLEARED',
+      risk_level: "LOW",
+      recommended_action: "STANDARD DIGITAL ITINERARY FLOW",
+      copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
-      eink_banner: 'ON TRACK',
+      eink_banner: "ON TRACK",
       updated_at: now,
       events: [
         {
-          id: 'evt_01',
-          event_type: 'TAGGED',
-          timestamp: '2026-11-14T11:00:00Z',
-          location_code: 'HKG-APP',
-          station_name: 'Cathay Mobile Check-In & Risk Scan',
-          scanner_type: 'NFC_TAP',
-          notes: 'Check-in risk evaluated (Score 24/100 LOW); Diamond SmartTag synced',
+          id: "evt_01",
+          event_type: "TAGGED",
+          timestamp: "2026-11-14T11:00:00Z",
+          location_code: "HKG-APP",
+          station_name: "Cathay Mobile Check-In & Risk Scan",
+          scanner_type: "NFC_TAP",
+          notes:
+            "Check-in risk evaluated (Score 24/100 LOW); Diamond SmartTag synced",
         },
         {
-          id: 'evt_02',
-          event_type: 'CHECKED_IN',
-          timestamp: '2026-11-14T14:15:00Z',
-          location_code: 'HKG-T1-DROP-04',
-          station_name: 'Self Bag Drop Counter 4',
-          scanner_type: 'OPTICAL_BARCODE',
-          notes: 'Biometric face match + scale weight 22.4 kg verified',
+          id: "evt_02",
+          event_type: "CHECKED_IN",
+          timestamp: "2026-11-14T14:15:00Z",
+          location_code: "HKG-T1-DROP-04",
+          station_name: "Self Bag Drop Counter 4",
+          scanner_type: "OPTICAL_BARCODE",
+          notes: "Biometric face match + scale weight 22.4 kg verified",
         },
         {
-          id: 'evt_03',
-          event_type: 'LOADED',
-          timestamp: '2026-11-14T15:45:00Z',
-          location_code: 'HKG-GATE-36-RAMP',
-          station_name: 'Baggage Makeup Ramp Gate 36',
-          scanner_type: 'NFC_TAP',
-          notes: 'Loaded into Container AK7291 for CX888',
+          id: "evt_03",
+          event_type: "LOADED",
+          timestamp: "2026-11-14T15:45:00Z",
+          location_code: "HKG-GATE-36-RAMP",
+          station_name: "Baggage Makeup Ramp Gate 36",
+          scanner_type: "NFC_TAP",
+          notes: "Loaded into Container AK7291 for CX888",
         },
       ],
     },
-    '0160892014': {
-      id: 'bag_03',
-      tag_number: '0160892014',
-      tag_code: '04:B3:7C:1D:9E:2F:81',
-      tag_interface: 'DIGITAL_APP_TAG',
-      booking_reference: 'CX4M1P',
-      passenger_name: 'WONG/VICTOR',
-      tier_status: 'GOLD',
-      cabin_class: 'BUSINESS',
-      flight_number: 'CX255',
-      departure_airport: 'HKG',
-      arrival_airport: 'NRT',
-      departure_time: '2026-11-14T08:15:00Z',
-      seat_number: '14K',
+    "0160892014": {
+      id: "bag_03",
+      tag_number: "0160892014",
+      tag_code: "04:B3:7C:1D:9E:2F:81",
+      tag_interface: "DIGITAL_APP_TAG",
+      booking_reference: "CX4M1P",
+      passenger_name: "WONG/VICTOR",
+      tier_status: "GOLD",
+      cabin_class: "BUSINESS",
+      flight_number: "CX255",
+      departure_airport: "HKG",
+      arrival_airport: "NRT",
+      departure_time: "2026-11-14T08:15:00Z",
+      seat_number: "14K",
       weight_kg: 28.5,
       connection_minutes: 35,
-      status: 'MISROUTED',
+      status: "MISROUTED",
       is_tag_synced: true,
-      last_known_location: 'HKG-TRANSFER-STAGING-AREA',
-      carousel_assigned: 'Carousel 2',
+      last_known_location: "HKG-TRANSFER-STAGING-AREA",
+      carousel_assigned: "Carousel 2",
       is_rush_bag: true,
       risk_score: 82,
-      risk_level: 'HIGH_PRIORITY',
-      recommended_action: 'APPROVE RAMP INTERCEPT & OFFER PASSENGER RECOVERY OPTIONS',
-      copilot_approval_status: 'PENDING_STAFF_APPROVAL',
+      risk_level: "HIGH_PRIORITY",
+      recommended_action:
+        "APPROVE RAMP INTERCEPT & OFFER PASSENGER RECOVERY OPTIONS",
+      copilot_approval_status: "PENDING_STAFF_APPROVAL",
       passenger_recovery_choice: null,
-      eink_banner: 'PRIORITY TRANSFER',
+      eink_banner: "PRIORITY TRANSFER",
       updated_at: now,
       events: [
         {
-          id: 'evt_10',
-          event_type: 'MISROUTED',
-          timestamp: '2026-11-14T07:30:00Z',
-          location_code: 'HKG-TRANSFER-STAGING-AREA',
-          station_name: 'HKIA Transfer Bay 2',
-          scanner_type: 'RFID_GATE',
-          notes: 'Copilot flagged 35m connection risk (Score 82) — awaiting Ground Staff approval',
+          id: "evt_10",
+          event_type: "MISROUTED",
+          timestamp: "2026-11-14T07:30:00Z",
+          location_code: "HKG-TRANSFER-STAGING-AREA",
+          station_name: "HKIA Transfer Bay 2",
+          scanner_type: "RFID_GATE",
+          notes:
+            "Copilot flagged 35m connection risk (Score 82) — awaiting Ground Staff approval",
         },
       ],
     },
   };
 }
 
-const g = globalThis as typeof globalThis & { __polyaeroBags?: Record<string, LiveBag> };
+const g = globalThis as typeof globalThis & {
+  __polyaeroBags?: Record<string, LiveBag>;
+};
 
 function getBags(): Record<string, LiveBag> {
   if (!g.__polyaeroBags) {
     try {
       if (fs.existsSync(STORE_FILE)) {
-        g.__polyaeroBags = JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8')) as Record<string, LiveBag>;
+        g.__polyaeroBags = JSON.parse(
+          fs.readFileSync(STORE_FILE, "utf-8"),
+        ) as Record<string, LiveBag>;
       }
     } catch {
       // ignore tmp read errors
@@ -205,7 +215,7 @@ function getBags(): Record<string, LiveBag> {
 function saveBags(bags: Record<string, LiveBag>): void {
   g.__polyaeroBags = bags;
   try {
-    fs.writeFileSync(STORE_FILE, JSON.stringify(bags), 'utf-8');
+    fs.writeFileSync(STORE_FILE, JSON.stringify(bags), "utf-8");
   } catch {
     // ignore tmp write errors
   }
@@ -213,19 +223,158 @@ function saveBags(bags: Record<string, LiveBag>): void {
 
 function formatUtcEta(hoursOffset: number, minutesOffset: number): string {
   const dt = new Date(Date.now() + (hoursOffset * 60 + minutesOffset) * 60_000);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = String(dt.getUTCDate()).padStart(2, '0');
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const day = String(dt.getUTCDate()).padStart(2, "0");
   const mon = months[dt.getUTCMonth()];
-  const hh = String(dt.getUTCHours()).padStart(2, '0');
-  const mm = String(dt.getUTCMinutes()).padStart(2, '0');
+  const hh = String(dt.getUTCHours()).padStart(2, "0");
+  const mm = String(dt.getUTCMinutes()).padStart(2, "0");
   return `${day} ${mon}, ${hh}:${mm} Local`;
 }
 
+const KNOWN_STATUSES = new Set([
+  "AWAITING_SYNC",
+  "TAGGED",
+  "CHECKED_IN",
+  "LOADED",
+  "IN_TRANSFER",
+  "MISROUTED",
+  "MISSING",
+  "RECOVERY_IN_PROGRESS",
+  "ARRIVED",
+  "ON_CAROUSEL",
+  "COLLECTED",
+  "CLAIMED",
+]);
+
+const KNOWN_SCANNER_TYPES = new Set([
+  "NFC_TAP",
+  "OPTICAL_BARCODE",
+  "RFID_GATE",
+  "MANUAL_OVERRIDE",
+  "APP",
+]);
+
+function validateRiskFeatures(raw: unknown): {
+  error?: string;
+  features?: FlightRiskFeatures;
+} {
+  if (
+    !raw ||
+    typeof raw !== "object" ||
+    Array.isArray(raw) ||
+    Object.keys(raw).length === 0
+  ) {
+    return { error: "Invalid or missing risk features object" };
+  }
+  const b = raw as Record<string, unknown>;
+
+  if (
+    typeof b.flight_number !== "string" ||
+    b.flight_number.trim().length < 2 ||
+    b.flight_number.trim().length > 10
+  ) {
+    return {
+      error: "flight_number must be string between 2 and 10 characters",
+    };
+  }
+
+  if (typeof b.origin !== "string" || !/^[A-Za-z]{3}$/.test(b.origin.trim())) {
+    return { error: "origin must be a 3-letter IATA airport code" };
+  }
+
+  if (
+    typeof b.destination !== "string" ||
+    !/^[A-Za-z]{3}$/.test(b.destination.trim())
+  ) {
+    return { error: "destination must be a 3-letter IATA airport code" };
+  }
+
+  let transferMinutes: number | undefined;
+  if (b.transfer_minutes !== undefined && b.transfer_minutes !== null) {
+    const num =
+      typeof b.transfer_minutes === "number" ? b.transfer_minutes : NaN;
+    if (!Number.isFinite(num) || num < 0 || num > 1440) {
+      return { error: "transfer_minutes must be a number between 0 and 1440" };
+    }
+    transferMinutes = num;
+  }
+
+  let weatherSeverity: number | undefined;
+  if (b.weather_severity !== undefined && b.weather_severity !== null) {
+    const num =
+      typeof b.weather_severity === "number" ? b.weather_severity : NaN;
+    if (!Number.isInteger(num) || num < 1 || num > 5) {
+      return { error: "weather_severity must be an integer between 1 and 5" };
+    }
+    weatherSeverity = num;
+  }
+
+  let loadFactorPct: number | undefined;
+  if (b.load_factor_pct !== undefined && b.load_factor_pct !== null) {
+    const num = typeof b.load_factor_pct === "number" ? b.load_factor_pct : NaN;
+    if (!Number.isFinite(num) || num < 0 || num > 100) {
+      return { error: "load_factor_pct must be a number between 0 and 100" };
+    }
+    loadFactorPct = num;
+  }
+
+  let airportCongestion: number | undefined;
+  if (b.airport_congestion !== undefined && b.airport_congestion !== null) {
+    const num =
+      typeof b.airport_congestion === "number" ? b.airport_congestion : NaN;
+    if (!Number.isInteger(num) || num < 1 || num > 5) {
+      return { error: "airport_congestion must be an integer between 1 and 5" };
+    }
+    airportCongestion = num;
+  }
+
+  return {
+    features: {
+      flight_number: b.flight_number.trim().toUpperCase(),
+      origin: b.origin.trim().toUpperCase(),
+      destination: b.destination.trim().toUpperCase(),
+      transfer_minutes: transferMinutes,
+      weather_severity: weatherSeverity,
+      load_factor_pct: loadFactorPct,
+      airport_congestion: airportCongestion,
+      tier_status:
+        typeof b.tier_status === "string"
+          ? b.tier_status.trim().toUpperCase()
+          : undefined,
+    },
+  };
+}
+
 function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
-  const transferMinutes = features.transfer_minutes ?? 75;
-  const weatherSeverity = features.weather_severity ?? 2;
-  const loadFactorPct = features.load_factor_pct ?? 85.0;
-  const airportCongestion = features.airport_congestion ?? 2;
+  const transferMinutes = Math.max(
+    0,
+    Math.min(1440, features.transfer_minutes ?? 75),
+  );
+  const weatherSeverity = Math.max(
+    1,
+    Math.min(5, features.weather_severity ?? 2),
+  );
+  const loadFactorPct = Math.max(
+    0,
+    Math.min(100, features.load_factor_pct ?? 85.0),
+  );
+  const airportCongestion = Math.max(
+    1,
+    Math.min(5, features.airport_congestion ?? 2),
+  );
 
   let score = 12;
   const factors: string[] = [];
@@ -245,7 +394,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
     factors.push(`Adverse route weather (Severity ${weatherSeverity}/5)`);
   } else if (weatherSeverity === 3) {
     score += 10;
-    factors.push('Moderate en-route weather');
+    factors.push("Moderate en-route weather");
   }
 
   if (airportCongestion >= 4) {
@@ -260,26 +409,28 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
 
   score = Math.max(5, Math.min(98, score));
 
-  const routeKey = `${features.origin.toUpperCase()}-${features.destination.toUpperCase()}`;
+  const origin = (features.origin || "HKG").trim().toUpperCase();
+  const destination = (features.destination || "NRT").trim().toUpperCase();
+  const routeKey = `${origin}-${destination}`;
   const routeHoursMap: Record<string, number> = {
-    'HKG-HND': 4.2,
-    'HKG-NRT': 4.4,
-    'HKG-YVR': 11.8,
-    'HKG-LHR': 13.5,
-    'HKG-NKG': 2.6,
+    "HKG-HND": 4.2,
+    "HKG-NRT": 4.4,
+    "HKG-YVR": 11.8,
+    "HKG-LHR": 13.5,
+    "HKG-NKG": 2.6,
   };
   const routeHours = routeHoursMap[routeKey] ?? 4.5;
   const etaStr = formatUtcEta(routeHours, 22);
-  const dest = features.destination.toUpperCase();
-  const carousel = dest === 'HND' || dest === 'NRT' ? 'Belt 7' : 'Belt 4';
+  const dest = destination;
+  const carousel = dest === "HND" || dest === "NRT" ? "Belt 7" : "Belt 4";
 
   if (score >= 65) {
     return {
-      model_version: 'cathay-bag-risk-v1.0-interface',
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
-      risk_level: 'HIGH_PRIORITY',
+      risk_level: "HIGH_PRIORITY",
       priority_sequence: 1,
-      recommended_action: 'Flag for priority tail-to-tail ramp transfer',
+      recommended_action: "Flag for priority tail-to-tail ramp transfer",
       passenger_summary: `High-priority transfer protection active for ${features.flight_number}.`,
       predicted_arrival_time: etaStr,
       carousel_estimate: carousel,
@@ -288,11 +439,11 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
   }
   if (score >= 35) {
     return {
-      model_version: 'cathay-bag-risk-v1.0-interface',
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
-      risk_level: 'MEDIUM',
+      risk_level: "MEDIUM",
       priority_sequence: 2,
-      recommended_action: 'Monitor BHS sortation & standard ULD load',
+      recommended_action: "Monitor BHS sortation & standard ULD load",
       passenger_summary: `Standard transfer window on ${features.flight_number} — actively monitored.`,
       predicted_arrival_time: etaStr,
       carousel_estimate: carousel,
@@ -300,11 +451,11 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
     };
   }
   return {
-    model_version: 'cathay-bag-risk-v1.0-interface',
+    model_version: "cathay-bag-risk-v1.0-interface",
     risk_score: score,
-    risk_level: 'LOW',
+    risk_level: "LOW",
     priority_sequence: 3,
-    recommended_action: 'Normal automated BHS routing',
+    recommended_action: "Normal automated BHS routing",
     passenger_summary: `Smooth connection outlook on ${features.flight_number}.`,
     predicted_arrival_time: etaStr,
     carousel_estimate: carousel,
@@ -314,7 +465,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
 
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ): Promise<NextResponse> {
   const { path: segs = [] } = await context.params;
   const bags = getBags();
@@ -325,22 +476,25 @@ export async function GET(
   if (segs.length === 1) {
     const bag = bags[segs[0]];
     if (!bag) {
-      return NextResponse.json({ detail: `Baggage tag ${segs[0]} not found` }, { status: 404 });
+      return NextResponse.json(
+        { detail: `Baggage tag ${segs[0]} not found` },
+        { status: 404 },
+      );
     }
     return NextResponse.json(bag);
   }
-  return NextResponse.json({ detail: 'Not found' }, { status: 404 });
+  return NextResponse.json({ detail: "Not found" }, { status: 404 });
 }
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ path?: string[] }> }
+  context: { params: Promise<{ path?: string[] }> },
 ): Promise<NextResponse> {
   const { path: segs = [] } = await context.params;
   const bags = getBags();
   const now = new Date().toISOString();
 
-  if (segs.length === 1 && segs[0] === 'reset') {
+  if (segs.length === 1 && segs[0] === "reset") {
     const fresh = createInitialBags();
     saveBags(fresh);
     return NextResponse.json(Object.values(fresh));
@@ -348,22 +502,32 @@ export async function POST(
 
   let body: Record<string, unknown> = {};
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    const raw = await req.json();
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      body = raw as Record<string, unknown>;
+    }
   } catch {
     body = {};
   }
 
-  if (segs.length === 2 && segs[0] === 'risk' && segs[1] === 'predict') {
-    return NextResponse.json(predictRisk(body as unknown as FlightRiskFeatures));
+  if (segs.length === 2 && segs[0] === "risk" && segs[1] === "predict") {
+    const val = validateRiskFeatures(body);
+    if (val.error || !val.features) {
+      return NextResponse.json(
+        { detail: val.error ?? "Invalid risk features" },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(predictRisk(val.features));
   }
 
-  if (segs.length === 1 && segs[0] === 'sync') {
-    const tagNumber = String(body.tag_number ?? '0160892012');
+  if (segs.length === 1 && segs[0] === "sync") {
+    const tagNumber = String(body.tag_number ?? "0160892012");
     const existing = bags[tagNumber];
     const events = existing ? [...existing.events] : [];
-    const flightNumber = String(body.flight_number ?? 'CX548');
-    const origin = String(body.departure_airport ?? 'HKG');
-    const destination = String(body.arrival_airport ?? 'HND');
+    const flightNumber = String(body.flight_number ?? "CX548");
+    const origin = String(body.departure_airport ?? "HKG");
+    const destination = String(body.arrival_airport ?? "HND");
     const connectionMinutes = Number(body.connection_minutes ?? 85);
 
     const assessment = predictRisk({
@@ -376,27 +540,29 @@ export async function POST(
       airport_congestion: Number(body.airport_congestion ?? 2),
     });
 
-    const statusCode = String(body.initial_status ?? 'AWAITING_SYNC').toUpperCase();
-    const isSynced = statusCode !== 'AWAITING_SYNC';
+    const statusCode = String(
+      body.initial_status ?? "AWAITING_SYNC",
+    ).toUpperCase();
+    const isSynced = statusCode !== "AWAITING_SYNC";
 
     if (isSynced) {
       events.push({
         id: `evt_${randomUUID().slice(0, 6)}`,
-        event_type: 'TAGGED',
+        event_type: "TAGGED",
         timestamp: now,
-        location_code: 'MOBILE-SMARTTAG-SYNC',
-        station_name: 'Cathay App SmartTag™ Sync',
-        scanner_type: 'NFC_TAP',
+        location_code: "MOBILE-SMARTTAG-SYNC",
+        station_name: "Cathay App SmartTag™ Sync",
+        scanner_type: "NFC_TAP",
         notes: `Tag synced · AI Risk Score ${assessment.risk_score}/100 (${assessment.risk_level})`,
       });
     } else if (events.length === 0) {
       events.push({
         id: `evt_${randomUUID().slice(0, 6)}`,
-        event_type: 'AWAITING_SYNC',
+        event_type: "AWAITING_SYNC",
         timestamp: now,
-        location_code: 'BOOKING-CREATED',
-        station_name: 'Flight Booked · AI Risk Evaluated',
-        scanner_type: 'APP',
+        location_code: "BOOKING-CREATED",
+        station_name: "Flight Booked · AI Risk Evaluated",
+        scanner_type: "APP",
         notes: `AI Risk Score ${assessment.risk_score}/100 · Expected arrival ${assessment.predicted_arrival_time}`,
       });
     }
@@ -404,24 +570,24 @@ export async function POST(
     const record: LiveBag = {
       id: existing ? existing.id : `bag_${randomUUID().slice(0, 6)}`,
       tag_number: tagNumber,
-      tag_code: String(body.tag_code ?? '04:A2:3B:4C:5D:6E:70'),
-      tag_interface: existing?.tag_interface ?? 'E-Ink SmartTag™',
-      booking_reference: existing?.booking_reference ?? 'CX7K9M',
-      passenger_name: String(body.passenger_name ?? 'TRINH/HAI DANG'),
-      tier_status: existing?.tier_status ?? 'DIAMOND',
-      cabin_class: String(body.cabin_class ?? 'BUSINESS'),
+      tag_code: String(body.tag_code ?? "04:A2:3B:4C:5D:6E:70"),
+      tag_interface: existing?.tag_interface ?? "E-Ink SmartTag™",
+      booking_reference: existing?.booking_reference ?? "CX7K9M",
+      passenger_name: String(body.passenger_name ?? "TRINH/HAI DANG"),
+      tier_status: existing?.tier_status ?? "DIAMOND",
+      cabin_class: String(body.cabin_class ?? "BUSINESS"),
       flight_number: flightNumber,
       departure_airport: origin,
       arrival_airport: destination,
-      departure_time: '2026-11-14T16:30:00Z',
-      seat_number: existing?.seat_number ?? '12A',
+      departure_time: "2026-11-14T16:30:00Z",
+      seat_number: existing?.seat_number ?? "12A",
       weight_kg: Number(body.weight_kg ?? 22.4),
       connection_minutes: connectionMinutes,
       status: statusCode,
       is_tag_synced: isSynced,
-      last_known_location: isSynced ? 'SMARTTAG-SYNCED' : 'AWAITING-TAG-SYNC',
+      last_known_location: isSynced ? "SMARTTAG-SYNCED" : "AWAITING-TAG-SYNC",
       carousel_assigned: assessment.carousel_estimate,
-      is_rush_bag: assessment.risk_level === 'HIGH_PRIORITY',
+      is_rush_bag: assessment.risk_level === "HIGH_PRIORITY",
       risk_score: assessment.risk_score,
       risk_level: assessment.risk_level,
       risk_factors: assessment.factors,
@@ -433,7 +599,9 @@ export async function POST(
       recovery_flight_number: existing?.recovery_flight_number ?? null,
       recovery_eta: existing?.recovery_eta ?? null,
       delivery_address: existing?.delivery_address ?? null,
-      eink_banner: isSynced ? `TAG SYNCED • ${flightNumber}` : 'AWAITING TAG SYNC',
+      eink_banner: isSynced
+        ? `TAG SYNCED • ${flightNumber}`
+        : "AWAITING TAG SYNC",
       updated_at: now,
       events,
     };
@@ -442,45 +610,88 @@ export async function POST(
     return NextResponse.json(record);
   }
 
-  if (segs.length === 2 && segs[1] === 'scan') {
+  if (segs.length === 2 && segs[1] === "scan") {
     const tagNumber = segs[0];
     const bag = bags[tagNumber];
     if (!bag) {
-      return NextResponse.json({ detail: `Baggage tag ${tagNumber} not found` }, { status: 404 });
+      return NextResponse.json(
+        { detail: `Baggage tag ${tagNumber} not found` },
+        { status: 404 },
+      );
     }
-    const statusUpper = String(body.event_type ?? 'LOADED').toUpperCase();
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body) ||
+      Object.keys(body).length === 0
+    ) {
+      return NextResponse.json(
+        { detail: "Invalid request body" },
+        { status: 400 },
+      );
+    }
+
+    const rawEventType =
+      typeof body.event_type === "string"
+        ? body.event_type.trim().toUpperCase()
+        : "";
+    if (!rawEventType || !KNOWN_STATUSES.has(rawEventType)) {
+      return NextResponse.json(
+        {
+          detail: `Invalid or unsupported event_type: ${String(body.event_type ?? "")}`,
+        },
+        { status: 400 },
+      );
+    }
+    const statusUpper = rawEventType;
+
+    // Scanner type: default MANUAL_OVERRIDE (never infer NFC)
+    let scannerType = "MANUAL_OVERRIDE";
+    if (typeof body.scanner_type === "string") {
+      const candidate = body.scanner_type.trim().toUpperCase();
+      if (KNOWN_SCANNER_TYPES.has(candidate)) {
+        scannerType = candidate;
+      }
+    }
+
     bag.status = statusUpper;
-    bag.is_tag_synced = statusUpper !== 'AWAITING_SYNC';
-    bag.last_known_location = String(body.location_code ?? 'HKG-T1-RAMP-04');
+    bag.is_tag_synced = statusUpper !== "AWAITING_SYNC";
+    bag.last_known_location = String(body.location_code ?? "HKG-T1-RAMP-04");
     bag.updated_at = now;
 
-    if (statusUpper === 'MISROUTED') {
+    if (statusUpper === "MISROUTED") {
       bag.is_rush_bag = true;
       bag.risk_score = 88;
-      bag.risk_level = 'HIGH_PRIORITY';
-      bag.recommended_action = 'Reroute via Express Next Flight or Direct Hotel Courier';
-      bag.eink_banner = 'MISROUTED • REROUTING';
-    } else if (statusUpper === 'MISSING') {
+      bag.risk_level = "HIGH_PRIORITY";
+      bag.recommended_action =
+        "Reroute via Express Next Flight or Direct Hotel Courier";
+      bag.eink_banner = "MISROUTED • REROUTING";
+    } else if (statusUpper === "MISSING") {
       bag.is_rush_bag = true;
       bag.risk_score = 95;
-      bag.risk_level = 'HIGH_PRIORITY';
-      bag.recommended_action = 'Active Ramp Trace & Customer Care Escalation';
-      bag.eink_banner = 'RECOVERY IN PROCESS';
-    } else if (statusUpper === 'RECOVERY_IN_PROGRESS') {
+      bag.risk_level = "HIGH_PRIORITY";
+      bag.recommended_action = "Active Ramp Trace & Customer Care Escalation";
+      bag.eink_banner = "RECOVERY IN PROCESS";
+    } else if (statusUpper === "RECOVERY_IN_PROGRESS") {
       bag.is_rush_bag = true;
       bag.risk_score = 65;
-      bag.risk_level = 'MEDIUM';
-      bag.recommended_action = 'Executing Passenger Recovery Preference';
-      bag.eink_banner = 'RECOVERY IN PROCESS';
-    } else if (['LOADED', 'ARRIVED', 'COLLECTED', 'ON_CAROUSEL', 'CLAIMED'].includes(statusUpper)) {
+      bag.risk_level = "MEDIUM";
+      bag.recommended_action = "Executing Passenger Recovery Preference";
+      bag.eink_banner = "RECOVERY IN PROCESS";
+    } else if (
+      ["LOADED", "ARRIVED", "COLLECTED", "ON_CAROUSEL", "CLAIMED"].includes(
+        statusUpper,
+      )
+    ) {
       bag.is_rush_bag = false;
       bag.risk_score = 12;
-      bag.risk_level = 'LOW';
-      bag.recommended_action = 'On schedule';
-      bag.eink_banner = statusUpper.replace(/_/g, ' ');
+      bag.risk_level = "LOW";
+      bag.recommended_action = "On schedule";
+      bag.eink_banner = statusUpper.replace(/_/g, " ");
     } else {
       bag.is_rush_bag = false;
-      bag.eink_banner = statusUpper.replace(/_/g, ' ');
+      bag.eink_banner = statusUpper.replace(/_/g, " ");
     }
 
     bag.events.push({
@@ -488,23 +699,34 @@ export async function POST(
       event_type: statusUpper,
       timestamp: now,
       location_code: bag.last_known_location,
-      station_name: String(body.station_name ?? 'HKIA Terminal 1 Operations'),
+      station_name: String(body.station_name ?? "HKIA Terminal 1 Operations"),
       handled_by_staff_id: body.staff_id ? String(body.staff_id) : null,
-      scanner_type: String(body.scanner_type ?? 'NFC_TAP'),
-      notes: body.notes ? String(body.notes) : `Milestone updated to ${statusUpper}`,
+      scanner_type: scannerType,
+      notes: body.notes
+        ? String(body.notes)
+        : `Milestone updated to ${statusUpper}`,
     });
     saveBags(bags);
     return NextResponse.json(bag);
   }
 
-  if (segs.length === 3 && segs[1] === 'risk' && segs[2] === 'apply') {
+  if (segs.length === 3 && segs[1] === "risk" && segs[2] === "apply") {
     const tagNumber = segs[0];
     const bag = bags[tagNumber];
     if (!bag) {
-      return NextResponse.json({ detail: `Baggage tag ${tagNumber} not found` }, { status: 404 });
+      return NextResponse.json(
+        { detail: `Baggage tag ${tagNumber} not found` },
+        { status: 404 },
+      );
     }
-    const features = body as unknown as FlightRiskFeatures;
-    const assessment = predictRisk(features);
+    const val = validateRiskFeatures(body);
+    if (val.error || !val.features) {
+      return NextResponse.json(
+        { detail: val.error ?? "Invalid risk features" },
+        { status: 400 },
+      );
+    }
+    const assessment = predictRisk(val.features);
     bag.risk_score = assessment.risk_score;
     bag.risk_level = assessment.risk_level;
     bag.risk_factors = assessment.factors;
@@ -513,26 +735,35 @@ export async function POST(
     bag.carousel_assigned = assessment.carousel_estimate;
     bag.model_version = assessment.model_version;
     bag.recommended_action = assessment.recommended_action;
-    bag.connection_minutes = features.transfer_minutes ?? bag.connection_minutes;
-    bag.is_rush_bag = assessment.risk_level === 'HIGH_PRIORITY';
+    bag.connection_minutes =
+      val.features.transfer_minutes ?? bag.connection_minutes;
+    bag.is_rush_bag = assessment.risk_level === "HIGH_PRIORITY";
     bag.updated_at = now;
     saveBags(bags);
     return NextResponse.json(assessment);
   }
 
-  if (segs.length === 3 && segs[1] === 'passenger' && segs[2] === 'choice') {
+  if (segs.length === 3 && segs[1] === "passenger" && segs[2] === "choice") {
     const tagNumber = segs[0];
     const bag = bags[tagNumber];
     if (!bag) {
-      return NextResponse.json({ detail: `Baggage tag ${tagNumber} not found` }, { status: 404 });
+      return NextResponse.json(
+        { detail: `Baggage tag ${tagNumber} not found` },
+        { status: 404 },
+      );
     }
-    const choice = String(body.choice ?? 'EXPRESS_NEXT_FLIGHT');
-    const origFlight = bag.flight_number || 'CX548';
-    const dest = bag.arrival_airport || 'HND';
+    const choice = String(body.choice ?? "EXPRESS_NEXT_FLIGHT");
+    const origFlight = bag.flight_number || "CX548";
+    const dest = bag.arrival_airport || "HND";
 
-    let summary = '';
-    if (choice === 'EXPRESS_NEXT_FLIGHT') {
-      const nextFlight = origFlight === 'CX548' ? 'CX524' : origFlight === 'CX888' ? 'CX890' : 'CX257';
+    let summary = "";
+    if (choice === "EXPRESS_NEXT_FLIGHT") {
+      const nextFlight =
+        origFlight === "CX548"
+          ? "CX524"
+          : origFlight === "CX888"
+            ? "CX890"
+            : "CX257";
       const etaStr = formatUtcEta(4, 35);
       bag.recovery_flight_number = nextFlight;
       bag.recovery_eta = `${etaStr} (${dest} Belt 4)`;
@@ -540,30 +771,32 @@ export async function POST(
       bag.eink_banner = `EXPRESS ${nextFlight} • ${dest}`;
       summary = `Rebooked onto ${nextFlight} · Estimated arrival: ${etaStr}`;
     } else {
-      const cleanAddr = String(body.hotel_address ?? '').trim() || 'Mandarin Oriental, Tokyo (Concierge Desk)';
+      const cleanAddr =
+        String(body.hotel_address ?? "").trim() ||
+        "Mandarin Oriental, Tokyo (Concierge Desk)";
       const etaStr = formatUtcEta(6, 15);
       bag.recovery_flight_number = origFlight;
       bag.recovery_eta = `Courier delivery by ${etaStr}`;
       bag.delivery_address = cleanAddr;
-      bag.eink_banner = 'COURIER • HOTEL DELIVERY';
+      bag.eink_banner = "COURIER • HOTEL DELIVERY";
       summary = `Courier dispatched to ${cleanAddr} · ETA: ${etaStr}`;
     }
 
     bag.passenger_recovery_choice = choice;
-    bag.status = 'RECOVERY_IN_PROGRESS';
+    bag.status = "RECOVERY_IN_PROGRESS";
     bag.updated_at = now;
     bag.events.push({
       id: `evt_${randomUUID().slice(0, 6)}`,
-      event_type: 'RECOVERY_IN_PROGRESS',
+      event_type: "RECOVERY_IN_PROGRESS",
       timestamp: now,
-      location_code: 'PASSENGER-APP',
-      station_name: 'Cathay App Recovery Preference',
-      scanner_type: 'APP',
+      location_code: "PASSENGER-APP",
+      station_name: "Cathay App Recovery Preference",
+      scanner_type: "APP",
       notes: summary,
     });
     saveBags(bags);
     return NextResponse.json(bag);
   }
 
-  return NextResponse.json({ detail: 'Not found' }, { status: 404 });
+  return NextResponse.json({ detail: "Not found" }, { status: 404 });
 }

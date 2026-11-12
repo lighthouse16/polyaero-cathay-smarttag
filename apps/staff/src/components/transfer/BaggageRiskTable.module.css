@@ -1,0 +1,103 @@
+.risk-table .risk-table {
+  overflow: hidden;
+}
+.risk-table .queue-toolbar {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.risk-table .queue-tabs {
+  display: flex;
+  gap: 18px;
+}
+.risk-table .queue-tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #56615d;
+  font-weight: 600;
+}
+.risk-table .queue-tabs button[aria-pressed="true"] {
+  color: #073b39;
+  border-color: #073b39;
+}
+.risk-table .queue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 0;
+}
+.risk-table .queue-filters input {
+  flex: 1 1 160px;
+  min-width: 100px;
+}
+.risk-table .queue-filters input,
+.risk-table .queue-filters select,
+.risk-table .queue-filters button {
+  background: white;
+  border: 1px solid #d5d9d4;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.risk-table .table-scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+.risk-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.risk-table th,
+.risk-table td {
+  text-align: left;
+  border-bottom: 1px solid #e4e5e1;
+  padding: 0 8px;
+  height: 46px;
+}
+.risk-table th {
+  background: #faf9f6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #56615d;
+  font-size: 11.5px;
+}
+.risk-table th button,
+.risk-table td button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+  padding: 0 4px;
+}
+.risk-table td .tag-link {
+  font-weight: 700;
+  color: #192320;
+}
+.risk-table td .risk-score {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #f4f1e9;
+  font-weight: 600;
+}
+.risk-table td .risk-score.critical {
+  background: #8f3236;
+  color: white;
+}
+.risk-table td .status-label {
+  font-size: 11px;
+}
+.risk-table tr.selected {
+  background: #f1f3f0;
+  box-shadow: inset 3px 0 #006564;
+}
+.risk-table tbody tr:hover {
+  background: #f5f5f1;
+}
+.risk-table td:first-child {
+  padding-left: 16px;
+}

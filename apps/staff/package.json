@@ -6,12 +6,14 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint src tests --ext .ts,.tsx --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests src/app/api/__tests__"
   },
   "dependencies": {
     "@polyaero/design-tokens": "workspace:*",
     "@polyaero/shared": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
     "next": "15.5.29",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -22,6 +24,7 @@
     "@types/react-dom": "~19.3.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.5.29",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
   }
 }
