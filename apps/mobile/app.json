@@ -7,9 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "polyaero-smarttag",
-    "splash": {
-      "backgroundColor": "#006564"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.polyaero.smarttag",

@@ -1,0 +1,1 @@
+Illustration artwork is extracted from design screenshots. SURFACES are editable vector approximations. Use these in your React Native UI; do not use whole screenshots as UI image backgrounds. DO NOT REPLACE THE EXISTING BOTTOM NAVIGATION.

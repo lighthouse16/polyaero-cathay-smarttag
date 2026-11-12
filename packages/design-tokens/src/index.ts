@@ -9,6 +9,8 @@ export const colors = {
     jadePrimary: '#006564',      // Cathay signature jade green inspired
     jadeDark: '#004B4A',
     jadeLight: '#E6F0F0',
+    pinePrimary: '#284239',      // Cathay primary CTA dark pine green
+    mintSurface: '#EBF4F1',      // Cathay promo callout card surface
     goldAccent: '#C49A45',      // PolyAero gold accent
     goldLight: '#FBF5EA',
     navyDeep: '#0B2545',

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const STAFF_ID = 'STF-8821';
-const STATION = 'HKG-T1 Baggage Recovery Copilot Desk';
+const STATION = 'HKIA Terminal 1 · Baggage Operations';
 
 interface BaggageEventItem {
   id: string;
@@ -33,39 +33,46 @@ interface LiveBag {
   weight_kg: number;
   connection_minutes?: number;
   status: string;
+  is_tag_synced?: boolean;
   last_known_location: string;
   carousel_assigned: string;
   is_rush_bag: boolean;
   risk_score: number;
   risk_level: string;
   recommended_action: string;
-  copilot_approval_status?: string;
   passenger_recovery_choice?: string | null;
+  recovery_flight_number?: string | null;
+  recovery_eta?: string | null;
+  delivery_address?: string | null;
   eink_banner: string;
   updated_at: string;
   events: BaggageEventItem[];
 }
 
-interface RiskPrediction {
-  risk_score: number;
-  risk_level: string;
-  priority_sequence: number;
-  recommended_action: string;
-  passenger_alert: string | null;
-  factors: string[];
-}
-
-const OVERRIDE_STATUSES = [
-  'TAGGED',
-  'CHECKED_IN',
-  'SECURITY_CLEARED',
-  'LOADED',
-  'IN_FLIGHT',
-  'ON_CAROUSEL',
-  'CLAIMED',
-  'MISROUTED',
-  'MISSING',
+const NORMAL_MILESTONES: Array<{ code: string; label: string; sub: string }> = [
+  { code: 'TAGGED', label: 'Tag synced', sub: 'SmartTag™ written & paired' },
+  { code: 'CHECKED_IN', label: 'Bag accepted', sub: 'Self bag-drop verified' },
+  { code: 'LOADED', label: 'Loaded onto aircraft', sub: 'ULD ramp scan complete' },
+  { code: 'ARRIVED', label: 'Arrived', sub: 'Destination carousel' },
+  { code: 'COLLECTED', label: 'Collected', sub: 'Claimed at arrivals' },
 ];
+
+const EXCEPTION_MILESTONES: Array<{ code: string; label: string }> = [
+  { code: 'MISROUTED', label: 'Misrouted' },
+  { code: 'MISSING', label: 'Missing' },
+  { code: 'RECOVERY_IN_PROGRESS', label: 'Recovery in process' },
+];
+
+function formatMilestoneLabel(statusCode: string): string {
+  if (statusCode === 'AWAITING_SYNC') return 'Awaiting tag sync';
+  const normal = NORMAL_MILESTONES.find((m) => m.code === statusCode);
+  if (normal) return normal.label;
+  const exc = EXCEPTION_MILESTONES.find((m) => m.code === statusCode);
+  if (exc) return exc.label;
+  if (statusCode === 'ON_CAROUSEL') return 'Arrived';
+  if (statusCode === 'CLAIMED') return 'Collected';
+  return statusCode.replace(/_/g, ' ');
+}
 
 function formatTime(iso: string): string {
   try {
@@ -81,13 +88,37 @@ export default function StaffDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [actionBanner, setActionBanner] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [transferMins, setTransferMins] = useState<number>(42);
+  const [weatherSeverity, setWeatherSeverity] = useState<number>(3);
+  const [congestion, setCongestion] = useState<number>(3);
 
-  const [transferMins, setTransferMins] = useState<number>(38);
-  const [weatherSeverity, setWeatherSeverity] = useState<number>(4);
-  const [loadFactor, setLoadFactor] = useState<number>(92);
-  const [congestion, setCongestion] = useState<number>(4);
-  const [riskResult, setRiskResult] = useState<RiskPrediction | null>(null);
+  const handleEvaluateFlightRisk = async () => {
+    if (!selectedBag) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/risk/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flight_number: selectedBag.flight_number,
+          origin: selectedBag.departure_airport,
+          destination: selectedBag.arrival_airport,
+          transfer_minutes: transferMins,
+          weather_severity: weatherSeverity,
+          load_factor_pct: 89,
+          airport_congestion: congestion,
+        }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        await fetchBags();
+        setToast(`AI Risk Score (${result.risk_score}/100) & Arrival ETA sent to ${selectedBag.passenger_name}`);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const fetchBags = useCallback(async () => {
     try {
@@ -103,12 +134,12 @@ export default function StaffDashboardPage() {
 
   useEffect(() => {
     fetchBags();
-    const interval = setInterval(fetchBags, 3000);
+    const interval = setInterval(fetchBags, 2500);
     return () => clearInterval(interval);
   }, [fetchBags]);
 
   const selectedBag = bags.find((b) => b.tag_number === selectedTagNum) || bags[0] || null;
-  const recoveryQueue = [...bags].sort((a, b) => b.risk_score - a.risk_score);
+  const priorityQueue = [...bags].sort((a, b) => b.risk_score - a.risk_score);
 
   const handleResetDemo = async () => {
     setIsSyncing(true);
@@ -117,27 +148,7 @@ export default function StaffDashboardPage() {
       if (res.ok) {
         const fresh: LiveBag[] = await res.json();
         setBags(fresh);
-        setRiskResult(null);
-        setActionBanner('Demo Reset: All itineraries & SmartTags restored to baseline.');
-      }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleApproveCopilotPlan = async () => {
-    if (!selectedBag) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/copilot/approve`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        const updated: LiveBag = await res.json();
-        setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
-        setActionBanner(
-          `HUMAN-IN-THE-LOOP APPROVED: Recovery options pushed to ${updated.passenger_name}'s Cathay App!`
-        );
+        setToast('Demo state reset.');
       }
     } finally {
       setIsSyncing(false);
@@ -153,97 +164,30 @@ export default function StaffDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_type: newStatus,
-          location_code: 'HKG-T1-RAMP-04',
+          location_code: 'HKG-T1-OPS',
           station_name: STATION,
           scanner_type: 'NFC_TAP',
           staff_id: STAFF_ID,
-          notes: `Ground staff updated status to ${newStatus}`,
+          notes: `Updated to ${formatMilestoneLabel(newStatus)}`,
         }),
       });
       if (res.ok) {
         const updated: LiveBag = await res.json();
         setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
-        setActionBanner(`Synced ${updated.tag_number} → ${newStatus}`);
+        setToast(`${updated.passenger_name} · ${formatMilestoneLabel(newStatus)}`);
       }
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const handleHandheldNfcRecover = async () => {
-    if (!selectedBag) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/recover`, { method: 'POST' });
-      if (res.ok) {
-        const updated: LiveBag = await res.json();
-        setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
-        setActionBanner(
-          `HANDHELD NFC TAP VERIFIED: Owner ${updated.passenger_name} confirmed • Bag loaded onto ${updated.flight_number}`
-        );
-      }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleTriggerIrrops = async () => {
-    if (!selectedBag) return;
-    setIsSyncing(true);
-    const nextFlight = selectedBag.flight_number === 'CX888' ? 'CX890' : 'CX257';
-    try {
-      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/irrops`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          new_flight_number: nextFlight,
-          reason: 'Schedule disruption detected — Copilot queued recovery options for staff approval',
-        }),
-      });
-      if (res.ok) {
-        const updated: LiveBag = await res.json();
-        setBags((prev) => prev.map((b) => (b.tag_number === updated.tag_number ? updated : b)));
-        setActionBanner(
-          `IRROPS DETECTED: ${updated.tag_number} flagged for ${nextFlight} • Click "Approve Copilot Recovery Plan" to dispatch!`
-        );
-      }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleRunRiskPrediction = async () => {
-    if (!selectedBag) return;
-    try {
-      const res = await fetch(`${API_BASE}/baggage/${selectedBag.tag_number}/risk/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          flight_number: selectedBag.flight_number,
-          origin: selectedBag.departure_airport,
-          destination: selectedBag.arrival_airport,
-          transfer_minutes: transferMins,
-          weather_severity: weatherSeverity,
-          load_factor_pct: loadFactor,
-          airport_congestion: congestion,
-        }),
-      });
-      if (res.ok) {
-        const result: RiskPrediction = await res.json();
-        setRiskResult(result);
-        await fetchBags();
-        setActionBanner(
-          `Check-In Risk Model Evaluated ${selectedBag.tag_number}: Score ${result.risk_score}/100 (${result.risk_level})`
-        );
-      }
-    } catch {
-      // Ignore if offline
     }
   };
 
   const totalTracked = bags.length;
-  const loadedCount = bags.filter((b) => b.status === 'LOADED').length;
-  const atRiskCount = bags.filter((b) => b.status === 'MISROUTED' || b.status === 'MISSING' || b.is_rush_bag).length;
+  const onTrackCount = bags.filter((b) =>
+    ['LOADED', 'ARRIVED', 'COLLECTED', 'ON_CAROUSEL', 'CLAIMED'].includes(b.status)
+  ).length;
+  const exceptionCount = bags.filter((b) =>
+    ['MISROUTED', 'MISSING', 'RECOVERY_IN_PROGRESS'].includes(b.status)
+  ).length;
 
   const filteredBaggage = bags.filter((bag) => {
     const term = searchTerm.toLowerCase();
@@ -255,587 +199,779 @@ export default function StaffDashboardPage() {
     );
   });
 
+  const orderIndexMap: Record<string, number> = {
+    AWAITING_SYNC: -1,
+    TAGGED: 0,
+    CHECKED_IN: 1,
+    LOADED: 2,
+    ARRIVED: 3,
+    ON_CAROUSEL: 3,
+    COLLECTED: 4,
+    CLAIMED: 4,
+  };
+  const selectedIsException = selectedBag
+    ? ['MISROUTED', 'MISSING', 'RECOVERY_IN_PROGRESS'].includes(selectedBag.status)
+    : false;
+  const selectedStepIdx = selectedBag ? (orderIndexMap[selectedBag.status] ?? -1) : -1;
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#F8FAFC' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F5F7F7', color: '#1C2024' }}>
+      {/* Cathay Pacific Signature Jade Header */}
       <header
         style={{
-          backgroundColor: '#006564',
+          background: 'linear-gradient(135deg, #004B4A 0%, #006564 100%)',
           color: '#FFFFFF',
-          padding: '16px 32px',
+          padding: '18px 36px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          boxShadow: '0 4px 18px rgba(0, 75, 74, 0.14)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div
-            style={{
-              backgroundColor: '#C49A45',
-              color: '#0B2545',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              fontWeight: 700,
-              fontSize: '12px',
-            }}
-          >
-            POLYAERO
-          </div>
+          <img
+            src="/cathay/cathay-brushwing-white.png"
+            alt="Cathay Pacific"
+            style={{ width: '34px', height: '34px', objectFit: 'contain' }}
+          />
           <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 600 }}>
-              Baggage Recovery Copilot • Operations & SmartTag Hub
-            </h1>
-            <p style={{ fontSize: '12px', opacity: 0.85 }}>
-              Software-First Decision Support (Zero Airport Hardware Interference) • Station: HKG T1
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.01em' }}>
+                CATHAY PACIFIC
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  backgroundColor: 'rgba(255,255,255,0.14)',
+                  padding: '3px 10px',
+                  borderRadius: '999px',
+                }}
+              >
+                BAGGAGE OPERATIONS
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#D7EBE8', marginTop: '2px' }}>
+              {STATION} · Operator {STAFF_ID}
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={handleResetDemo}
             disabled={isSyncing}
             style={{
-              backgroundColor: '#FFFFFF',
-              color: '#006564',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '6px',
+              padding: '8px 16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.14)',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '999px',
               fontSize: '12px',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
             }}
           >
-            ↺ Reset Demo State
+            Reset
           </button>
           <span
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              padding: '6px 12px',
-              borderRadius: '16px',
+              padding: '7px 14px',
+              borderRadius: '999px',
               fontSize: '12px',
-            }}
-          >
-            Operator: {STAFF_ID}
-          </span>
-          <span
-            style={{
-              backgroundColor: isLiveConnected ? '#E3FCEF' : '#FFEBE6',
-              color: isLiveConnected ? '#006644' : '#BF2600',
-              border: `1px solid ${isLiveConnected ? '#00875A' : '#DE350B'}`,
-              padding: '4px 10px',
-              borderRadius: '4px',
-              fontSize: '11px',
               fontWeight: 700,
+              backgroundColor: isLiveConnected ? '#EBF4F1' : '#FFEBE6',
+              color: isLiveConnected ? '#006564' : '#B91C1C',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            {isLiveConnected ? '● COPILOT + SMARTTAG LIVE' : '○ API DISCONNECTED (START PORT 8000)'}
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: isLiveConnected ? '#00875A' : '#DE350B',
+              }}
+            />
+            {isLiveConnected ? 'Live Sync' : 'Offline'}
           </span>
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '24px 32px', maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
-        {actionBanner && (
+      <main style={{ maxWidth: '1380px', margin: '0 auto', padding: '28px 36px 56px' }}>
+        {toast && (
           <div
             style={{
-              backgroundColor: '#E3FCEF',
-              border: '1px solid #00875A',
-              color: '#004B32',
-              padding: '12px 16px',
-              borderRadius: '8px',
               marginBottom: '20px',
+              padding: '12px 18px',
+              backgroundColor: '#EBF4F1',
+              border: '1px solid #006564',
+              borderRadius: '12px',
+              color: '#004B4A',
               fontSize: '13px',
               fontWeight: 600,
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
-            <span>✓ {actionBanner}</span>
+            <span>✓ {toast}</span>
             <button
-              onClick={() => setActionBanner(null)}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 700 }}
+              onClick={() => setToast(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#006564',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
             >
               ✕
             </button>
           </div>
         )}
 
-        <div
+        {/* Clean 3-Card Summary Row */}
+        <section
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '16px',
-            marginBottom: '24px',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '18px',
+            marginBottom: '26px',
           }}
         >
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>MONITORED ITINERARIES</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#006564', marginTop: '4px' }}>{totalTracked}</div>
-            <div style={{ fontSize: '11px', color: '#00875A', marginTop: '4px' }}>Digital + SmartTag E-Ink</div>
-          </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>VERIFIED LOADED</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#0F172A', marginTop: '4px' }}>
-              {loadedCount} / {totalTracked}
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              padding: '20px 24px',
+              borderRadius: '16px',
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            <div style={{ fontSize: '11.5px', color: '#718096', fontWeight: 700 }}>
+              TRACKED BAGS
             </div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Zero infrastructure changes</div>
+            <div style={{ fontSize: '30px', fontWeight: 700, marginTop: '4px', color: '#1C2024' }}>
+              {totalTracked}
+            </div>
           </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>AT-RISK / IRROPS QUEUE</div>
+
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              padding: '20px 24px',
+              borderRadius: '16px',
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            <div style={{ fontSize: '11.5px', color: '#718096', fontWeight: 700 }}>
+              ON SCHEDULE
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 700, marginTop: '4px', color: '#006564' }}>
+              {onTrackCount}
+            </div>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: exceptionCount > 0 ? '#FFF8F6' : '#FFFFFF',
+              padding: '20px 24px',
+              borderRadius: '16px',
+              border: exceptionCount > 0 ? '1px solid #FCA5A5' : '1px solid #E2E8F0',
+            }}
+          >
+            <div style={{ fontSize: '11.5px', color: '#718096', fontWeight: 700 }}>
+              ACTIVE RECOVERY CASES
+            </div>
             <div
               style={{
-                fontSize: '28px',
+                fontSize: '30px',
                 fontWeight: 700,
-                color: atRiskCount > 0 ? '#DE350B' : '#00875A',
                 marginTop: '4px',
+                color: exceptionCount > 0 ? '#B91C1C' : '#1C2024',
               }}
             >
-              {atRiskCount}
-            </div>
-            <div style={{ fontSize: '11px', color: atRiskCount > 0 ? '#DE350B' : '#00875A', marginTop: '4px' }}>
-              Human-in-the-Loop Copilot active
+              {exceptionCount}
             </div>
           </div>
-          <div style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>KIOSK PAPER ELIMINATED</div>
-            <div style={{ fontSize: '28px', fontWeight: 700, color: '#C49A45', marginTop: '4px' }}>100%</div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>Digital + Reusable SmartTag</div>
-          </div>
-        </div>
+        </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '24px' }}>
+        {/* Main 2-Column Operations Workspace */}
+        <section style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: '24px' }}>
+          {/* Left Column: Priority Queue + Passenger Manifest */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Live Baggage & Itinerary Registry</h2>
+            {/* Priority Queue */}
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px solid #E2E8F0',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '16px 22px',
+                  backgroundColor: '#EBF4F1',
+                  borderBottom: '1px solid #D7EBE8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <img
+                  src="/cathay/icon-suitcase-tag.png"
+                  alt=""
+                  style={{ width: '20px', height: '20px', objectFit: 'contain' }}
+                />
+                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#004B4A' }}>
+                  Baggage Recovery Copilot Queue
+                </h2>
+              </div>
+
+              <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {priorityQueue.map((item) => {
+                  const isSelected = selectedBag?.tag_number === item.tag_number;
+                  const isExc = ['MISROUTED', 'MISSING', 'RECOVERY_IN_PROGRESS'].includes(item.status);
+                  const isAwaiting = item.status === 'AWAITING_SYNC';
+                  return (
+                    <div
+                      key={item.tag_number}
+                      onClick={() => setSelectedTagNum(item.tag_number)}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '12px',
+                        border: isSelected ? '2px solid #006564' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#F4FAF9' : '#FFFFFF',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: '14.5px', color: '#1C2024' }}>
+                            {item.passenger_name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              backgroundColor: item.tier_status === 'DIAMOND' ? '#FBF5EA' : '#F1F5F9',
+                              color: item.tier_status === 'DIAMOND' ? '#9A7428' : '#475569',
+                            }}
+                          >
+                            {item.tier_status}
+                          </span>
+                          <span style={{ fontSize: '12.5px', color: '#718096', fontWeight: 600 }}>
+                            · {item.flight_number} ({item.departure_airport} → {item.arrival_airport})
+                          </span>
+                        </div>
+
+                        {item.passenger_recovery_choice && (
+                          <div style={{ fontSize: '12px', color: '#006564', fontWeight: 700, marginTop: '5px' }}>
+                            ✓ {item.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT'
+                              ? `Express Flight ${item.recovery_flight_number || ''} · ${item.recovery_eta || ''}`
+                              : `Hotel Delivery: ${item.delivery_address || 'Address pending'}`}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#006564', fontFamily: 'monospace' }}>
+                          {item.tag_number}
+                        </div>
+                        <span
+                          style={{
+                            marginTop: '4px',
+                            display: 'inline-block',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            backgroundColor: isExc ? '#FEE2E2' : isAwaiting ? '#FEF3C7' : '#EBF4F1',
+                            color: isExc ? '#B91C1C' : isAwaiting ? '#92400E' : '#006564',
+                          }}
+                        >
+                          {formatMilestoneLabel(item.status)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Passenger Manifest Table */}
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px solid #E2E8F0',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '16px 22px',
+                  borderBottom: '1px solid #E2E8F0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1C2024' }}>
+                  Flight Baggage Manifest
+                </h2>
                 <input
                   type="text"
-                  placeholder="Search Tag, PNR, Passenger, Flight..."
+                  placeholder="Search tag, passenger, flight..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{
-                    padding: '8px 12px',
-                    borderRadius: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
                     border: '1px solid #CBD5E1',
-                    fontSize: '13px',
-                    minWidth: '250px',
+                    fontSize: '12.5px',
+                    width: '230px',
+                    backgroundColor: '#F8FAFC',
                   }}
                 />
               </div>
 
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
-                    <th style={{ padding: '10px 8px' }}>Tag / Interface</th>
-                    <th style={{ padding: '10px 8px' }}>Passenger</th>
-                    <th style={{ padding: '10px 8px' }}>Flight</th>
-                    <th style={{ padding: '10px 8px' }}>Status</th>
-                    <th style={{ padding: '10px 8px' }}>Pax Choice</th>
-                    <th style={{ padding: '10px 8px' }}>Action</th>
+                  <tr
+                    style={{
+                      backgroundColor: '#F8FAFC',
+                      color: '#64748B',
+                      textAlign: 'left',
+                      fontSize: '11px',
+                    }}
+                  >
+                    <th style={{ padding: '12px 22px' }}>TAG NUMBER</th>
+                    <th style={{ padding: '12px 16px' }}>PASSENGER</th>
+                    <th style={{ padding: '12px 16px' }}>FLIGHT</th>
+                    <th style={{ padding: '12px 22px' }}>STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBaggage.map((bag) => (
-                    <tr
-                      key={bag.tag_number}
-                      style={{
-                        borderBottom: '1px solid #F1F5F9',
-                        backgroundColor: selectedBag?.tag_number === bag.tag_number ? '#F0F9F9' : 'transparent',
-                      }}
-                    >
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ fontWeight: 700 }}>{bag.tag_number}</div>
-                        <div style={{ fontSize: '10px', color: '#C49A45', fontWeight: 700 }}>
-                          {bag.tag_interface === 'SMARTTAG_EINK_EXCLUSIVE'
-                            ? '★ SMARTTAG E-INK'
-                            : 'DIGITAL APP TAG'}
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        {bag.passenger_name}{' '}
-                        <span style={{ fontSize: '11px', color: '#006564', fontWeight: 600 }}>({bag.tier_status})</span>
-                      </td>
-                      <td style={{ padding: '12px 8px', fontWeight: 600 }}>
-                        {bag.flight_number} ({bag.departure_airport}→{bag.arrival_airport})
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            backgroundColor:
-                              bag.status === 'LOADED'
-                                ? '#E3FCEF'
-                                : bag.status === 'MISROUTED' || bag.status === 'MISSING'
-                                ? '#FFEBE6'
-                                : '#E6F0F0',
-                            color:
-                              bag.status === 'LOADED'
-                                ? '#00875A'
-                                : bag.status === 'MISROUTED' || bag.status === 'MISSING'
-                                ? '#DE350B'
-                                : '#006564',
-                          }}
-                        >
-                          {bag.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 8px', fontSize: '11px', fontWeight: 700, color: '#0B2545' }}>
-                        {bag.passenger_recovery_choice
-                          ? bag.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT'
-                            ? '✓ EXPRESS FLIGHT'
-                            : '✓ HOTEL COURIER'
-                          : '—'}
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <button
-                          onClick={() => setSelectedTagNum(bag.tag_number)}
-                          style={{
-                            backgroundColor: '#006564',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            padding: '5px 10px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Select
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>
-                Human-in-the-Loop Copilot Recovery Queue
-              </h2>
-              <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px' }}>
-                Evaluates schedules, connection windows & check-in events to recommend recovery actions for staff approval
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {recoveryQueue.map((bag, idx) => (
-                  <div
-                    key={bag.tag_number}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '12px 14px',
-                      borderRadius: '6px',
-                      backgroundColor: bag.risk_score >= 65 ? '#FFF5F5' : '#F8FAFC',
-                      border: `1px solid ${bag.risk_score >= 65 ? '#FEB2B2' : '#E2E8F0'}`,
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 800, marginRight: '10px', color: '#0B2545' }}>#{idx + 1}</span>
-                      <span style={{ fontWeight: 700 }}>{bag.tag_number}</span> • {bag.passenger_name} (
-                      {bag.flight_number})
-                      <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px', marginLeft: '26px' }}>
-                        Copilot Recommendation: <strong>{bag.recommended_action}</strong>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
-                      <span style={{ fontWeight: 700, color: bag.risk_score >= 65 ? '#DE350B' : '#006564' }}>
-                        Risk: {bag.risk_score}/100
-                      </span>
-                      <span
+                  {filteredBaggage.map((bag) => {
+                    const isSelected = selectedBag?.tag_number === bag.tag_number;
+                    const isExc = ['MISROUTED', 'MISSING', 'RECOVERY_IN_PROGRESS'].includes(bag.status);
+                    const isAwaiting = bag.status === 'AWAITING_SYNC';
+                    return (
+                      <tr
+                        key={bag.tag_number}
+                        onClick={() => setSelectedTagNum(bag.tag_number)}
                         style={{
-                          padding: '3px 8px',
-                          borderRadius: '4px',
-                          backgroundColor:
-                            bag.copilot_approval_status === 'PENDING_STAFF_APPROVAL' ? '#DE350B' : '#006564',
-                          color: '#FFFFFF',
-                          fontWeight: 700,
-                          fontSize: '10px',
-                        }}
-                      >
-                        {bag.copilot_approval_status || 'AUTO_CLEARED'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div>
-                  <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Check-In & Itinerary Risk Classification Model</h2>
-                  <p style={{ fontSize: '12px', color: '#64748B' }}>
-                    Scores real-time mishandling risk for {selectedBag?.tag_number || '0160892012'}
-                  </p>
-                </div>
-                <button
-                  onClick={handleRunRiskPrediction}
-                  style={{
-                    backgroundColor: '#0B2545',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    padding: '8px 14px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Evaluate Check-In Risk
-                </button>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Connection Window (min)</label>
-                  <input
-                    type="number"
-                    value={transferMins}
-                    onChange={(e) => setTransferMins(Number(e.target.value))}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', marginTop: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Weather Severity (1-5)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={weatherSeverity}
-                    onChange={(e) => setWeatherSeverity(Number(e.target.value))}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', marginTop: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Load Factor (%)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={loadFactor}
-                    onChange={(e) => setLoadFactor(Number(e.target.value))}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', marginTop: '4px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Hub Density (1-5)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={congestion}
-                    onChange={(e) => setCongestion(Number(e.target.value))}
-                    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', marginTop: '4px' }}
-                  />
-                </div>
-              </div>
-
-              {riskResult && (
-                <div
-                  style={{
-                    padding: '14px',
-                    borderRadius: '6px',
-                    backgroundColor: riskResult.risk_level === 'HIGH_PRIORITY' ? '#FFEBE6' : '#F0F9F9',
-                    border: `1px solid ${riskResult.risk_level === 'HIGH_PRIORITY' ? '#DE350B' : '#006564'}`,
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '14px' }}>
-                    <span>
-                      RISK SCORE: {riskResult.risk_score}/100 ({riskResult.risk_level})
-                    </span>
-                    <span>{riskResult.recommended_action}</span>
-                  </div>
-                  <ul style={{ marginTop: '8px', paddingLeft: '18px', fontSize: '12px', color: '#334155' }}>
-                    {riskResult.factors.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Optional SmartTag E-Ink Mirror</h2>
-                <span
-                  style={{
-                    backgroundColor: '#FFF8E7',
-                    color: '#7A5200',
-                    border: '1px solid #C49A45',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                  }}
-                >
-                  HIGH-YIELD EXCLUSIVE
-                </span>
-              </div>
-
-              {selectedBag && (
-                <>
-                  <div
-                    style={{
-                      backgroundColor: '#F0EFEA',
-                      border: '3px solid #1E293B',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      fontFamily: 'monospace',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700 }}>
-                      <span>CATHAY PACIFIC</span>
-                      <span>UID: {selectedBag.tag_code}</span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        margin: '8px 0',
-                        borderTop: '2px solid #111',
-                        borderBottom: '2px solid #111',
-                        padding: '8px 0',
-                      }}
-                    >
-                      <span style={{ fontSize: '26px', fontWeight: 900 }}>{selectedBag.flight_number}</span>
-                      <span style={{ fontSize: '26px', fontWeight: 900, color: '#006564' }}>
-                        {selectedBag.departure_airport} → {selectedBag.arrival_airport}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12px', fontWeight: 700 }}>
-                      PAX: {selectedBag.passenger_name} • {selectedBag.cabin_class}
-                    </div>
-                    <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                      TAG: {selectedBag.tag_number} • WT: {selectedBag.weight_kg} KG
-                    </div>
-                    <div
-                      style={{
-                        marginTop: '10px',
-                        padding: '6px 8px',
-                        backgroundColor: selectedBag.is_rush_bag ? '#8B0000' : '#111111',
-                        color: '#FFFFFF',
-                        fontWeight: 700,
-                        fontSize: '12px',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {selectedBag.eink_banner}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    <button
-                      onClick={handleTriggerIrrops}
-                      disabled={isSyncing}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#DE350B',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        padding: '11px',
-                        borderRadius: '6px',
-                        fontWeight: 700,
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      1. Simulate Flight Disruption (IRROPS Alert)
-                    </button>
-
-                    <button
-                      onClick={handleApproveCopilotPlan}
-                      disabled={isSyncing}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#C49A45',
-                        color: '#0B2545',
-                        border: 'none',
-                        padding: '11px',
-                        borderRadius: '6px',
-                        fontWeight: 800,
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      2. ✓ Approve Copilot Recovery Plan (Push to Pax App)
-                    </button>
-
-                    <button
-                      onClick={handleHandheldNfcRecover}
-                      disabled={isSyncing}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#006564',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        padding: '11px',
-                        borderRadius: '6px',
-                        fontWeight: 700,
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      3. 📱 Ramp Handheld NFC Tap (Verify & Load)
-                    </button>
-                  </div>
-
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, marginBottom: '8px' }}>
-                    SCAN CHECKPOINT / OVERRIDE MILESTONE
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {OVERRIDE_STATUSES.map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => handleStatusUpdate(st)}
-                        disabled={isSyncing}
-                        style={{
-                          fontSize: '11px',
-                          padding: '6px 9px',
-                          borderRadius: '4px',
-                          border: '1px solid #CBD5E1',
-                          backgroundColor: selectedBag.status === st ? '#006564' : '#FFFFFF',
-                          color: selectedBag.status === st ? '#FFFFFF' : '#0F172A',
-                          fontWeight: selectedBag.status === st ? 700 : 500,
+                          borderTop: '1px solid #F1F5F9',
+                          backgroundColor: isSelected ? '#EBF4F1' : '#FFFFFF',
                           cursor: 'pointer',
                         }}
                       >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>Copilot Decision & Scan Audit</h2>
-              {selectedBag?.events.map((ev) => (
-                <div
-                  key={ev.id}
-                  style={{
-                    borderLeft: '3px solid #006564',
-                    paddingLeft: '12px',
-                    paddingBottom: '12px',
-                    marginBottom: '8px',
-                  }}
-                >
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>{ev.event_type}</div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>
-                    {formatTime(ev.timestamp)} • {ev.station_name}
-                  </div>
-                  {ev.notes && <div style={{ fontSize: '12px', marginTop: '2px' }}>{ev.notes}</div>}
-                </div>
-              ))}
+                        <td style={{ padding: '13px 22px', fontWeight: 700, color: '#006564', fontFamily: 'monospace' }}>
+                          {bag.tag_number}
+                        </td>
+                        <td style={{ padding: '13px 16px', fontWeight: 700 }}>{bag.passenger_name}</td>
+                        <td style={{ padding: '13px 16px', fontWeight: 600 }}>
+                          {bag.flight_number} ({bag.departure_airport} → {bag.arrival_airport})
+                        </td>
+                        <td style={{ padding: '13px 22px' }}>
+                          <span
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '999px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: isExc ? '#FEE2E2' : isAwaiting ? '#FEF3C7' : '#EBF4F1',
+                              color: isExc ? '#B91C1C' : isAwaiting ? '#92400E' : '#006564',
+                            }}
+                          >
+                            {formatMilestoneLabel(bag.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+
+          {/* Right Column: Selected Bag Journey & Staff Milestone Controls */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {selectedBag && (
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  padding: '22px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#006564', fontWeight: 700 }}>
+                      PASSENGER SMARTTAG™
+                    </div>
+                    <h3 style={{ margin: '3px 0 2px', fontSize: '19px', fontWeight: 700 }}>
+                      {selectedBag.passenger_name}
+                    </h3>
+                    <div style={{ fontSize: '12.5px', color: '#4A5568' }}>
+                      Tag <strong>{selectedBag.tag_number}</strong> · {selectedBag.flight_number} (
+                      {selectedBag.departure_airport} → {selectedBag.arrival_airport})
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: '#FBF5EA',
+                      color: '#9A7428',
+                    }}
+                  >
+                    {selectedBag.tier_status}
+                  </span>
+                </div>
+
+                {/* Live Passenger Recovery Selection Card (Hotel Address or Express Flight + ETA) */}
+                {selectedBag.passenger_recovery_choice && (
+                  <div
+                    style={{
+                      backgroundColor: '#EBF4F1',
+                      border: '1.5px solid #006564',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#006564', marginBottom: '4px' }}>
+                      PASSENGER RECOVERY PREFERENCE RECEIVED
+                    </div>
+                    {selectedBag.passenger_recovery_choice === 'EXPRESS_NEXT_FLIGHT' ? (
+                      <>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C2024' }}>
+                          Express Flight: {selectedBag.recovery_flight_number}
+                        </div>
+                        <div style={{ fontSize: '12.5px', color: '#004B4A', marginTop: '2px' }}>
+                          ETA: {selectedBag.recovery_eta}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1C2024' }}>
+                          Direct Hotel Delivery
+                        </div>
+                        <div style={{ fontSize: '12.5px', color: '#1C2024', marginTop: '2px' }}>
+                          Address: <strong>{selectedBag.delivery_address}</strong>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#004B4A', marginTop: '2px' }}>
+                          {selectedBag.recovery_eta}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* 5-Step Journey Timeline Controller */}
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '14px',
+                    padding: '16px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: '#4A5568',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>JOURNEY MILESTONES</span>
+                    <span style={{ color: selectedIsException ? '#B91C1C' : '#006564' }}>
+                      {formatMilestoneLabel(selectedBag.status)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {NORMAL_MILESTONES.map((step, idx) => {
+                      const isCompleted = !selectedIsException && idx <= selectedStepIdx;
+                      const isCurrent = !selectedIsException && idx === selectedStepIdx;
+                      return (
+                        <div
+                          key={step.code}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: '10px',
+                            backgroundColor: isCurrent ? '#EBF4F1' : '#FFFFFF',
+                            border: isCurrent ? '1px solid #006564' : '1px solid #EDF2F7',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                backgroundColor: isCompleted ? '#006564' : '#E2E8F0',
+                                color: isCompleted ? '#FFFFFF' : '#718096',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {isCompleted ? '✓' : idx + 1}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: isCompleted ? '#1C2024' : '#718096' }}>
+                                {step.label}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#718096' }}>{step.sub}</div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleStatusUpdate(step.code)}
+                            disabled={isSyncing}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              border: isCurrent ? 'none' : '1px solid #CBD5E1',
+                              backgroundColor: isCurrent ? '#006564' : '#FFFFFF',
+                              color: isCurrent ? '#FFFFFF' : '#006564',
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {isCurrent ? 'Active' : 'Set'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Exception & Recovery Status Controls */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '11px', color: '#991B1B', fontWeight: 700, marginBottom: '8px' }}>
+                    EXCEPTION &amp; RECOVERY STATUS
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {EXCEPTION_MILESTONES.map((ex) => {
+                      const isActive = selectedBag.status === ex.code;
+                      return (
+                        <button
+                          key={ex.code}
+                          onClick={() => handleStatusUpdate(ex.code)}
+                          disabled={isSyncing}
+                          style={{
+                            padding: '10px',
+                            borderRadius: '10px',
+                            border: '1px solid #FCA5A5',
+                            backgroundColor: isActive ? '#B91C1C' : '#FFF5F5',
+                            color: isActive ? '#FFFFFF' : '#991B1B',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {ex.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Physical 4.2" E-Ink SmartTag Preview */}
+                <div
+                  style={{
+                    backgroundColor: '#F0EFEA',
+                    border: '2px solid #284239',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    fontFamily: 'monospace',
+                    color: '#111111',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      borderBottom: '1px solid #111111',
+                      paddingBottom: '6px',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <span>4.2&quot; E-INK SMARTTAG™</span>
+                    <span>{selectedBag.tag_number}</span>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 700 }}>{selectedBag.passenger_name}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, margin: '4px 0' }}>
+                    {selectedBag.departure_airport} ✈ {selectedBag.arrival_airport} ({selectedBag.flight_number})
+                  </div>
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      padding: '5px 8px',
+                      backgroundColor: selectedIsException ? '#8B0000' : '#006564',
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      textAlign: 'center',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    {selectedBag.eink_banner}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Flight & Bag Risk Predictor (Pluggable ML Interface) */}
+            {selectedBag && (
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  padding: '22px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#006564', fontWeight: 700 }}>
+                      AI RISK ENGINE · {selectedBag.model_version || 'cathay-bag-risk-v1.0'}
+                    </div>
+                    <h3 style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 700 }}>
+                      Flight &amp; Bag Risk Prediction
+                    </h3>
+                  </div>
+                  <span
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      backgroundColor: selectedBag.risk_score >= 65 ? '#FEF3C7' : '#EBF4F1',
+                      color: selectedBag.risk_score >= 65 ? '#B45309' : '#006564',
+                    }}
+                  >
+                    {selectedBag.risk_score}/100 · {selectedBag.risk_level}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#4A5568' }}>
+                    Transfer (mins)
+                    <input
+                      type="number"
+                      value={transferMins}
+                      onChange={(e) => setTransferMins(Number(e.target.value))}
+                      style={{ width: '100%', padding: '7px 8px', marginTop: '4px', border: '1px solid #CBD5E1', borderRadius: '8px' }}
+                    />
+                  </label>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#4A5568' }}>
+                    Weather (1–5)
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={weatherSeverity}
+                      onChange={(e) => setWeatherSeverity(Number(e.target.value))}
+                      style={{ width: '100%', padding: '7px 8px', marginTop: '4px', border: '1px solid #CBD5E1', borderRadius: '8px' }}
+                    />
+                  </label>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#4A5568' }}>
+                    Hub Load (1–5)
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={congestion}
+                      onChange={(e) => setCongestion(Number(e.target.value))}
+                      style={{ width: '100%', padding: '7px 8px', marginTop: '4px', border: '1px solid #CBD5E1', borderRadius: '8px' }}
+                    />
+                  </label>
+                </div>
+
+                <button
+                  onClick={handleEvaluateFlightRisk}
+                  disabled={isSyncing}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: '#284239',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Predict Flight Risk &amp; Push Score to Passenger
+                </button>
+              </div>
+            )}
+
+            {/* Chain-of-Custody Audit Log */}
+            {selectedBag && (
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  padding: '22px',
+                }}
+              >
+                <h3 style={{ margin: '0 0 12px', fontSize: '14.5px', fontWeight: 700 }}>
+                  Scan History
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[...selectedBag.events].reverse().map((ev) => (
+                    <div
+                      key={ev.id}
+                      style={{
+                        borderLeft: '3px solid #006564',
+                        paddingLeft: '12px',
+                        fontSize: '12px',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700 }}>
+                        {formatMilestoneLabel(ev.event_type)}
+                      </div>
+                      <div style={{ color: '#718096', fontSize: '11px', marginTop: '2px' }}>
+                        {formatTime(ev.timestamp)} · {ev.notes || ev.station_name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );

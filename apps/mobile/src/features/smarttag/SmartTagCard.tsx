@@ -26,8 +26,8 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
       {/* Physical E-ink Mock Representation */}
       <View style={styles.einkFrame}>
         <View style={styles.einkTopBar}>
-          <Text style={styles.flightTag}>CX888</Text>
-          <Text style={styles.destTag}>YVR</Text>
+          <Text style={styles.flightTag}>{baggage?.flightId ?? 'CX304'}</Text>
+          <Text style={styles.destTag}>NKG</Text>
         </View>
 
         <View style={styles.einkDivider} />
@@ -39,11 +39,11 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
           </View>
           <View>
             <Text style={styles.einkLabel}>SCALE WEIGHT</Text>
-            <Text style={styles.einkValue}>{baggage?.weightKg ?? 22.4} KG</Text>
+            <Text style={styles.einkValue}>{baggage?.weightKg ?? 21.4} KG</Text>
           </View>
           <View>
             <Text style={styles.einkLabel}>CLASS</Text>
-            <Text style={styles.einkValue}>PRIORITY J</Text>
+            <Text style={styles.einkValue}>ECONOMY Y</Text>
           </View>
         </View>
 
@@ -59,7 +59,7 @@ export const SmartTagCard: React.FC<SmartTagCardProps> = ({ tag, baggage }) => {
       <View style={styles.statusFooter}>
         <View style={styles.statusDot} />
         <Text style={styles.statusText}>
-          Baggage Status: <Text style={styles.statusBold}>{baggage?.currentStatus ?? 'LOADED'}</Text>
+          Baggage Status: <Text style={styles.statusBold}>{baggage?.currentStatus ?? 'CHECKED_IN'}</Text>
         </Text>
       </View>
     </View>
