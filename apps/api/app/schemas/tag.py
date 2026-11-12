@@ -32,5 +32,10 @@ class TagRead(TagBase):
     baggage_barcode: str | None
     tag_status: str
     last_synced_at: datetime | None
+    booking_id: UUID | None
+    sync_state: str
+    nfc_payload_hash: str | None
+    bar_code_payload: str | None
+    is_simulated: bool
     created_at: datetime
     updated_at: datetime
