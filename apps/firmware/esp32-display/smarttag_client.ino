@@ -1,4 +1,4 @@
-// PolyAero Cathay SmartTag - ESP32-S3 + PN532 (target mode) + 4.2" E-Paper
+// PolyAero Cathay SmartTag - ESP32-C6 + PN532 (target mode) + 4.2" E-Paper (Waveshare)
 //
 // Flow:
 //   1. Phone Web NFC writes the JSON NDEF record from POST /smarttag/sync/payload.
@@ -7,6 +7,7 @@
 //   4. Sketch polls /tags/{TAG_UID}/display so app-side changes reach the screen.
 //
 // Libraries: ArduinoJson, GxEPD2. PN532 framing is done directly over UART1.
+// Wiring per Waveshare 4.2" e-Paper (SPI) + PN532 HAT (UART1) on ESP32-C6.
 
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -24,20 +25,21 @@ const char* API_BASE_URL = "http://10.11.72.211:8000/api/v1";
 const char* TAG_UID = "04:A2:3B:4C:5D:6E:70";
 const char* DEVICE_KEY = "";  // IOT_DEVICE_KEY on the API; empty disables the check
 
-// PN532 HAT on UART1. These are ESP32-classic pins; on an ESP32-S3 GPIO22 does
-// not exist, so move RX to a free GPIO if you are using an S3 board.
-#define PN532_RX 22
-#define PN532_TX 23
-#define PN532_RST 7
+// PN532 HAT on UART1 (ESP32-C6 pins per Waveshare HAT)
+// PN532 RX (HAT) <- ESP32 TX (GPIO 23)
+// PN532 TX (HAT) -> ESP32 RX (GPIO 22)
+#define PN532_RX 22   // ESP32-C6 RX pin (connects to PN532 TXD)
+#define PN532_TX 23   // ESP32-C6 TX pin (connects to PN532 RXD)
+#define PN532_RST 7   // ESP32-C6 GPIO 7 (connects to PN532 RSTPDN)
 #define PN532_BAUD 115200
 
-// 4.2" e-paper SPI (ESP32-S3 defaults; replace with your module's pin map)
-#define EPD_CS 10
-#define EPD_DC 8
-#define EPD_RST 9
-#define EPD_BUSY 13
-#define EPD_SCK 12
-#define EPD_MOSI 11
+// Waveshare 4.2" e-Paper SPI pins (ESP32-C6)
+#define EPD_CS 18
+#define EPD_DC 2
+#define EPD_RST 3
+#define EPD_BUSY 6
+#define EPD_SCK 21
+#define EPD_MOSI 19
 
 GxEPD2_BW<GxEPD2_420, GxEPD2_420::HEIGHT> display(
     GxEPD2_420(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY));

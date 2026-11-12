@@ -1,6 +1,6 @@
-# PolyAero Cathay SmartTag — ESP32-S3 E-Paper + PN532 Bridge
+# PolyAero Cathay SmartTag — ESP32-C6 E-Paper + PN532 Bridge
 
-The ESP32 is the physical bridge between the phone, the API, and the 4.2-inch E-Paper
+The ESP32-C6 is the physical bridge between the phone, the API, and the 4.2-inch E-Paper
 screen.
 
 ```
@@ -32,17 +32,12 @@ display payload.
 
 ## 1. Hardware
 
-| Device | Bus | Default pins in the sketch |
+| Device | Bus | ESP32-C6 pins (Waveshare modules) |
 |---|---|---|
 | PN532 NFC HAT | UART1 | RX `22`, TX `23`, RST `7` |
-| Waveshare 4.2" E-Paper | SPI | CS `10`, DC `8`, RST `9`, BUSY `13`, SCK `12`, MOSI `11` |
+| Waveshare 4.2" e-Paper | SPI | CS `18`, DC `2`, RST `3`, BUSY `6`, SCK `21`, MOSI `19` |
 
-The E-Paper pins are ESP32-S3 placeholders. Replace the `EPD_*` constants with the pin
-map from your module before flashing. The PN532 must be in **UART mode** (HAT DIP
-switches) and the sketch drives it in **target/PICC emulation**, not reader mode.
-
-> Pins `22`/`23` come from the original ESP32 prototype. GPIO22 does not exist on an
-> ESP32-S3, so move `PN532_RX` to a free S3 GPIO (for example `21`) if that is your board.
+The PN532 HAT must be in **UART mode** (both yellow jumpers to L-L, both UART DIP switches ON, all SPI/I2C switches OFF). The sketch drives PN532 in **target/PICC emulation**, not reader mode.
 
 If your E-Paper is the 3-colour version, swap `GxEPD2_BW` / `GxEPD2_420` for
 `GxEPD2_3C` / `GxEPD2_420c` and change the render colours.

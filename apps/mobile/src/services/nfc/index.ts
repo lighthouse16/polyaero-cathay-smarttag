@@ -7,24 +7,36 @@
  *    Arbitrary E-ink displays CANNOT be updated via generic NDEF writes alone.
  * 2. Real native NFC reading/writing requires an Expo Development Client (`npx expo run:android` / `npx expo run:ios`)
  *    configured with `react-native-nfc-manager` and vendor display protocol commands.
- * 3. `getPhysicalHardwareService()` returns `null` when no native vendor E-ink driver is installed,
- *    so "Start NFC sync" honestly reports `UNSUPPORTED` rather than fabricating hardware success.
+ * 3. `getPhysicalHardwareService()` returns a NativeNfcService when running in a Dev Client
+ *    with the native module installed. Returns `null` in Expo Go / Web / simulator.
  * 4. `demoNfcService` (`MockNfcService`) is used ONLY when the user explicitly selects
  *    "Use demo simulation".
  */
 
 import { INfcService, MockNfcService } from '@polyaero/shared';
+import { nativeNfcService } from './NativeNfcService';
+import { Platform } from 'react-native';
 
 export class MobileNfcManager {
   private static demoInstance: MockNfcService | null = null;
   private static hardwareInstance: INfcService | null = null;
 
   /**
-   * Returns a verified native E-ink hardware service only when a compatible native
-   * module is installed and registered. Returns `null` in Expo Go / Web / simulator.
+   * Returns a verified native E-ink hardware service when running in a Dev Client
+   * with react-native-nfc-manager installed. Returns `null` in Expo Go / Web / simulator.
    */
   public static getPhysicalHardwareService(): INfcService | null {
-    return MobileNfcManager.hardwareInstance;
+    if (MobileNfcManager.hardwareInstance) {
+      return MobileNfcManager.hardwareInstance;
+    }
+
+    // Only initialize native service on physical platforms (not web)
+    if (Platform.OS !== 'web') {
+      MobileNfcManager.hardwareInstance = nativeNfcService;
+      return MobileNfcManager.hardwareInstance;
+    }
+
+    return null;
   }
 
   /**
@@ -41,7 +53,8 @@ export class MobileNfcManager {
    * Backwards-compatible accessor for existing tests/Consumers.
    */
   public static getInstance(): INfcService {
-    return MobileNfcManager.getDemoSimulationService();
+    // Prefer native service on physical devices, fallback to demo
+    return MobileNfcManager.getPhysicalHardwareService() ?? MobileNfcManager.getDemoSimulationService();
   }
 }
 
