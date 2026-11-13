@@ -42,6 +42,7 @@ export default function StaffDashboardPage() {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedTagNum, setSelectedTagNum] = useState<string>("0160892014");
+  const [caseOpen, setCaseOpen] = useState(true);
   const [activeView, setActiveView] = useState<SidebarView>("transfer-control");
   const [timeRange, setTimeRange] = useState<"4h" | "today" | "7d">("4h");
   const requestBusy = useRef(false);
@@ -285,6 +286,7 @@ export default function StaffDashboardPage() {
       } else if (fresh[0]) {
         setSelectedTagNum(fresh[0].tag_number);
       }
+      setCaseOpen(true);
       setToast({ message: "Demo baggage dataset restored.", tone: "success" });
     } catch {
       setToast({ message: "Could not reset demo dataset.", tone: "error" });
@@ -294,8 +296,18 @@ export default function StaffDashboardPage() {
     }
   };
 
+  const handleSelectBag = useCallback((tagNum: string) => {
+    setSelectedTagNum(tagNum);
+    setCaseOpen(true);
+  }, []);
+
+  const handleCloseCase = useCallback(() => {
+    setCaseOpen(false);
+    setSelectedTagNum("");
+  }, []);
+
   const handleQuickAction = (bag: LiveBag, targetStatus: string) => {
-    setSelectedTagNum(bag.tag_number);
+    handleSelectBag(bag.tag_number);
     setPendingTag(bag.tag_number);
     setPendingAction({
       targetStatus,
@@ -391,7 +403,10 @@ export default function StaffDashboardPage() {
             </div>
           )}
 
-          <div className="ops-grid" aria-busy={isLoading}>
+          <div
+            className={`ops-grid ${caseOpen && selectedBag ? "" : "case-closed"}`}
+            aria-busy={isLoading}
+          >
             {/* Left Primary Monitoring Column */}
             <div
               style={{
@@ -546,8 +561,8 @@ export default function StaffDashboardPage() {
 
                   <BaggageRiskTable
                     bags={bags}
-                    selectedTagNumber={selectedBag?.tag_number || ""}
-                    onSelectBag={setSelectedTagNum}
+                    selectedTagNumber={caseOpen && selectedBag ? selectedBag.tag_number : ""}
+                    onSelectBag={handleSelectBag}
                     externalFlightFilter={selectedFlightFilter}
                     onClearExternalFlight={() => setSelectedFlightFilter(null)}
                     onQuickAction={handleQuickAction}
@@ -559,8 +574,8 @@ export default function StaffDashboardPage() {
               {activeView === "exceptions" && (
                 <ExceptionsView
                   bags={bags}
-                  selectedTagNumber={selectedBag?.tag_number || ""}
-                  onSelectBag={setSelectedTagNum}
+                  selectedTagNumber={caseOpen && selectedBag ? selectedBag.tag_number : ""}
+                  onSelectBag={handleSelectBag}
                   onSwitchToTransferControl={() =>
                     setActiveView("transfer-control")
                   }
@@ -570,8 +585,8 @@ export default function StaffDashboardPage() {
               {activeView === "baggage-trace" && (
                 <BaggageTraceView
                   bags={bags}
-                  selectedTagNumber={selectedBag?.tag_number || ""}
-                  onSelectBag={setSelectedTagNum}
+                  selectedTagNumber={caseOpen && selectedBag ? selectedBag.tag_number : ""}
+                  onSelectBag={handleSelectBag}
                   onSwitchToTransferControl={() =>
                     setActiveView("transfer-control")
                   }
@@ -581,8 +596,8 @@ export default function StaffDashboardPage() {
               {activeView === "performance" && (
                 <PerformanceView
                   bags={bags}
-                  selectedTagNumber={selectedBag?.tag_number || ""}
-                  onSelectBag={setSelectedTagNum}
+                  selectedTagNumber={caseOpen && selectedBag ? selectedBag.tag_number : ""}
+                  onSelectBag={handleSelectBag}
                   onSwitchToTransferControl={() =>
                     setActiveView("transfer-control")
                   }
@@ -591,20 +606,22 @@ export default function StaffDashboardPage() {
             </div>
 
             {/* Right Investigation Drawer */}
-            <div>
-              <BaggageInvestigationPanel
-                bag={selectedBag}
-                isSyncing={isSyncing || !isLiveConnected}
-                onRequestAction={(action) => {
-                  if (selectedBag) {
-                    setPendingTag(selectedBag.tag_number);
-                    setPendingAction(action);
-                  }
-                }}
-                onEvaluateRisk={handleEvaluateRisk}
-                onClose={() => setSelectedTagNum("")}
-              />
-            </div>
+            {caseOpen && selectedBag && (
+              <div>
+                <BaggageInvestigationPanel
+                  bag={selectedBag}
+                  isSyncing={isSyncing || !isLiveConnected}
+                  onRequestAction={(action) => {
+                    if (selectedBag) {
+                      setPendingTag(selectedBag.tag_number);
+                      setPendingAction(action);
+                    }
+                  }}
+                  onEvaluateRisk={handleEvaluateRisk}
+                  onClose={handleCloseCase}
+                />
+              </div>
+            )}
           </div>
         </main>
       </div>
@@ -614,7 +631,7 @@ export default function StaffDashboardPage() {
         bags={bags}
         onClose={() => setSearchOpen(false)}
         onSelectBag={(tagNum) => {
-          setSelectedTagNum(tagNum);
+          handleSelectBag(tagNum);
           setSelectedFlightFilter(null);
           setActiveView("baggage-trace");
         }}
@@ -637,6 +654,9 @@ export default function StaffDashboardPage() {
           gap: 20px;
           align-items: start;
           width: 100%;
+        }
+        .ops-grid.case-closed {
+          grid-template-columns: 1fr;
         }
         .time-ranges {
           display: inline-flex;
