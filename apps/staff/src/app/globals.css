@@ -1,3 +1,59 @@
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Lt.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Rg.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Bd.woff2") format("woff2");
+  font-weight: 600 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Regular.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Bold.woff2") format("woff2");
+  font-weight: 600 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cathay Editorial Serif";
+  src: url("/fonts/cathay/Newsreader-Medium.ttf") format("truetype");
+  font-weight: 400 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --cathay-jade-header-start: #003837;
   --cathay-jade-header-end: #005b58;
@@ -52,6 +108,8 @@ body {
   background-color: var(--workspace-bg);
   color: var(--text-primary);
   font-family:
+    "Cathay Sans EN",
+    "GT Walsheim",
     var(--font-sans),
     -apple-system,
     BlinkMacSystemFont,
@@ -76,7 +134,13 @@ dialog {
 }
 
 .font-editorial {
-  font-family: var(--font-editorial), "Newsreader", Georgia, serif;
+  font-family:
+    "Cathay Editorial Serif",
+    var(--font-editorial),
+    "Newsreader",
+    "Playfair Display",
+    Georgia,
+    serif;
   font-weight: 500;
   letter-spacing: -0.02em;
 }
