@@ -87,8 +87,9 @@
 }
 
 .table-scroll {
-  max-height: 360px;
+  max-height: clamp(380px, 46vh, 720px);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .risk-table table {
@@ -259,4 +260,35 @@
   text-align: center !important;
   color: #687471;
   padding: 24px 12px !important;
+}
+
+@media (max-width: 768px) {
+  .queue-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px 0;
+  }
+  .queue-tabs {
+    gap: 14px;
+  }
+  .queue-filters {
+    width: 100%;
+    justify-content: flex-start;
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .queue-tabs button {
+    font-size: 12px;
+    padding: 5px 2px 8px;
+  }
+  .queue-search-input {
+    width: 120px;
+  }
+  .filter-select {
+    padding: 0 4px;
+    font-size: 11.5px;
+  }
 }

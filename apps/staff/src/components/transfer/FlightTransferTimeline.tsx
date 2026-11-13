@@ -150,6 +150,7 @@ export function FlightTransferTimeline({
           style={{
             overflowX: "auto",
             overflowY: "hidden",
+            WebkitOverflowScrolling: "touch",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
             paddingTop: "4px",

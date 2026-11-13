@@ -52,6 +52,7 @@ export default function StaffDashboardPage() {
     string | null
   >(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingTag, setPendingTag] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingStaffAction | null>(
@@ -99,13 +100,17 @@ export default function StaffDashboardPage() {
     };
   }, [fetchBags]);
 
-  // Global Ctrl+K / Cmd+K shortcut
+  // Global shortcuts: Ctrl+K (search), Ctrl+B (toggle sidebar)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (document.querySelector("dialog[open]") && !searchOpen) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setSidebarOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -324,7 +329,11 @@ export default function StaffDashboardPage() {
         onResetDemo={handleResetDemo}
         onOpenExceptions={() => setActiveView("exceptions")}
         isSyncing={isSyncing}
-        onToggleMobileMenu={() => setMobileMenuOpen((v) => !v)}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => {
+          setSidebarOpen((v) => !v);
+          setMobileMenuOpen((v) => !v);
+        }}
       />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -332,6 +341,8 @@ export default function StaffDashboardPage() {
           activeView={activeView}
           onSelectView={setActiveView}
           exceptionCount={kpi.exceptions}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen((v) => !v)}
           mobileOpen={mobileMenuOpen}
           onCloseMobile={() => setMobileMenuOpen(false)}
         />
@@ -340,8 +351,9 @@ export default function StaffDashboardPage() {
           style={{
             flex: 1,
             minWidth: 0,
-            padding: "22px 24px 36px",
-            maxWidth: "1520px",
+            padding: "20px 24px 36px",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           {toast && (
@@ -354,7 +366,7 @@ export default function StaffDashboardPage() {
                 backgroundColor:
                   toast.tone === "success" ? "#EFEEE9" : "#F3F1EC",
                 border: `1px solid ${toast.tone === "success" ? "#006564" : "#D8D3CB"}`,
-                color: toast.tone === "success" ? "#004B4A" : "#762830",
+                color: "#000000",
                 fontSize: "13px",
                 fontWeight: 600,
                 display: "flex",
@@ -369,7 +381,7 @@ export default function StaffDashboardPage() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "inherit",
+                  color: "#000000",
                   cursor: "pointer",
                   fontWeight: 700,
                 }}
@@ -405,10 +417,10 @@ export default function StaffDashboardPage() {
                       <h1
                         style={{
                           margin: 0,
-                          fontSize: "34px",
+                          fontSize: "clamp(24px, 2.5vw, 34px)",
                           fontWeight: 700,
                           lineHeight: 1.15,
-                          color: "#141918",
+                          color: "#000000",
                           letterSpacing: "-0.025em",
                         }}
                       >
@@ -418,7 +430,7 @@ export default function StaffDashboardPage() {
                         style={{
                           margin: "4px 0 0",
                           fontSize: "13px",
-                          color: "#4C5755",
+                          color: "#000000",
                         }}
                       >
                         Monitor connection risks and recover transfer exceptions
@@ -616,9 +628,10 @@ export default function StaffDashboardPage() {
       <style jsx>{`
         .ops-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.55fr) minmax(420px, 1fr);
+          grid-template-columns: minmax(0, 1fr) clamp(380px, 26vw, 440px);
           gap: 20px;
           align-items: start;
+          width: 100%;
         }
         .time-ranges {
           display: inline-flex;
@@ -633,7 +646,7 @@ export default function StaffDashboardPage() {
           border: 0;
           border-radius: 6px;
           background: transparent;
-          color: #4c5755;
+          color: #000000;
           font-size: 12.5px;
           font-weight: 600;
           cursor: pointer;
@@ -645,17 +658,23 @@ export default function StaffDashboardPage() {
         }
         .kpi-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
           gap: 12px;
+          width: 100%;
         }
-        @media (max-width: 1100px) {
+        @media (max-width: 1180px) {
           .ops-grid {
             grid-template-columns: 1fr;
+            gap: 16px;
           }
         }
-        @media (max-width: 820px) {
+        @media (max-width: 480px) {
           .kpi-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+          }
+          .time-ranges button {
+            padding: 5px 10px;
+            font-size: 11.5px;
           }
         }
       `}</style>

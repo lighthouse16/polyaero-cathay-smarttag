@@ -444,3 +444,35 @@ export function BatteryIcon({
     </svg>
   );
 }
+
+export function SidebarToggleIcon({
+  size = 18,
+  color = "currentColor",
+  collapsed = false,
+}: {
+  size?: number;
+  color?: string;
+  collapsed?: boolean;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      {collapsed ? (
+        <path d="m14 9 3 3-3 3" />
+      ) : (
+        <path d="m16 15-3-3 3-3" />
+      )}
+    </svg>
+  );
+}

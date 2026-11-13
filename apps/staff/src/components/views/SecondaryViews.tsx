@@ -41,7 +41,7 @@ export function ExceptionsView({
         <h1
           style={{
             margin: 0,
-            fontSize: "34px",
+            fontSize: "clamp(22px, 2.6vw, 34px)",
             fontWeight: 700,
             color: "#141918",
             lineHeight: 1.15,
@@ -104,6 +104,7 @@ export function ExceptionsView({
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: "16px",
+                  flexWrap: "wrap",
                 }}
               >
                 <div
@@ -242,7 +243,7 @@ export function BaggageTraceView({
         <h1
           style={{
             margin: 0,
-            fontSize: "34px",
+            fontSize: "clamp(22px, 2.6vw, 34px)",
             fontWeight: 700,
             color: "#141918",
             lineHeight: 1.15,
@@ -413,7 +414,7 @@ export function PerformanceView({
           <h1
             style={{
               margin: 0,
-              fontSize: "34px",
+              fontSize: "clamp(22px, 2.6vw, 34px)",
               fontWeight: 700,
               color: "#141918",
               lineHeight: 1.15,

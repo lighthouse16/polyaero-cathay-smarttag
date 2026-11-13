@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { BellIcon, ChevronDownIcon, SearchIcon } from "../icons/DashboardIcons";
+import {
+  BellIcon,
+  ChevronDownIcon,
+  SearchIcon,
+  SidebarToggleIcon,
+} from "../icons/DashboardIcons";
 import { formatHongKongClock } from "../../lib/utils";
 
 interface OperationsHeaderProps {
@@ -14,6 +19,8 @@ interface OperationsHeaderProps {
   onResetDemo: () => void;
   onOpenExceptions: () => void;
   isSyncing: boolean;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
   onToggleMobileMenu?: () => void;
 }
 
@@ -25,6 +32,8 @@ export function OperationsHeader({
   onResetDemo,
   onOpenExceptions,
   isSyncing,
+  sidebarOpen = true,
+  onToggleSidebar,
   onToggleMobileMenu,
 }: OperationsHeaderProps) {
   const [clock, setClock] = useState<{
@@ -79,25 +88,37 @@ export function OperationsHeader({
           minWidth: 0,
         }}
       >
-        {onToggleMobileMenu && (
+        {(onToggleSidebar || onToggleMobileMenu) && (
           <button
             type="button"
-            onClick={onToggleMobileMenu}
-            aria-label="Toggle navigation"
-            className="mobile-menu-btn focus-ring touch-target"
+            onClick={onToggleSidebar || onToggleMobileMenu}
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            title={
+              sidebarOpen
+                ? "Collapse sidebar (Ctrl+B)"
+                : "Expand sidebar (Ctrl+B)"
+            }
+            className="sidebar-toggle-btn focus-ring touch-target"
             style={{
-              background: "rgba(255,255,255,0.1)",
-              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255, 255, 255, 0.08)",
+              border: "1px solid rgba(255, 255, 255, 0.16)",
               borderRadius: "8px",
-              color: "#fff",
-              padding: "0 10px",
+              color: "#FFFFFF",
+              padding: "6px 8px",
               cursor: "pointer",
-              display: "none",
-              fontSize: "18px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               flexShrink: 0,
+              transition:
+                "background-color 0.15s ease, border-color 0.15s ease",
             }}
           >
-            ☰
+            <SidebarToggleIcon
+              size={18}
+              color="#FFFFFF"
+              collapsed={!sidebarOpen}
+            />
           </button>
         )}
 
@@ -158,7 +179,7 @@ export function OperationsHeader({
             className="header-subtitle"
             style={{
               fontSize: "11.5px",
-              color: "#C8D1CB",
+              color: "#FFFFFF",
               lineHeight: 1.25,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -190,7 +211,7 @@ export function OperationsHeader({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            color: "#CCD4CF",
+            color: "#FFFFFF",
             cursor: "pointer",
             transition: "background-color 0.15s ease, border-color 0.15s ease",
           }}
@@ -203,11 +224,11 @@ export function OperationsHeader({
               minWidth: 0,
             }}
           >
-            <SearchIcon size={15} color="#C8D1CB" />
+            <SearchIcon size={15} color="#FFFFFF" />
             <span
               style={{
                 fontSize: "12.5px",
-                color: "#CCD4CF",
+                color: "#FFFFFF",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -221,7 +242,7 @@ export function OperationsHeader({
               fontSize: "11px",
               fontFamily: "inherit",
               fontWeight: 600,
-              color: "#CCD4CF",
+              color: "#FFFFFF",
               backgroundColor: "rgba(0, 0, 0, 0.2)",
               border: "1px solid rgba(255, 255, 255, 0.16)",
               borderRadius: "6px",
@@ -258,7 +279,7 @@ export function OperationsHeader({
             cursor: "pointer",
           }}
         >
-          <SearchIcon size={17} color="#F0EFEB" />
+          <SearchIcon size={17} color="#FFFFFF" />
         </button>
 
         {/* Static Station Display Context */}
@@ -299,7 +320,7 @@ export function OperationsHeader({
             style={{
               fontSize: "12px",
               fontWeight: 500,
-              color: "#F0EFEB",
+              color: "#FFFFFF",
               minWidth: "112px",
             }}
           >
@@ -308,7 +329,7 @@ export function OperationsHeader({
           <div
             style={{
               fontSize: "11px",
-              color: "#A9CFCA",
+              color: "#FFFFFF",
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
@@ -341,7 +362,7 @@ export function OperationsHeader({
             position: "relative",
             background: "transparent",
             border: "none",
-            color: "#F0EFEB",
+            color: "#FFFFFF",
             padding: "6px",
             borderRadius: "8px",
             cursor: "pointer",
@@ -412,7 +433,7 @@ export function OperationsHeader({
             >
               JD
             </span>
-            <ChevronDownIcon size={13} color="#CCD4CF" />
+            <ChevronDownIcon size={13} color="#FFFFFF" />
           </button>
 
           {userMenuOpen && (
@@ -423,7 +444,7 @@ export function OperationsHeader({
                 right: 0,
                 top: "calc(100% + 8px)",
                 backgroundColor: "#FFFFFF",
-                color: "#141918",
+                color: "#000000",
                 borderRadius: "10px",
                 border: "1px solid #E2E1DB",
                 boxShadow: "0 12px 28px rgba(0, 0, 0, 0.16)",
@@ -442,7 +463,7 @@ export function OperationsHeader({
                   style={{
                     fontSize: "12.5px",
                     fontWeight: 700,
-                    color: "#0F172A",
+                    color: "#000000",
                   }}
                 >
                   Ground Duty Lead · JD
@@ -450,7 +471,7 @@ export function OperationsHeader({
                 <div
                   style={{
                     fontSize: "11px",
-                    color: "#64748B",
+                    color: "#000000",
                     marginTop: "2px",
                   }}
                 >
@@ -470,7 +491,7 @@ export function OperationsHeader({
                   border: "none",
                   borderRadius: "7px",
                   backgroundColor: "#FAF9F5",
-                  color: "#004B4A",
+                  color: "#000000",
                   fontSize: "12.5px",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -492,7 +513,6 @@ export function OperationsHeader({
           .hide-sm {
             display: none !important;
           }
-          .mobile-menu-btn,
           .mobile-search-btn {
             display: inline-flex !important;
           }

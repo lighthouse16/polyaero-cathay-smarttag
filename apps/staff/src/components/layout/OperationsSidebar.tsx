@@ -7,12 +7,15 @@ import {
   BarChartIcon,
   LayersIcon,
   LuggageIcon,
+  SidebarToggleIcon,
 } from "../icons/DashboardIcons";
 
 interface OperationsSidebarProps {
   activeView: SidebarView;
   onSelectView: (view: SidebarView) => void;
   exceptionCount: number;
+  isOpen?: boolean;
+  onToggle?: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -25,30 +28,22 @@ const NAV_ITEMS: Array<{
   {
     id: "transfer-control",
     label: "Transfer Control",
-    renderIcon: (active) => (
-      <LayersIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
-    ),
+    renderIcon: () => <LayersIcon size={16} color="#FFFFFF" />,
   },
   {
     id: "exceptions",
     label: "Exceptions",
-    renderIcon: (active) => (
-      <AlertTriangleIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
-    ),
+    renderIcon: () => <AlertTriangleIcon size={16} color="#FFFFFF" />,
   },
   {
     id: "baggage-trace",
     label: "Baggage Trace",
-    renderIcon: (active) => (
-      <LuggageIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
-    ),
+    renderIcon: () => <LuggageIcon size={16} color="#FFFFFF" />,
   },
   {
     id: "performance",
     label: "Performance",
-    renderIcon: (active) => (
-      <BarChartIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
-    ),
+    renderIcon: () => <BarChartIcon size={16} color="#FFFFFF" />,
   },
 ];
 
@@ -56,6 +51,8 @@ export function OperationsSidebar({
   activeView,
   onSelectView,
   exceptionCount,
+  isOpen = true,
+  onToggle,
   mobileOpen = false,
   onCloseMobile,
 }: OperationsSidebarProps) {
@@ -123,23 +120,28 @@ export function OperationsSidebar({
 
       <aside
         ref={sidebarRef}
-        inert={isMobile && !mobileOpen}
+        inert={(isMobile && !mobileOpen) || (!isMobile && !isOpen)}
         role={isMobile && mobileOpen ? "dialog" : undefined}
         aria-modal={isMobile && mobileOpen ? true : undefined}
         aria-label="Ground Operations Navigation"
-        className={`ops-sidebar ${mobileOpen ? "ops-sidebar-open" : ""}`}
+        className={`ops-sidebar ${mobileOpen ? "ops-sidebar-open" : ""} ${!isOpen ? "ops-sidebar-collapsed" : ""}`}
         style={{
-          width: "208px",
+          width: isMobile ? undefined : isOpen ? "208px" : "0px",
           flexShrink: 0,
           background: "#052f2d",
-          color: "#E0DED8",
+          color: "#FFFFFF",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "18px 12px",
+          padding: isMobile ? "18px 12px" : isOpen ? "18px 12px" : "0px",
           position: "relative",
           overflow: "hidden",
-          minHeight: "calc(100vh - 82px)",
+          opacity: isMobile ? undefined : isOpen ? 1 : 0,
+          visibility: isMobile ? undefined : isOpen ? "visible" : "hidden",
+          pointerEvents: isMobile ? undefined : isOpen ? "auto" : "none",
+          transition:
+            "width 0.22s cubic-bezier(0.2, 0, 0, 1), padding 0.22s ease, opacity 0.18s ease",
+          minHeight: "calc(100vh - var(--ops-header-height, 82px))",
         }}
       >
         {/* Subtle Cathay Wing Watermark Arc at Bottom-Left */}
@@ -203,12 +205,12 @@ export function OperationsSidebar({
                   backgroundColor: active
                     ? "rgba(255, 255, 255, 0.14)"
                     : "transparent",
-                  color: active ? "#FFFFFF" : "#B7D5D2",
+                  color: "#FFFFFF",
                   fontSize: "13.5px",
                   fontWeight: active ? 600 : 500,
                   cursor: "pointer",
                   textAlign: "left",
-                  transition: "background-color 0.15s ease, color 0.15s ease",
+                  transition: "background-color 0.15s ease",
                 }}
               >
                 <span
@@ -241,36 +243,51 @@ export function OperationsSidebar({
           })}
         </nav>
 
-        {/* Bottom Station Context (No fake v2.4 footer) */}
-        <div
-          style={{
-            position: "relative",
-            zIndex: 2,
-            padding: "12px",
-            borderRadius: "10px",
-            backgroundColor: "rgba(255, 255, 255, 0.06)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            fontSize: "11px",
-            color: "#A7CECA",
-            lineHeight: 1.45,
-          }}
-        >
-          <div
-            style={{ fontWeight: 600, color: "#F0EFEB", marginBottom: "2px" }}
-          >
-            Station Context
+        {/* Bottom Collapse Button (Replaced Station Context box) */}
+        {onToggle && (
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <button
+              type="button"
+              onClick={() => {
+                onToggle();
+                onCloseMobile?.();
+              }}
+              aria-label="Collapse sidebar"
+              className="focus-ring touch-target"
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                color: "#FFFFFF",
+                fontSize: "12.5px",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background-color 0.15s ease",
+              }}
+            >
+              <SidebarToggleIcon size={16} color="#FFFFFF" collapsed={false} />
+              <span>Collapse sidebar</span>
+            </button>
           </div>
-          <div>HKG · Terminal 1 Operations</div>
-        </div>
+        )}
 
         <style jsx>{`
           @media (max-width: 960px) {
             .ops-sidebar {
               position: fixed !important;
               left: 0;
-              top: 82px;
+              top: var(--ops-header-height, 82px) !important;
               bottom: 0;
               z-index: 50;
+              width: 208px !important;
+              padding: 18px 12px !important;
+              opacity: 1 !important;
+              visibility: visible !important;
               transform: translateX(-100%);
               transition: transform 0.2s ease;
             }

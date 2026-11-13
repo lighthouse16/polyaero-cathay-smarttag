@@ -56,7 +56,7 @@ export function RecommendedActionPanel({
           }
           className="focus-ring touch-target"
           style={{
-            flex: "1 1 180px",
+            flex: "1 1 140px",
             minHeight: "42px",
             borderRadius: "8px",
             border: "none",
@@ -77,7 +77,7 @@ export function RecommendedActionPanel({
           <span>Dispatch for retrieval</span>
         </button>
 
-        <div style={{ display: "inline-flex", alignItems: "stretch" }}>
+        <div style={{ display: "inline-flex", alignItems: "stretch", flex: "1 1 140px" }}>
           <button
             type="button"
             disabled={isSyncing}
@@ -93,6 +93,7 @@ export function RecommendedActionPanel({
             }
             className="focus-ring touch-target"
             style={{
+              flex: 1,
               minHeight: "42px",
               borderRadius: "8px 0 0 8px",
               border: "1px solid #D6D1C6",
@@ -104,6 +105,7 @@ export function RecommendedActionPanel({
               padding: "0 12px",
               display: "inline-flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: "6px",
               cursor: isSyncing ? "wait" : "pointer",
               whiteSpace: "nowrap",

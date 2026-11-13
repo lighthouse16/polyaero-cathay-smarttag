@@ -99,10 +99,10 @@ export function OperationalMetricCard({
           <div
             className="tabular-nums"
             style={{
-              fontSize: "31px",
+              fontSize: "clamp(22px, 2.1vw, 30px)",
               fontWeight: 700,
               lineHeight: 1.05,
-              color: "#141918",
+              color: "#000000",
               letterSpacing: "-0.02em",
             }}
           >
@@ -112,7 +112,7 @@ export function OperationalMetricCard({
             style={{
               fontSize: "12px",
               fontWeight: 500,
-              color: "#4C5755",
+              color: "#000000",
               marginTop: "3px",
               lineHeight: 1.4,
             }}
@@ -124,7 +124,7 @@ export function OperationalMetricCard({
             style={{
               fontSize: "10.5px",
               fontWeight: 600,
-              color: accentColor,
+              color: "#000000",
               marginTop: "2px",
               whiteSpace: "nowrap",
               overflow: "hidden",

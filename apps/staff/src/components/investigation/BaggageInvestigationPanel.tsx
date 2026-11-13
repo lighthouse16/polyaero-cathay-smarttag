@@ -324,12 +324,13 @@ export function BaggageInvestigationPanel({
                   borderBottom: active
                     ? "2.5px solid #004B4A"
                     : "2.5px solid transparent",
-                  padding: "9px 4px",
-                  fontSize: "12.5px",
+                  padding: "8px 2px",
+                  fontSize: "clamp(11px, 2.8vw, 12.5px)",
                   fontWeight: active ? 700 : 500,
                   color: active ? "#141918" : "#6B7280",
                   cursor: "pointer",
                   textAlign: "center",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {tab.label}
