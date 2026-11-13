@@ -1,7 +1,8 @@
 # PolyAero Cathay SmartTag — ESP32-C6 MicroPython Firmware
 
 ESP32-C6 firmware for PN532 Type-4 Target (PICC emulation) + Waveshare 4.2" E-Paper display.
-Phone writes NDEF via Web NFC → PN532 receives → POST to API → E-Paper renders baggage tag.
+
+**Standalone operation**: Phone writes NDEF via NFC → PN532 receives → ESP32-C6 parses locally → E-Paper renders baggage tag. **No WiFi, no API calls from device.**
 
 ---
 
@@ -42,8 +43,8 @@ This configures PN532 for **UART mode at 115200 baud**.
 
 ```
 apps/firmware/micropython-esp32c6/
-├── main.py              # Entry point, main loop
-├── config.py            # WiFi, API, pin mapping — EDIT THIS
+├── main.py              # Entry point, main loop (standalone NFC → e-paper)
+├── config.py            # Pin mapping + timing — EDIT THIS
 ├── graphics.py          # PortraitCanvas (300x400 coordinate mapping)
 ├── barcode.py           # ITF-10 horizontal/vertical barcode generators
 ├── layout.py            # IATA baggage tag renderer (4-section layout)
@@ -52,7 +53,7 @@ apps/firmware/micropython-esp32c6/
 └── epaper4in2.py        # Waveshare 4.2" V2 driver (partial refresh)
 ```
 
-**Do NOT deploy:** `tests/`, `requirements.txt`, `deploy.py`, `conftest.py`
+**Do NOT deploy:** `tests/`, `requirements.txt`, `deploy.py`, `conftest.py`, `README.md`
 
 ---
 
@@ -61,20 +62,6 @@ apps/firmware/micropython-esp32c6/
 Edit `config.py` before deploying:
 
 ```python
-# WiFi
-WIFI_SSID = "YOUR_WIFI_SSID"
-WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
-
-# API (your backend server)
-API_BASE_URL = "http://192.168.1.100:8000/api/v1"
-
-# Tag identity — must match tags.tag_code in PostgreSQL
-TAG_UID = "04:A2:3B:4C:5D:6E:70"
-
-# Optional device auth — must match IOT_DEVICE_KEY env var on API
-# Leave empty if API has no IOT_DEVICE_KEY set
-DEVICE_KEY = ""
-
 # PN532 UART1 pins (Waveshare HAT)
 PN532_RX = 22
 PN532_TX = 23
@@ -90,9 +77,10 @@ EPD_SCK = 21
 EPD_MOSI = 19
 
 # Timing
-POLL_INTERVAL_MS = 3000      # Display poll interval
 NFC_SESSION_MS = 5000        # Max wait for phone NFC write
 ```
+
+**No WiFi/API credentials needed** — firmware is standalone.
 
 ---
 
@@ -126,42 +114,61 @@ main.main()
 
 ---
 
-## IoT Flow
+## Standalone Flow
 
 ```
-Phone (Web NFC)          PN532 (Target)        ESP32-C6              Backend API
+Phone (NFC Write)          PN532 (Target)        ESP32-C6              E-Paper Display
      |                       |                    |                      |
      |--- Write NDEF ------->|                    |                      |
      |                       |--- APDU UPDATE --->|                      |
      |                       |<-- 90 00 ---------|                      |
-     |                       |                    |--- POST /tags/{id}/tap (ndef_payload) -->|
-     |                       |                    |<-- {acknowledged, display} ------------|
-     |                       |                    |--- Render display to E-Paper --------->|
-     |                       |                    |                      |
-     |                       |                    |--- GET /tags/{id}/display (every 3s) -->|
-     |                       |                    |<-- display payload ----------------------|
-     |                       |                    |--- Render if changed ------------------>|
+     |                       |                    |--- parse_iata_payload() --->|
+     |                       |                    |--- render_iata_baggage_tag() ->|
+     |                       |                    |                      |--- Partial refresh -->
 ```
 
-**NDEF Format** (matches `POST /smarttag/sync/payload`):
-```json
-{
-  "v": 1,
-  "tag": "0074774268",
-  "tag_code": "04:A2:3B:4C:5D:6E:70",
-  "booking": "uuid-from-backend",
-  "flight": "CX888",
-  "route": "HKG-NRT",
-  "barcode": "0074774268",
-  "status": "TAGGED",
-  "at": 1700000000
-}
+**NDEF Payload Formats Accepted:**
+
+1. **Pipe-delimited text** (preferred for phone keyboards):
+   ```
+   0074774268|NRT|TOKYO|CX 548|12DEC|1430|PASSENGER/NAME
+   ```
+
+2. **JSON NDEF** (from mobile app):
+   ```json
+   {
+     "v": 1,
+     "tag": "0074774268",
+     "tag_code": "04:A2:3B:4C:5D:6E:70",
+     "booking": "unknown",
+     "flight": "CX888",
+     "route": "HKG-NRT",
+     "barcode": "0074774268",
+     "status": "TAGGED",
+     "at": 1700000000
+   }
+   ```
+
+---
+
+## Mobile App Responsibility (DB Update)
+
+**The mobile app must call the API after writing NFC** to update the database:
+
+```typescript
+// After successful NFC write:
+await fetch('https://api.example.com/api/v1/tags/04:A2:3B:4C:5D:6E:70/tap', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    reader_id: 'MOBILE-APP',
+    location_code: 'HKG-CHECKIN',
+    ndef_payload: JSON.stringify(ndefJson)  // same payload written to tag
+  })
+});
 ```
 
-**Pipe-delimited text payload** (also accepted):
-```
-0074774268|NRT|TOKYO|CX 548|12DEC|1430|PASSENGER/NAME
-```
+**API Endpoint:** `POST /tags/{id}/tap` — already implemented in backend.
 
 ---
 
@@ -172,8 +179,6 @@ Phone (Web NFC)          PN532 (Target)        ESP32-C6              Backend API
 adb reverse tcp:8000 tcp:8000
 ```
 Then open `https://localhost:8000` on phone.
-
-**Staff Portal:** "Write NDEF" button at `/staff` writes the pipe-delimited format.
 
 **Mobile App:** `NativeNfcService.ts` writes NDEF JSON format.
 
@@ -197,10 +202,55 @@ Then open `https://localhost:8000` on phone.
 |---------|-------|-----|
 | PN532 not responding | Wrong DIP switches | Verify UART jumpers L-L, UART ON, SPI/I2C OFF |
 | "No ACK" in logs | Baud rate mismatch | Confirm `PN532_BAUD = 115200` |
-| WiFi fails | Wrong credentials | Check `WIFI_SSID`/`WIFI_PASSWORD` in `config.py` |
-| API 401/403 | Device key mismatch | Set `DEVICE_KEY` = `IOT_DEVICE_KEY` on API, or leave both empty |
-| Display not updating | Poll interval | Check `POLL_INTERVAL_MS = 3000`, WiFi connected |
-| Phone can't write | HTTP not HTTPS | Use `adb reverse` or deploy API with TLS |
+| Display not updating | NDEF parse failed | Check phone writes valid pipe-delimited or JSON NDEF |
+| Phone can't write | Tag not in PICC mode | Verify PN532 reset + TgInitAsTarget on boot |
+
+---
+
+## Testing with Mobile + IoT Device
+
+### 1. Hardware Setup
+- ESP32-C6 + PN532 HAT + Waveshare 4.2" E-Paper wired per table above
+- PN532 DIP switches set to UART mode
+- Phone with NFC enabled (Android/iOS)
+
+### 2. Deploy Firmware
+```bash
+cd apps/firmware/micropython-esp32c6
+python deploy.py --reset
+```
+Watch serial output: `>>> SYSTEM READY. Tap phone to PN532 <<<`
+
+### 3. Write NDEF from Phone
+
+**Option A: Web NFC (Android Chrome)**
+- Open staff portal or demo page with "Write NDEF" button
+- Hold phone to PN532 antenna
+- E-paper updates within 1-2 seconds
+
+**Option B: Mobile App (React Native/Expo)**
+- Navigate to "Sync SmartTag" screen
+- Tap "Start NFC sync"
+- Hold phone to PN532 antenna
+- App writes NDEF, then calls API to update DB
+
+**Option C: NFC Tools App (Manual Test)**
+- Install "NFC Tools" (Android/iOS)
+- Create NDEF Text record with pipe-delimited payload:
+  ```
+  0074774268|JFK|NEW YORK|KL 1592|30SEP|1740|NGUYEN/DUC MANH
+  ```
+- Write to tag (tap phone to PN532)
+- E-paper renders baggage tag
+
+### 4. Verify DB Update (Mobile App Flow)
+After NFC write, mobile app should POST to API. Verify in backend:
+```bash
+# Check baggage events
+curl -H "Authorization: Bearer <token>" \
+  https://api.example.com/api/v1/baggage/0160892012/events
+```
+Should show `TAGGED` event with `scanner_type: NFC_TAP`.
 
 ---
 
@@ -212,19 +262,20 @@ cd apps/firmware/micropython-esp32c6
 python -m pytest tests/test_firmware.py -v
 ```
 
-**Add urequests if missing on device:**
-```bash
-mpremote mip install github:micropython/micropython-lib/urequests
-```
-
 ---
 
-## Backend API Endpoints Used
+## Files Summary for Device
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/tags/{id}/tap` | Submit NDEF payload or next_status |
-| GET | `/tags/{id}/display` | Poll for display payload |
-| POST | `/smarttag/sync/payload` | Build NDEF JSON (used by staff/mobile apps) |
+**Upload these 8 files to ESP32-C6:**
+| File | Purpose |
+|------|---------|
+| `main.py` | Main loop |
+| `config.py` | Pin config |
+| `graphics.py` | Canvas/rendering |
+| `barcode.py` | ITF-10 barcodes |
+| `layout.py` | IATA tag layout |
+| `nfc_handler.py` | PN532 APDU + NDEF parser |
+| `pn532_uart.py` | PN532 UART driver |
+| `epaper4in2.py` | E-paper driver |
 
-See `apps/api/app/api/v1/endpoints/tags.py` and `smarttag.py`.
+**Do NOT upload:** `tests/`, `deploy.py`, `conftest.py`, `README.md`, `requirements.txt`

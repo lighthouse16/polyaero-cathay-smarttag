@@ -37,7 +37,7 @@ import {
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
-import { syncBookingToCopilot } from '../../../services/copilotBridge';
+import { syncBookingToCopilot, postSmartTagTap } from '../../../services/copilotBridge';
 
 export interface SyncSmartTagScreenProps {
   onOpenDevMenu?: () => void;
@@ -160,6 +160,21 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
+      // 1. Update backend DB with NFC tap (replaces firmware HTTP POST)
+      const tapPayload = {
+        tagUid: bag.smartTag.tagUid,
+        baggageTagNumber: bag.baggage.tagNumber,
+        flightNumber: itinerary.flight.flightNumber,
+        originAirport: itinerary.flight.origin,
+        destinationAirport: itinerary.flight.destination,
+        passengerInitials: itinerary.passengerInitials,
+        departureDate: itinerary.departureDateIso,
+        status: 'TAGGED',
+        timestamp: Date.now() / 1000,
+      };
+      await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
+
+      // 2. Sync booking to Copilot (existing flow)
       await syncBookingToCopilot({
         tagNumber: bag.baggage.tagNumber,
         tagCode: bag.smartTag.tagUid,
@@ -168,6 +183,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         destination: itinerary.flight.destination,
         initialStatus: 'TAGGED',
       });
+
       smartTagController.navigateTo('result', {
         itineraryId: itinerary.id,
         bagSetupId: bag.id,

@@ -154,3 +154,57 @@ export async function choosePassengerRecovery(
     return null;
   }
 }
+
+export interface SmartTagTapPayload {
+  tagUid: string;
+  baggageTagNumber: string;
+  flightNumber: string;
+  originAirport: string;
+  destinationAirport: string;
+  passengerInitials: string;
+  departureDate: string;
+  status: string;
+  timestamp: number;
+}
+
+export async function postSmartTagTap(
+  tagUid: string,
+  payload: SmartTagTapPayload,
+  readerId = 'MOBILE-APP',
+  locationCode = 'HKG-CHECKIN'
+): Promise<{ success: boolean; display?: any }> {
+  try {
+    const ndefPayload = JSON.stringify({
+      v: 1,
+      tag: payload.baggageTagNumber,
+      tag_code: tagUid,
+      booking: 'unknown',
+      flight: payload.flightNumber,
+      route: `${payload.originAirport}-${payload.destinationAirport}`,
+      barcode: payload.baggageTagNumber,
+      status: payload.status,
+      at: payload.timestamp,
+    });
+
+    const res = await fetch(`${COPILOT_API_BASE}/tags/${tagUid}/tap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reader_id: readerId,
+        location_code: locationCode,
+        ndef_payload: ndefPayload,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error('[SmartTagTap] API error:', res.status, await res.text());
+      return { success: false };
+    }
+
+    const data = await res.json();
+    return { success: true, display: data.display };
+  } catch (err) {
+    console.error('[SmartTagTap] Network error:', err);
+    return { success: false };
+  }
+}
