@@ -111,14 +111,14 @@ export function BaggageInvestigationPanel({
   const isExc = isExceptionBag(bag);
   const statusBadge = isExc
     ? {
-        bg: "#FDF2F1",
-        border: "#F5C2BE",
-        color: "#991B1B",
-        icon: <AlertTriangleIcon size={12} color="#991B1B" />,
+        bg: "#F3F1EC",
+        border: "#D8D3CB",
+        color: "#762830",
+        icon: <AlertTriangleIcon size={12} color="#762830" />,
       }
     : {
-        bg: "#EBF4F1",
-        border: "#B8DAD6",
+        bg: "#EFEEE9",
+        border: "#C8D1CB",
         color: "#004B4A",
         icon: <CheckIcon size={12} color="#004B4A" />,
       };
@@ -366,7 +366,7 @@ export function BaggageInvestigationPanel({
                   padding: "11px 13px",
                   borderRadius: "10px",
                   backgroundColor: "#faf9f6",
-                  border: `1px solid ${isExc || bag.risk_score >= 65 ? "#F5C2BE" : "#B8DAD6"}`,
+                  border: `1px solid ${isExc || bag.risk_score >= 65 ? "#D8D3CB" : "#C8D1CB"}`,
                   display: "flex",
                   alignItems: "flex-start",
                   gap: "10px",
@@ -374,7 +374,7 @@ export function BaggageInvestigationPanel({
               >
                 <span style={{ marginTop: "1px", flexShrink: 0 }}>
                   {isExc || bag.risk_score >= 65 ? (
-                    <AlertCircleIcon size={17} color="#B91C1C" />
+                    <AlertCircleIcon size={17} color="#87323A" />
                   ) : (
                     <CheckIcon size={16} color="#004B4A" />
                   )}
@@ -385,7 +385,7 @@ export function BaggageInvestigationPanel({
                       fontSize: "12.5px",
                       fontWeight: 700,
                       color:
-                        isExc || bag.risk_score >= 65 ? "#991B1B" : "#004B4A",
+                        isExc || bag.risk_score >= 65 ? "#762830" : "#004B4A",
                     }}
                   >
                     {isExc || bag.risk_score >= 70
@@ -584,7 +584,7 @@ export function BaggageInvestigationPanel({
                                 fontWeight: 600,
                                 padding: "2px 7px",
                                 borderRadius: "999px",
-                                backgroundColor: "#EBF4F1",
+                                backgroundColor: "#EFEEE9",
                                 color: "#004B4A",
                               }}
                             >
@@ -764,7 +764,7 @@ export function BaggageInvestigationPanel({
                           fontWeight: 600,
                           padding: "2px 7px",
                           borderRadius: "999px",
-                          backgroundColor: "#EBF4F1",
+                          backgroundColor: "#EFEEE9",
                           color: "#004B4A",
                         }}
                       >
@@ -835,7 +835,7 @@ export function BaggageInvestigationPanel({
               maxWidth: "460px",
               backgroundColor: "#FFFFFF",
               borderRadius: "14px",
-              border: "1px solid #E2E8F0",
+              border: "1px solid #E2E1DB",
               boxShadow: "0 20px 45px rgba(0, 0, 0, 0.2)",
               padding: "22px",
             }}

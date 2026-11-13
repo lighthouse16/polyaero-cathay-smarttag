@@ -39,13 +39,13 @@ export function ExceptionsView({
     <section aria-label="Active Exceptions and Priority Intercepts">
       <div style={{ marginBottom: "18px" }}>
         <h1
-          className="font-editorial"
           style={{
             margin: 0,
             fontSize: "34px",
-            fontWeight: 500,
+            fontWeight: 700,
             color: "#141918",
             lineHeight: 1.15,
+            letterSpacing: "-0.025em",
           }}
         >
           Active Exceptions &amp; Priority Intercepts
@@ -96,9 +96,9 @@ export function ExceptionsView({
                   borderColor: active
                     ? "#004B4A"
                     : isExceptionBag(bag)
-                      ? "#F5C2BE"
+                      ? "#D8D3CB"
                       : "#E8E5DE",
-                  backgroundColor: active ? "#FDF2F1" : "#FFFFFF",
+                  backgroundColor: active ? "#F3F1EC" : "#FFFFFF",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -118,15 +118,15 @@ export function ExceptionsView({
                       width: "34px",
                       height: "34px",
                       borderRadius: "9px",
-                      backgroundColor: "#FDF2F1",
-                      border: "1px solid #F5C2BE",
+                      backgroundColor: "#F3F1EC",
+                      border: "1px solid #D8D3CB",
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                     }}
                   >
-                    <AlertTriangleIcon size={17} color="#B91C1C" />
+                    <AlertTriangleIcon size={17} color="#87323A" />
                   </span>
                   <div>
                     <div
@@ -160,9 +160,9 @@ export function ExceptionsView({
                         style={{
                           padding: "2px 8px",
                           borderRadius: "999px",
-                          backgroundColor: "#FDF2F1",
-                          border: "1px solid #F5C2BE",
-                          color: "#991B1B",
+                          backgroundColor: "#F3F1EC",
+                          border: "1px solid #D8D3CB",
+                          color: "#762830",
                           fontSize: "11px",
                           fontWeight: 600,
                         }}
@@ -183,7 +183,7 @@ export function ExceptionsView({
                     <div
                       style={{
                         fontSize: "12px",
-                        color: "#991B1B",
+                        color: "#762830",
                         marginTop: "4px",
                         fontWeight: 500,
                       }}
@@ -200,7 +200,7 @@ export function ExceptionsView({
                     style={{
                       fontSize: "20px",
                       fontWeight: 700,
-                      color: "#991B1B",
+                      color: "#762830",
                     }}
                   >
                     {bag.risk_score}
@@ -240,13 +240,13 @@ export function BaggageTraceView({
     <section aria-label="Baggage Trace and Scan Audit">
       <div style={{ marginBottom: "16px" }}>
         <h1
-          className="font-editorial"
           style={{
             margin: 0,
             fontSize: "34px",
-            fontWeight: 500,
+            fontWeight: 700,
             color: "#141918",
             lineHeight: 1.15,
+            letterSpacing: "-0.025em",
           }}
         >
           Baggage Trace &amp; Scan Audit
@@ -305,7 +305,7 @@ export function BaggageTraceView({
                 padding: "14px 16px",
                 cursor: "pointer",
                 borderColor: active ? "#004B4A" : "#E8E5DE",
-                backgroundColor: active ? "#EBF4F1" : "#FFFFFF",
+                backgroundColor: active ? "#EFEEE9" : "#FFFFFF",
               }}
             >
               <div
@@ -411,13 +411,13 @@ export function PerformanceView({
       >
         <div>
           <h1
-            className="font-editorial"
             style={{
               margin: 0,
               fontSize: "34px",
-              fontWeight: 500,
+              fontWeight: 700,
               color: "#141918",
               lineHeight: 1.15,
+              letterSpacing: "-0.025em",
             }}
           >
             Station Snapshot Metrics
@@ -588,9 +588,9 @@ export function PerformanceView({
                       borderRadius: "999px",
                       backgroundColor:
                         bag.risk_score >= 70
-                          ? "#B91C1C"
+                          ? "#87323A"
                           : bag.risk_score >= 40
-                            ? "#D97706"
+                            ? "#856432"
                             : "#006564",
                     }}
                   />

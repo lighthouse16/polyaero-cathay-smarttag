@@ -352,9 +352,9 @@ export default function StaffDashboardPage() {
                 padding: "10px 16px",
                 borderRadius: "10px",
                 backgroundColor:
-                  toast.tone === "success" ? "#EBF4F1" : "#FEF2F2",
-                border: `1px solid ${toast.tone === "success" ? "#006564" : "#FCA5A5"}`,
-                color: toast.tone === "success" ? "#004B4A" : "#991B1B",
+                  toast.tone === "success" ? "#EFEEE9" : "#F3F1EC",
+                border: `1px solid ${toast.tone === "success" ? "#006564" : "#D8D3CB"}`,
+                color: toast.tone === "success" ? "#004B4A" : "#762830",
                 fontSize: "13px",
                 fontWeight: 600,
                 display: "flex",
@@ -403,13 +403,13 @@ export default function StaffDashboardPage() {
                   >
                     <div>
                       <h1
-                        className="font-editorial"
                         style={{
                           margin: 0,
-                          fontSize: "36px",
-                          fontWeight: 500,
+                          fontSize: "34px",
+                          fontWeight: 700,
                           lineHeight: 1.15,
                           color: "#141918",
+                          letterSpacing: "-0.025em",
                         }}
                       >
                         Transfer Control
@@ -474,7 +474,7 @@ export default function StaffDashboardPage() {
                             : "▲ +6.1% vs. prev. 7d"
                       }
                       icon={<LuggageIcon size={16} color="#006564" />}
-                      iconBg="#EEF5F2"
+                      iconBg="#F0EFEB"
                       accentColor="#006564"
                       sparklinePoints={[18, 25, 22, 30, 28, 34, 38, 43]}
                     />
@@ -482,22 +482,22 @@ export default function StaffDashboardPage() {
                       title="At risk"
                       value={isLoading ? "—" : kpi.atRisk}
                       sublabel="▲ +2"
-                      icon={<AlertTriangleIcon size={16} color="#D97706" />}
-                      iconBg="#FDF3DC"
-                      tintBackground="#FDFBF5"
-                      borderColor="#EFE3C8"
-                      accentColor="#C26A12"
+                      icon={<AlertTriangleIcon size={16} color="#856432" />}
+                      iconBg="#EFEDE8"
+                      tintBackground="#FFFFFF"
+                      borderColor="#DDD8CF"
+                      accentColor="#856432"
                       sparklinePoints={[2, 4, 3, 5, 4, 6, 7, 7]}
                     />
                     <OperationalMetricCard
                       title={kpi.exceptions === 1 ? "Exception" : "Exceptions"}
                       value={isLoading ? "—" : kpi.exceptions}
                       sublabel={kpi.exceptions === 1 ? "—" : "Needs recovery"}
-                      icon={<AlertCircleIcon size={16} color="#DC2626" />}
-                      iconBg="#FCEAEA"
-                      tintBackground="#FDF7F7"
-                      borderColor={kpi.exceptions > 0 ? "#F5D7D4" : "#E8E5DE"}
-                      accentColor="#B91C1C"
+                      icon={<AlertCircleIcon size={16} color="#87323A" />}
+                      iconBg="#F0EEE9"
+                      tintBackground="#F3F1EC"
+                      borderColor={kpi.exceptions > 0 ? "#D8D3CB" : "#E8E5DE"}
+                      accentColor="#87323A"
                       sparklinePoints={[0, 1, 1, 2, 1, 1, 1, 1]}
                       onClick={() => setActiveView("exceptions")}
                     />
@@ -511,10 +511,10 @@ export default function StaffDashboardPage() {
                             : "99.2%"
                       }
                       sublabel="▲ +0.3 pp"
-                      icon={<CheckCircleIcon size={16} color="#059669" />}
-                      iconBg="#E7F6EE"
-                      tintBackground="#F5FBF8"
-                      borderColor="#D5EBDD"
+                      icon={<CheckCircleIcon size={16} color="#2D614E" />}
+                      iconBg="#EFEEE9"
+                      tintBackground="#FFFFFF"
+                      borderColor="#E1DED6"
                       accentColor="#0D6E4E"
                       sparklinePoints={[98.8, 99.1, 99.0, 99.3, 99.4, 99.4, 99.5, 99.6]}
                     />

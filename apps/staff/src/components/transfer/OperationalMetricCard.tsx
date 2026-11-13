@@ -23,7 +23,7 @@ export function OperationalMetricCard({
   accentColor,
   tintBackground = "#FFFFFF",
   borderColor = "#E8E5DE",
-  iconBg = "#F1F5F9",
+  iconBg = "#F0EFEB",
   sparklinePoints,
   onClick,
 }: OperationalMetricCardProps) {
@@ -48,8 +48,7 @@ export function OperationalMetricCard({
   const linePath = coords
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
     .join(" ");
-  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
-  const gradId = `spark-${accentColor.replace(/[^a-zA-Z0-9]/g, "")}`;
+  // Operational series are strokes only: gradients turn microcharts into decoration.
 
   return (
     <div
@@ -151,13 +150,6 @@ export function OperationalMetricCard({
             }}
             aria-hidden="true"
           >
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={accentColor} stopOpacity="0.18" />
-                <stop offset="100%" stopColor={accentColor} stopOpacity="0.01" />
-              </linearGradient>
-            </defs>
-            <path d={areaPath} fill={`url(#${gradId})`} />
             <path
               d={linePath}
               fill="none"

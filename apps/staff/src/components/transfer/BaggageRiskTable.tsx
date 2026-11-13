@@ -157,7 +157,7 @@ export function BaggageRiskTable({
                   height="14"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#D99B26"
+                  stroke="#856432"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"

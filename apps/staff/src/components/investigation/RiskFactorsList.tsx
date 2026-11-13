@@ -27,10 +27,10 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
         {factors.map((f, idx) => {
           const barColor =
             f.severity === "high"
-              ? "#A62B2B"
+              ? "#87323A"
               : f.severity === "medium"
-                ? "#E09F3E"
-                : "#CBD5E1";
+                ? "#947243"
+                : "#B9BDB7";
 
           if (f.weightPct !== null) {
             return (

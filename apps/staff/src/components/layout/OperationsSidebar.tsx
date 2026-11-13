@@ -26,28 +26,28 @@ const NAV_ITEMS: Array<{
     id: "transfer-control",
     label: "Transfer Control",
     renderIcon: (active) => (
-      <LayersIcon size={16} color={active ? "#FFFFFF" : "#9CC4BF"} />
+      <LayersIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
     ),
   },
   {
     id: "exceptions",
     label: "Exceptions",
     renderIcon: (active) => (
-      <AlertTriangleIcon size={16} color={active ? "#FFFFFF" : "#9CC4BF"} />
+      <AlertTriangleIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
     ),
   },
   {
     id: "baggage-trace",
     label: "Baggage Trace",
     renderIcon: (active) => (
-      <LuggageIcon size={16} color={active ? "#FFFFFF" : "#9CC4BF"} />
+      <LuggageIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
     ),
   },
   {
     id: "performance",
     label: "Performance",
     renderIcon: (active) => (
-      <BarChartIcon size={16} color={active ? "#FFFFFF" : "#9CC4BF"} />
+      <BarChartIcon size={16} color={active ? "#FFFFFF" : "#86998F"} />
     ),
   },
 ];
@@ -132,7 +132,7 @@ export function OperationsSidebar({
           width: "208px",
           flexShrink: 0,
           background: "#052f2d",
-          color: "#D5E9E6",
+          color: "#E0DED8",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -163,7 +163,7 @@ export function OperationsSidebar({
           />
           <path
             d="M-20 190C25 130 75 90 155 60C95 110 55 150 20 215L-20 190Z"
-            fill="#4DA8A3"
+            fill="#607F76"
           />
         </svg>
 
@@ -224,7 +224,7 @@ export function OperationsSidebar({
                       height: "20px",
                       padding: "0 6px",
                       borderRadius: "999px",
-                      backgroundColor: "#DC2626",
+                      backgroundColor: "#87323A",
                       color: "#FFFFFF",
                       fontSize: "11px",
                       fontWeight: 700,
@@ -256,7 +256,7 @@ export function OperationsSidebar({
           }}
         >
           <div
-            style={{ fontWeight: 600, color: "#E3F2F0", marginBottom: "2px" }}
+            style={{ fontWeight: 600, color: "#F0EFEB", marginBottom: "2px" }}
           >
             Station Context
           </div>

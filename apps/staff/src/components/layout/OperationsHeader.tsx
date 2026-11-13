@@ -158,7 +158,7 @@ export function OperationsHeader({
             className="header-subtitle"
             style={{
               fontSize: "11.5px",
-              color: "#B8DAD6",
+              color: "#C8D1CB",
               lineHeight: 1.25,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -190,7 +190,7 @@ export function OperationsHeader({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            color: "#DCECE9",
+            color: "#CCD4CF",
             cursor: "pointer",
             transition: "background-color 0.15s ease, border-color 0.15s ease",
           }}
@@ -203,11 +203,11 @@ export function OperationsHeader({
               minWidth: 0,
             }}
           >
-            <SearchIcon size={15} color="#B8DAD6" />
+            <SearchIcon size={15} color="#C8D1CB" />
             <span
               style={{
                 fontSize: "12.5px",
-                color: "#CFE4E1",
+                color: "#CCD4CF",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -221,7 +221,7 @@ export function OperationsHeader({
               fontSize: "11px",
               fontFamily: "inherit",
               fontWeight: 600,
-              color: "#DCECE9",
+              color: "#CCD4CF",
               backgroundColor: "rgba(0, 0, 0, 0.2)",
               border: "1px solid rgba(255, 255, 255, 0.16)",
               borderRadius: "6px",
@@ -258,7 +258,7 @@ export function OperationsHeader({
             cursor: "pointer",
           }}
         >
-          <SearchIcon size={17} color="#EDF7F5" />
+          <SearchIcon size={17} color="#F0EFEB" />
         </button>
 
         {/* Static Station Display Context */}
@@ -299,7 +299,7 @@ export function OperationsHeader({
             style={{
               fontSize: "12px",
               fontWeight: 500,
-              color: "#EDF7F5",
+              color: "#F0EFEB",
               minWidth: "112px",
             }}
           >
@@ -341,7 +341,7 @@ export function OperationsHeader({
             position: "relative",
             background: "transparent",
             border: "none",
-            color: "#EDF7F5",
+            color: "#F0EFEB",
             padding: "6px",
             borderRadius: "8px",
             cursor: "pointer",
@@ -360,7 +360,7 @@ export function OperationsHeader({
                 minWidth: "16px",
                 height: "16px",
                 borderRadius: "999px",
-                backgroundColor: "#DC2626",
+                backgroundColor: "#87323A",
                 color: "#FFFFFF",
                 fontSize: "10px",
                 fontWeight: 700,
@@ -412,7 +412,7 @@ export function OperationsHeader({
             >
               JD
             </span>
-            <ChevronDownIcon size={13} color="#CFE4E1" />
+            <ChevronDownIcon size={13} color="#CCD4CF" />
           </button>
 
           {userMenuOpen && (
@@ -425,7 +425,7 @@ export function OperationsHeader({
                 backgroundColor: "#FFFFFF",
                 color: "#141918",
                 borderRadius: "10px",
-                border: "1px solid #E2E8F0",
+                border: "1px solid #E2E1DB",
                 boxShadow: "0 12px 28px rgba(0, 0, 0, 0.16)",
                 minWidth: "220px",
                 padding: "8px",
@@ -435,7 +435,7 @@ export function OperationsHeader({
               <div
                 style={{
                   padding: "6px 8px 8px",
-                  borderBottom: "1px solid #F1F5F9",
+                  borderBottom: "1px solid #F0EFEB",
                 }}
               >
                 <div

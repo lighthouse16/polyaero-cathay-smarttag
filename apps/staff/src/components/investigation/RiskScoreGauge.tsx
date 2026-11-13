@@ -22,7 +22,7 @@ export function RiskScoreGauge({ score }: RiskScoreGaugeProps) {
   const filledLength = (clamped / 100) * trackLength;
 
   const strokeColor =
-    clamped >= 70 ? "#A62B2B" : clamped >= 40 ? "#D97706" : "#059669";
+    clamped >= 70 ? "#87323A" : clamped >= 40 ? "#856432" : "#2D614E";
 
   return (
     <div

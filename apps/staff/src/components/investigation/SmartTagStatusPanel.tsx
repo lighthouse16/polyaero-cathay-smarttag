@@ -339,6 +339,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
             >
               v3.0
             </span>
+
           </div>
         </div>
       </div>

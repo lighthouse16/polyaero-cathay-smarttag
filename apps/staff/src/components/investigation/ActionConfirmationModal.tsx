@@ -54,7 +54,7 @@ export function ActionConfirmationModal({
   }, [pendingAction]);
 
   const normalized = pendingAction ? pendingAction : null;
-  const confirmBg = normalized?.tone === "danger" ? "#B91C1C" : "#004B4A";
+  const confirmBg = normalized?.tone === "danger" ? "#87323A" : "#004B4A";
 
   const handleDialogCancel = (e: React.SyntheticEvent<HTMLDialogElement>) => {
     e.preventDefault();
@@ -96,7 +96,7 @@ export function ActionConfirmationModal({
               maxWidth: "460px",
               backgroundColor: "#FFFFFF",
               borderRadius: "14px",
-              border: "1px solid #E2E8F0",
+              border: "1px solid #E2E1DB",
               boxShadow: "0 20px 40px rgba(0, 0, 0, 0.18)",
               padding: "22px",
             }}
@@ -198,7 +198,7 @@ export function ActionConfirmationModal({
                   border: "1px solid #D1D5DB",
                   fontSize: "13px",
                   color: "#141918",
-                  backgroundColor: isSubmitting ? "#F3F4F6" : "#FFFFFF",
+                  backgroundColor: isSubmitting ? "#F2F1ED" : "#FFFFFF",
                 }}
               />
             </div>

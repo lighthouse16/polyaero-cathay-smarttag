@@ -140,7 +140,7 @@
 }
 
 .risk-table tr.selected {
-  background: #faf3f1;
+  background: #F1F0EC;
 }
 
 .tag-link {
@@ -165,22 +165,22 @@
 }
 
 .risk-critical {
-  background: #a62b2b;
+  background: #87323A;
   color: #ffffff;
 }
 
 .risk-high {
-  background: #f9dfc8;
+  background: #F1EFEB;
   color: #8c3f14;
 }
 
 .risk-medium {
-  background: #fbf1d8;
+  background: #EFEDE8;
   color: #7c5812;
 }
 
 .risk-low {
-  background: #eef2f1;
+  background: #EFEEE9;
   color: #374151;
 }
 
@@ -194,17 +194,17 @@
 }
 
 .status-exception {
-  background: #f8d8d6;
-  color: #932724;
+  background: #F0EEE9;
+  color: #762830;
 }
 
 .status-transfer {
-  background: #f9ebd2;
+  background: #EFEDE8;
   color: #7d4e14;
 }
 
 .status-ok {
-  background: #d9ece4;
+  background: #E5E8E3;
   color: #114b3e;
 }
 

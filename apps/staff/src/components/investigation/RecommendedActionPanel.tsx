@@ -145,7 +145,7 @@ export function RecommendedActionPanel({
               right: 0,
               top: "calc(100% + 6px)",
               backgroundColor: "#FFFFFF",
-              border: "1px solid #E2E8F0",
+              border: "1px solid #E2E1DB",
               borderRadius: "10px",
               boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
               padding: "5px",
@@ -174,7 +174,7 @@ export function RecommendedActionPanel({
                 background: "transparent",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#991B1B",
+                color: "#762830",
                 cursor: "pointer",
               }}
             >
@@ -201,7 +201,7 @@ export function RecommendedActionPanel({
                 background: "transparent",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#991B1B",
+                color: "#762830",
                 cursor: "pointer",
               }}
             >
@@ -237,7 +237,7 @@ export function RecommendedActionPanel({
             <div
               style={{
                 height: "1px",
-                backgroundColor: "#F1F5F9",
+                backgroundColor: "#F0EFEB",
                 margin: "4px 0",
               }}
             />

@@ -243,9 +243,9 @@ export function FlightTransferTimeline({
                         alignItems: "center",
                         gap: "9px",
                         textAlign: "left",
-                        background: isSelected ? "#EEF5F2" : "transparent",
+                        background: isSelected ? "#F0EFEB" : "transparent",
                         border: isSelected
-                          ? "1px solid #BFD8CE"
+                          ? "1px solid #D6D3CB"
                           : "1px solid transparent",
                         borderRadius: "8px",
                         padding: "4px 6px",
@@ -305,7 +305,7 @@ export function FlightTransferTimeline({
                       <div
                         style={{
                           width: `${row.arrivedPct}%`,
-                          backgroundColor: "#D9ECE4",
+                          backgroundColor: "#E5E8E3",
                           color: "#114B3E",
                           fontSize: "11.5px",
                           fontWeight: 600,
@@ -337,7 +337,7 @@ export function FlightTransferTimeline({
                         className="tabular-nums"
                         style={{
                           width: `${row.transferPct}%`,
-                          backgroundColor: row.isAtRisk ? "#F9E2C4" : "#D9ECE4",
+                          backgroundColor: row.isAtRisk ? "#E9E5DC" : "#E5E8E3",
                           color: row.isAtRisk ? "#7C420A" : "#114B3E",
                           fontSize: "11.5px",
                           fontWeight: 600,

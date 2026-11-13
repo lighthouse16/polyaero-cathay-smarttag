@@ -126,7 +126,7 @@ export function GlobalSearchModal({
               maxWidth: "560px",
               backgroundColor: "#FFFFFF",
               borderRadius: "14px",
-              border: "1px solid #E2E8F0",
+              border: "1px solid #E2E1DB",
               boxShadow: "0 22px 48px rgba(0, 0, 0, 0.22)",
               overflow: "hidden",
             }}
@@ -226,9 +226,9 @@ export function GlobalSearchModal({
                         padding: "10px 12px",
                         borderRadius: "9px",
                         border: isActive
-                          ? "1px solid #B8DAD6"
+                          ? "1px solid #C8D1CB"
                           : "1px solid transparent",
-                        backgroundColor: isActive ? "#EBF4F1" : "transparent",
+                        backgroundColor: isActive ? "#EFEEE9" : "transparent",
                         cursor: "pointer",
                         textAlign: "left",
                       }}
@@ -287,9 +287,9 @@ export function GlobalSearchModal({
                             borderRadius: "6px",
                             fontSize: "11px",
                             fontWeight: 600,
-                            backgroundColor: exc ? "#FDF2F1" : "#FAF9F5",
-                            border: `1px solid ${exc ? "#F5C2BE" : "#E5E2DA"}`,
-                            color: exc ? "#991B1B" : "#004B4A",
+                            backgroundColor: exc ? "#F3F1EC" : "#FAF9F5",
+                            border: `1px solid ${exc ? "#D8D3CB" : "#E5E2DA"}`,
+                            color: exc ? "#762830" : "#004B4A",
                           }}
                         >
                           {formatStatusLabel(bag.status)}
@@ -299,7 +299,7 @@ export function GlobalSearchModal({
                           style={{
                             fontWeight: 700,
                             fontSize: "12px",
-                            color: bag.risk_score >= 65 ? "#991B1B" : "#374151",
+                            color: bag.risk_score >= 65 ? "#762830" : "#374151",
                           }}
                         >
                           Risk {bag.risk_score}
