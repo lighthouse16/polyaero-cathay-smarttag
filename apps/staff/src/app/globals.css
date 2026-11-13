@@ -76,8 +76,8 @@ dialog {
 }
 
 .font-editorial {
-  font-family:
-    "Newsreader", "Playfair Display", Georgia, "Times New Roman", serif;
+  font-family: var(--font-editorial), Georgia, serif;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 
