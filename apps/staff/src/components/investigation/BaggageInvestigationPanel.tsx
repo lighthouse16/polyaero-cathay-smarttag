@@ -169,7 +169,61 @@ export function BaggageInvestigationPanel({
   return (
     <aside aria-label="Baggage Case Investigation" style={{ minWidth: 0 }}>
       <div className="card-surface" style={{ padding: "20px 22px" }}>
-        {/* Case Top Header */}
+        {/* Top Header Row: Category label + Close button at top-right corner */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "6px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "12.5px",
+              color: "#000000",
+              fontWeight: 500,
+            }}
+          >
+            Baggage case
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close baggage case"
+              title="Close baggage case"
+              className="focus-ring"
+              style={{
+                background: "#FAF9F5",
+                border: "1px solid #E5E2DA",
+                color: "#000000",
+                cursor: "pointer",
+                width: "28px",
+                height: "28px",
+                borderRadius: "6px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                margin: "-4px -4px 0 0",
+                transition: "background-color 0.15s ease, color 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#EAE7DF";
+                e.currentTarget.style.color = "#000000";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#FAF9F5";
+                e.currentTarget.style.color = "#000000";
+              }}
+            >
+              <CloseIcon size={14} color="#000000" />
+            </button>
+          )}
+        </div>
+
+        {/* Case Details Main Row */}
         <div
           style={{
             display: "flex",
@@ -182,19 +236,10 @@ export function BaggageInvestigationPanel({
           <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontSize: "12.5px",
-                color: "#000000",
-                fontWeight: 500,
-              }}
-            >
-              Baggage case
-            </div>
-            <div
-              style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
-                marginTop: "4px",
+                marginTop: "2px",
                 flexWrap: "wrap",
               }}
             >
@@ -270,68 +315,25 @@ export function BaggageInvestigationPanel({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "12px",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{ fontSize: "11.5px", color: "#000000", fontWeight: 500 }}
-              >
-                Connection buffer
-              </div>
-              <div
-                className="tabular-nums"
-                style={{
-                  fontSize: "20px",
-                  fontWeight: 700,
-                  color: "#000000",
-                  marginTop: "2px",
-                }}
-              >
-                {bag.connection_minutes != null
-                  ? `${bag.connection_minutes} min`
-                  : "Unavailable"}
-              </div>
+          <div style={{ textAlign: "right", flexShrink: 0, marginTop: "4px" }}>
+            <div
+              style={{ fontSize: "11.5px", color: "#000000", fontWeight: 500 }}
+            >
+              Connection buffer
             </div>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close baggage case"
-                title="Close baggage case"
-                className="focus-ring"
-                style={{
-                  background: "#FAF9F5",
-                  border: "1px solid #E5E2DA",
-                  color: "#000000",
-                  cursor: "pointer",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "6px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                  marginTop: "-2px",
-                  transition: "background-color 0.15s ease, color 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#EAE7DF";
-                  e.currentTarget.style.color = "#000000";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#FAF9F5";
-                  e.currentTarget.style.color = "#000000";
-                }}
-              >
-                <CloseIcon size={14} color="#000000" />
-              </button>
-            )}
+            <div
+              className="tabular-nums"
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "#000000",
+                marginTop: "2px",
+              }}
+            >
+              {bag.connection_minutes != null
+                ? `${bag.connection_minutes} min`
+                : "Unavailable"}
+            </div>
           </div>
         </div>
 
