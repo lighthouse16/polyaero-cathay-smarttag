@@ -83,6 +83,28 @@ describe("truthful component output", () => {
     expect(html).toContain("Load (90%)");
     expect(html).not.toContain("width:90%");
   });
+  it("renders close button when onClose provided and handles dismissal", () => {
+    const htmlWithClose = renderToStaticMarkup(
+      <BaggageInvestigationPanel
+        bag={bag}
+        isSyncing={false}
+        onRequestAction={() => {}}
+        onEvaluateRisk={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(htmlWithClose).toContain("aria-label=\"Close baggage case\"");
+
+    const htmlWithoutClose = renderToStaticMarkup(
+      <BaggageInvestigationPanel
+        bag={bag}
+        isSyncing={false}
+        onRequestAction={() => {}}
+        onEvaluateRisk={() => {}}
+      />,
+    );
+    expect(htmlWithoutClose).not.toContain("aria-label=\"Close baggage case\"");
+  });
   it("table keeps zero-minute buffer and actionable accessible selection", () => {
     const html = renderToStaticMarkup(
       <BaggageRiskTable

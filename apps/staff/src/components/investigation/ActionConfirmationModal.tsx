@@ -107,7 +107,7 @@ export function ActionConfirmationModal({
                 margin: 0,
                 fontSize: "16px",
                 fontWeight: 700,
-                color: "#141918",
+                color: "#000000",
               }}
             >
               {normalized.title}
@@ -116,7 +116,7 @@ export function ActionConfirmationModal({
               style={{
                 margin: "8px 0 14px",
                 fontSize: "13px",
-                color: "#4C5755",
+                color: "#000000",
                 lineHeight: 1.5,
               }}
             >
@@ -130,7 +130,7 @@ export function ActionConfirmationModal({
                 borderRadius: "9px",
                 padding: "10px 12px",
                 fontSize: "12px",
-                color: "#374151",
+                color: "#000000",
                 marginBottom: "14px",
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -138,32 +138,32 @@ export function ActionConfirmationModal({
               }}
             >
               <div>
-                <span style={{ color: "#6B7280" }}>Bag Tag: </span>
+                <span style={{ color: "#000000" }}>Bag Tag: </span>
                 <strong className="tabular-nums">{bag.tag_number}</strong>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Flight: </span>
+                <span style={{ color: "#000000" }}>Flight: </span>
                 <strong>
                   {bag.flight_number} ({bag.departure_airport}→
                   {bag.arrival_airport})
                 </strong>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Current Status: </span>
+                <span style={{ color: "#000000" }}>Current Status: </span>
                 <strong>{formatStatusLabel(bag.status)}</strong>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Proposed Status: </span>
-                <strong style={{ color: confirmBg }}>
+                <span style={{ color: "#000000" }}>Proposed Status: </span>
+                <strong style={{ color: "#000000" }}>
                   {formatStatusLabel(normalized.targetStatus)}
                 </strong>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Passenger: </span>
+                <span style={{ color: "#000000" }}>Passenger: </span>
                 <strong>{bag.passenger_name}</strong>
               </div>
               <div>
-                <span style={{ color: "#6B7280" }}>Reported Scanner: </span>
+                <span style={{ color: "#000000" }}>Reported Scanner: </span>
                 <strong>MANUAL_OVERRIDE</strong>
               </div>
             </div>
@@ -175,7 +175,7 @@ export function ActionConfirmationModal({
                   display: "block",
                   fontSize: "12px",
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "#000000",
                   marginBottom: "5px",
                 }}
               >
@@ -197,7 +197,7 @@ export function ActionConfirmationModal({
                   borderRadius: "8px",
                   border: "1px solid #D1D5DB",
                   fontSize: "13px",
-                  color: "#141918",
+                  color: "#000000",
                   backgroundColor: isSubmitting ? "#F2F1ED" : "#FFFFFF",
                 }}
               />
@@ -220,7 +220,7 @@ export function ActionConfirmationModal({
                   borderRadius: "8px",
                   border: "1px solid #D6D1C6",
                   backgroundColor: "#FFFFFF",
-                  color: "#374151",
+                  color: "#000000",
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: isSubmitting ? "not-allowed" : "pointer",

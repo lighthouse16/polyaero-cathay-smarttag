@@ -43,14 +43,14 @@ export function ExceptionsView({
             margin: 0,
             fontSize: "clamp(22px, 2.6vw, 34px)",
             fontWeight: 700,
-            color: "#141918",
+            color: "#000000",
             lineHeight: 1.15,
             letterSpacing: "-0.025em",
           }}
         >
           Active Exceptions &amp; Priority Intercepts
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#4C5755" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
           Baggage records currently flagged for exception handling or elevated
           risk score.
         </p>
@@ -67,12 +67,12 @@ export function ExceptionsView({
               fontSize: "15px",
               fontWeight: 700,
               marginTop: "10px",
-              color: "#141918",
+              color: "#000000",
             }}
           >
             Zero active exceptions
           </div>
-          <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "4px" }}>
+          <div style={{ fontSize: "13px", color: "#000000", marginTop: "4px" }}>
             No baggage records in current station snapshot are flagged as
             exceptions.
           </div>
@@ -143,7 +143,7 @@ export function ExceptionsView({
                         style={{
                           fontSize: "15px",
                           fontWeight: 700,
-                          color: "#141918",
+                          color: "#000000",
                         }}
                       >
                         {bag.tag_number}
@@ -152,7 +152,7 @@ export function ExceptionsView({
                         style={{
                           fontSize: "13px",
                           fontWeight: 600,
-                          color: "#374151",
+                          color: "#000000",
                         }}
                       >
                         {bag.passenger_name}
@@ -163,7 +163,7 @@ export function ExceptionsView({
                           borderRadius: "999px",
                           backgroundColor: "#F3F1EC",
                           border: "1px solid #D8D3CB",
-                          color: "#762830",
+                          color: "#000000",
                           fontSize: "11px",
                           fontWeight: 600,
                         }}
@@ -174,7 +174,7 @@ export function ExceptionsView({
                     <div
                       style={{
                         fontSize: "12.5px",
-                        color: "#4C5755",
+                        color: "#000000",
                         marginTop: "4px",
                       }}
                     >
@@ -184,7 +184,7 @@ export function ExceptionsView({
                     <div
                       style={{
                         fontSize: "12px",
-                        color: "#762830",
+                        color: "#000000",
                         marginTop: "4px",
                         fontWeight: 500,
                       }}
@@ -201,12 +201,12 @@ export function ExceptionsView({
                     style={{
                       fontSize: "20px",
                       fontWeight: 700,
-                      color: "#762830",
+                      color: "#000000",
                     }}
                   >
                     {bag.risk_score}
                   </div>
-                  <div style={{ fontSize: "11px", color: "#6B7280" }}>
+                  <div style={{ fontSize: "11px", color: "#000000" }}>
                     Risk score
                   </div>
                 </div>
@@ -245,14 +245,14 @@ export function BaggageTraceView({
             margin: 0,
             fontSize: "clamp(22px, 2.6vw, 34px)",
             fontWeight: 700,
-            color: "#141918",
+            color: "#000000",
             lineHeight: 1.15,
             letterSpacing: "-0.025em",
           }}
         >
           Baggage Trace &amp; Scan Audit
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#4C5755" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
           Recorded baggage events across reported Optical, RFID, PN532 NFC, and
           Staff Override entries.
         </p>
@@ -283,7 +283,7 @@ export function BaggageTraceView({
             border: "none",
             outline: "none",
             fontSize: "13.5px",
-            color: "#141918",
+            color: "#000000",
             backgroundColor: "transparent",
           }}
         />
@@ -325,17 +325,17 @@ export function BaggageTraceView({
                     style={{
                       fontWeight: 700,
                       fontSize: "14px",
-                      color: "#141918",
+                      color: "#000000",
                     }}
                   >
                     {bag.tag_number}
                   </span>
-                  <span style={{ margin: "0 8px", color: "#9CA3AF" }}>·</span>
+                  <span style={{ margin: "0 8px", color: "#000000" }}>·</span>
                   <span
                     style={{
                       fontWeight: 600,
                       fontSize: "13px",
-                      color: "#374151",
+                      color: "#000000",
                     }}
                   >
                     {bag.passenger_name}
@@ -345,7 +345,7 @@ export function BaggageTraceView({
                   style={{
                     fontSize: "11.5px",
                     fontWeight: 600,
-                    color: "#004B4A",
+                    color: "#000000",
                   }}
                 >
                   {bag.flight_number} ({bag.departure_airport} →{" "}
@@ -363,7 +363,7 @@ export function BaggageTraceView({
                       borderRadius: "7px",
                       backgroundColor: "#FAF9F5",
                       border: "1px solid #E8E5DE",
-                      color: "#374151",
+                      color: "#000000",
                     }}
                   >
                     <strong className="tabular-nums">
@@ -416,14 +416,14 @@ export function PerformanceView({
               margin: 0,
               fontSize: "clamp(22px, 2.6vw, 34px)",
               fontWeight: 700,
-              color: "#141918",
+              color: "#000000",
               lineHeight: 1.15,
               letterSpacing: "-0.025em",
             }}
           >
             Station Snapshot Metrics
           </h1>
-          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#4C5755" }}>
+          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
             Current snapshot counts from loaded station records. Historical
             recovery durations and verified completion rates are unavailable.
           </p>
@@ -456,7 +456,7 @@ export function PerformanceView({
         }}
       >
         <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#6B7280", fontWeight: 600 }}>
+          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
             Records in Snapshot
           </div>
           <div
@@ -464,19 +464,19 @@ export function PerformanceView({
             style={{
               fontSize: "30px",
               fontWeight: 700,
-              color: "#141918",
+              color: "#000000",
               marginTop: "4px",
             }}
           >
             {stats.total}
           </div>
-          <div style={{ fontSize: "11px", color: "#6B7280", marginTop: "2px" }}>
+          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
             {stats.totalEvents} scan events logged
           </div>
         </div>
 
         <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#6B7280", fontWeight: 600 }}>
+          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
             Flagged At-Risk
           </div>
           <div
@@ -484,19 +484,19 @@ export function PerformanceView({
             style={{
               fontSize: "30px",
               fontWeight: 700,
-              color: "#8C420B",
+              color: "#000000",
               marginTop: "4px",
             }}
           >
             {stats.atRisk}
           </div>
-          <div style={{ fontSize: "11px", color: "#6B7280", marginTop: "2px" }}>
+          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
             {stats.exceptions} active exceptions
           </div>
         </div>
 
         <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#6B7280", fontWeight: 600 }}>
+          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
             Mean Risk Score
           </div>
           <div
@@ -504,13 +504,13 @@ export function PerformanceView({
             style={{
               fontSize: "30px",
               fontWeight: 700,
-              color: "#004B4A",
+              color: "#000000",
               marginTop: "4px",
             }}
           >
             {stats.avgRisk}/100
           </div>
-          <div style={{ fontSize: "11px", color: "#6B7280", marginTop: "2px" }}>
+          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
             Model estimate on active records
           </div>
         </div>
@@ -519,20 +519,20 @@ export function PerformanceView({
           className="card-surface"
           style={{ padding: "16px 18px", backgroundColor: "#FAF9F5" }}
         >
-          <div style={{ fontSize: "12px", color: "#6B7280", fontWeight: 600 }}>
+          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
             Recovery Duration / Rate
           </div>
           <div
             style={{
               fontSize: "15px",
               fontWeight: 700,
-              color: "#4C5755",
+              color: "#000000",
               marginTop: "8px",
             }}
           >
             Unavailable
           </div>
-          <div style={{ fontSize: "11px", color: "#76827F", marginTop: "3px" }}>
+          <div style={{ fontSize: "11px", color: "#000000", marginTop: "3px" }}>
             Requires end-to-end physical telemetry
           </div>
         </div>
@@ -544,7 +544,7 @@ export function PerformanceView({
             margin: "0 0 12px",
             fontSize: "14.5px",
             fontWeight: 700,
-            color: "#141918",
+            color: "#000000",
           }}
         >
           Risk Score Distribution (Current Snapshot)
@@ -565,7 +565,7 @@ export function PerformanceView({
               >
                 <span
                   className="tabular-nums"
-                  style={{ fontWeight: 600, color: "#141918" }}
+                  style={{ fontWeight: 600, color: "#000000" }}
                 >
                   {bag.tag_number}
                 </span>
@@ -601,7 +601,7 @@ export function PerformanceView({
                   style={{
                     textAlign: "right",
                     fontWeight: 700,
-                    color: "#374151",
+                    color: "#000000",
                   }}
                 >
                   {bag.risk_score}

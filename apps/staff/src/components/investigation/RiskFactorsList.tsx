@@ -18,7 +18,7 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
           margin: "0 0 8px",
           fontSize: "13.5px",
           fontWeight: 700,
-          color: "#141918",
+          color: "#000000",
         }}
       >
         Risk drivers
@@ -46,7 +46,7 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
                 <span
                   style={{
                     fontSize: "12px",
-                    color: "#374151",
+                    color: "#000000",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -78,7 +78,7 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
                   style={{
                     fontSize: "11.5px",
                     fontWeight: 500,
-                    color: "#4B5563",
+                    color: "#000000",
                     textAlign: "right",
                   }}
                 >
@@ -96,7 +96,7 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
                 alignItems: "center",
                 gap: "8px",
                 fontSize: "12px",
-                color: "#374151",
+                color: "#000000",
               }}
             >
               <span

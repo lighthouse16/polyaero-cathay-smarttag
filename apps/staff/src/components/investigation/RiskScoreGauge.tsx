@@ -81,14 +81,14 @@ export function RiskScoreGauge({ score }: RiskScoreGaugeProps) {
           lineHeight: 1.05,
         }}
       >
-        <span style={{ fontSize: "23px", fontWeight: 700, color: "#141918" }}>
+        <span style={{ fontSize: "23px", fontWeight: 700, color: "#000000" }}>
           {clamped}
         </span>
         <span
           style={{
             fontSize: "11px",
             fontWeight: 500,
-            color: "#6B7280",
+            color: "#000000",
             marginTop: "2px",
           }}
         >

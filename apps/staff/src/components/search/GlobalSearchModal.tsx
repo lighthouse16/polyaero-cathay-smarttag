@@ -140,7 +140,7 @@ export function GlobalSearchModal({
                 borderBottom: "1px solid #ECEAE3",
               }}
             >
-              <SearchIcon size={17} color="#006564" />
+              <SearchIcon size={17} color="#000000" />
               <label htmlFor={inputId} className="sr-only">
                 Search baggage by tag, PNR, flight number, or passenger name
               </label>
@@ -161,7 +161,7 @@ export function GlobalSearchModal({
                   border: "none",
                   outline: "none",
                   fontSize: "14px",
-                  color: "#141918",
+                  color: "#000000",
                   backgroundColor: "transparent",
                   minHeight: "32px",
                 }}
@@ -173,7 +173,7 @@ export function GlobalSearchModal({
                 className="focus-ring"
                 style={{
                   fontSize: "11px",
-                  color: "#4C5755",
+                  color: "#000000",
                   backgroundColor: "#FAF9F5",
                   padding: "4px 8px",
                   borderRadius: "5px",
@@ -198,7 +198,7 @@ export function GlobalSearchModal({
                     padding: "24px",
                     textAlign: "center",
                     fontSize: "13px",
-                    color: "#6B7280",
+                    color: "#000000",
                   }}
                 >
                   No matching baggage tags found for &ldquo;{query}&rdquo;.
@@ -246,7 +246,7 @@ export function GlobalSearchModal({
                             style={{
                               fontWeight: 700,
                               fontSize: "13px",
-                              color: "#141918",
+                              color: "#000000",
                             }}
                           >
                             {bag.tag_number}
@@ -255,7 +255,7 @@ export function GlobalSearchModal({
                             style={{
                               fontSize: "12.5px",
                               fontWeight: 600,
-                              color: "#374151",
+                              color: "#000000",
                             }}
                           >
                             {bag.passenger_name}
@@ -265,7 +265,7 @@ export function GlobalSearchModal({
                           className="tabular-nums"
                           style={{
                             fontSize: "11.5px",
-                            color: "#6B7280",
+                            color: "#000000",
                             marginTop: "2px",
                           }}
                         >
@@ -289,7 +289,7 @@ export function GlobalSearchModal({
                             fontWeight: 600,
                             backgroundColor: exc ? "#F3F1EC" : "#FAF9F5",
                             border: `1px solid ${exc ? "#D8D3CB" : "#E5E2DA"}`,
-                            color: exc ? "#762830" : "#004B4A",
+                            color: "#000000",
                           }}
                         >
                           {formatStatusLabel(bag.status)}
@@ -299,7 +299,7 @@ export function GlobalSearchModal({
                           style={{
                             fontWeight: 700,
                             fontSize: "12px",
-                            color: bag.risk_score >= 65 ? "#762830" : "#374151",
+                            color: "#000000",
                           }}
                         >
                           Risk {bag.risk_score}

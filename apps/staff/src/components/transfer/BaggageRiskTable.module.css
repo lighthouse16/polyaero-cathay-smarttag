@@ -24,7 +24,7 @@
   border: 0;
   border-bottom: 2.5px solid transparent;
   padding: 6px 2px 10px;
-  color: #56615d;
+  color: #000000;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -33,8 +33,8 @@
 }
 
 .queue-tabs button[aria-selected="true"] {
-  color: #0b4d3e;
-  border-color: #0b4d3e;
+  color: #000000;
+  border-color: #000000;
   font-weight: 700;
 }
 
@@ -55,7 +55,7 @@
   background: #ffffff;
   border: 1px solid #dcdfe2;
   border-radius: 6px;
-  color: #4b5563;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -71,7 +71,7 @@
   border-radius: 6px;
   padding: 0 8px;
   font-size: 12px;
-  color: #141918;
+  color: #000000;
 }
 
 .filter-select {
@@ -82,7 +82,7 @@
   padding: 0 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #374151;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -113,7 +113,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  color: #5c6663;
+  color: #000000;
   font-size: 11px;
   font-weight: 600;
 }
@@ -149,7 +149,7 @@
   border: none;
   padding: 0;
   font-weight: 700;
-  color: #141918;
+  color: #000000;
   font-size: 12px;
   cursor: pointer;
 }
@@ -172,17 +172,17 @@
 
 .risk-high {
   background: #F1EFEB;
-  color: #8c3f14;
+  color: #000000;
 }
 
 .risk-medium {
   background: #EFEDE8;
-  color: #7c5812;
+  color: #000000;
 }
 
 .risk-low {
   background: #EFEEE9;
-  color: #374151;
+  color: #000000;
 }
 
 .status-pill {
@@ -196,23 +196,23 @@
 
 .status-exception {
   background: #F0EEE9;
-  color: #762830;
+  color: #000000;
 }
 
 .status-transfer {
   background: #EFEDE8;
-  color: #7d4e14;
+  color: #000000;
 }
 
 .status-ok {
   background: #E5E8E3;
-  color: #114b3e;
+  color: #000000;
 }
 
 .kebab-btn {
   background: none;
   border: none;
-  color: #6b7280;
+  color: #000000;
   font-size: 14px;
   letter-spacing: 1px;
   padding: 4px 6px;
@@ -222,7 +222,7 @@
 
 .kebab-btn:hover {
   background: #eae8e1;
-  color: #141918;
+  color: #000000;
 }
 
 .kebab-menu {
@@ -248,7 +248,7 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #141918;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -258,7 +258,7 @@
 
 .empty-cell {
   text-align: center !important;
-  color: #687471;
+  color: #000000;
   padding: 24px 12px !important;
 }
 

@@ -27,7 +27,7 @@ export function RecommendedActionPanel({
           margin: "0 0 9px",
           fontSize: "13.5px",
           fontWeight: 700,
-          color: "#141918",
+          color: "#000000",
         }}
       >
         Recommended action
@@ -99,7 +99,7 @@ export function RecommendedActionPanel({
               border: "1px solid #D6D1C6",
               borderRight: "none",
               backgroundColor: "#FFFFFF",
-              color: "#141918",
+              color: "#000000",
               fontSize: "12.5px",
               fontWeight: 600,
               padding: "0 12px",
@@ -127,7 +127,7 @@ export function RecommendedActionPanel({
               borderRadius: "0 8px 8px 0",
               border: "1px solid #D6D1C6",
               backgroundColor: "#FFFFFF",
-              color: "#374151",
+              color: "#000000",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -176,7 +176,7 @@ export function RecommendedActionPanel({
                 background: "transparent",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#762830",
+                color: "#000000",
                 cursor: "pointer",
               }}
             >
@@ -203,7 +203,7 @@ export function RecommendedActionPanel({
                 background: "transparent",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#762830",
+                color: "#000000",
                 cursor: "pointer",
               }}
             >
@@ -230,7 +230,7 @@ export function RecommendedActionPanel({
                 background: "transparent",
                 fontSize: "12px",
                 fontWeight: 500,
-                color: "#141918",
+                color: "#000000",
                 cursor: "pointer",
               }}
             >
@@ -258,7 +258,7 @@ export function RecommendedActionPanel({
                 background: "#FAF9F5",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "#004B4A",
+                color: "#000000",
                 cursor: "pointer",
               }}
             >

@@ -124,7 +124,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
             margin: 0,
             fontSize: "14px",
             fontWeight: 700,
-            color: "#141918",
+            color: "#000000",
           }}
         >
           SmartTag (E-paper)
@@ -139,7 +139,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
             background: "none",
             border: "1px solid transparent",
             borderRadius: "6px",
-            color: "#6B7280",
+            color: "#000000",
             padding: "4px",
             cursor: "pointer",
             display: "inline-flex",
@@ -182,7 +182,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
               justifyContent: "space-between",
               gap: "8px",
               minHeight: "88px",
-              color: "#111827",
+              color: "#000000",
               border: "1px solid #D5D3CA",
             }}
           >
@@ -213,7 +213,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
                 style={{
                   fontSize: "9px",
                   fontWeight: 700,
-                  color: "#1F2937",
+                  color: "#000000",
                   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                 }}
               >
@@ -264,7 +264,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
                 padding: "2px 9px",
                 borderRadius: "999px",
                 backgroundColor: isOnline ? "#E6F4EC" : "#F3F4F6",
-                color: isOnline ? "#157347" : "#4B5563",
+                color: "#000000",
                 fontSize: "11.5px",
                 fontWeight: 600,
               }}
@@ -291,20 +291,20 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
               marginTop: "2px",
             }}
           >
-            <span style={{ color: "#6B7280" }}>Last sync</span>
+            <span style={{ color: "#000000" }}>Last sync</span>
             <span
               className="tabular-nums"
-              style={{ fontWeight: 600, color: "#141918" }}
+              style={{ fontWeight: 600, color: "#000000" }}
             >
               {lastSyncDisplay}
             </span>
 
-            <span style={{ color: "#6B7280" }}>Battery</span>
+            <span style={{ color: "#000000" }}>Battery</span>
             <span
               className="tabular-nums"
               style={{
                 fontWeight: 600,
-                color: "#141918",
+                color: "#000000",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
@@ -332,10 +332,10 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
               98%
             </span>
 
-            <span style={{ color: "#6B7280" }}>Revision</span>
+            <span style={{ color: "#000000" }}>Revision</span>
             <span
               className="tabular-nums"
-              style={{ fontWeight: 600, color: "#141918" }}
+              style={{ fontWeight: 600, color: "#000000" }}
             >
               v3.0
             </span>
@@ -354,7 +354,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
             border: "1px solid #E8E5DE",
             fontSize: "11px",
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            color: "#374151",
+            color: "#000000",
             lineHeight: 1.5,
           }}
         >

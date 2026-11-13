@@ -109,7 +109,7 @@ export function FlightTransferTimeline({
             margin: 0,
             fontSize: "15.5px",
             fontWeight: 700,
-            color: "#141918",
+            color: "#000000",
             letterSpacing: "-0.01em",
           }}
         >
@@ -126,7 +126,7 @@ export function FlightTransferTimeline({
             height: "15px",
             borderRadius: "999px",
             border: "1px solid #C5CCC9",
-            color: "#6B7280",
+            color: "#000000",
             fontSize: "10px",
             fontWeight: 600,
             lineHeight: 1,
@@ -138,7 +138,7 @@ export function FlightTransferTimeline({
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ fontSize: "12.5px", color: "#687471", padding: "12px 0" }}>
+        <div style={{ fontSize: "12.5px", color: "#000000", padding: "12px 0" }}>
           No active transfer flights in current view.
         </div>
       ) : (
@@ -192,7 +192,7 @@ export function FlightTransferTimeline({
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: "10.5px",
-                  color: "#6E7775",
+                  color: "#000000",
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
@@ -269,7 +269,7 @@ export function FlightTransferTimeline({
                         style={{
                           width: "22px",
                           height: "18px",
-                          color: "#006564",
+                          color: "#000000",
                           flexShrink: 0,
                         }}
                       />
@@ -278,13 +278,13 @@ export function FlightTransferTimeline({
                           style={{
                             fontSize: "12.5px",
                             fontWeight: 700,
-                            color: "#141918",
+                            color: "#000000",
                             whiteSpace: "nowrap",
                             lineHeight: 1.25,
                           }}
                         >
                           {row.flightNumber}{" "}
-                          <span style={{ fontWeight: 600, color: "#374151" }}>
+                          <span style={{ fontWeight: 600, color: "#000000" }}>
                             {row.route}
                           </span>
                         </div>
@@ -292,7 +292,7 @@ export function FlightTransferTimeline({
                           className="tabular-nums"
                           style={{
                             fontSize: "10.5px",
-                            color: "#687471",
+                            color: "#000000",
                             marginTop: "1px",
                             whiteSpace: "nowrap",
                           }}
@@ -318,7 +318,7 @@ export function FlightTransferTimeline({
                         style={{
                           width: `${row.arrivedPct}%`,
                           backgroundColor: "#E5E8E3",
-                          color: "#114B3E",
+                          color: "#000000",
                           fontSize: "11.5px",
                           fontWeight: 600,
                           display: "flex",
@@ -350,7 +350,7 @@ export function FlightTransferTimeline({
                         style={{
                           width: `${row.transferPct}%`,
                           backgroundColor: row.isAtRisk ? "#E9E5DC" : "#E5E8E3",
-                          color: row.isAtRisk ? "#7C420A" : "#114B3E",
+                          color: "#000000",
                           fontSize: "11.5px",
                           fontWeight: 600,
                           display: "flex",
@@ -370,7 +370,7 @@ export function FlightTransferTimeline({
                           backgroundColor: row.isHatchedTail
                             ? undefined
                             : "#E9ECEB",
-                          color: "#4B5563",
+                          color: "#000000",
                           fontSize: "11.5px",
                           fontWeight: 500,
                           display: "flex",

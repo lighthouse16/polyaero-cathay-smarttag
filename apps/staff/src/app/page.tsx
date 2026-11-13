@@ -602,6 +602,7 @@ export default function StaffDashboardPage() {
                   }
                 }}
                 onEvaluateRisk={handleEvaluateRisk}
+                onClose={() => setSelectedTagNum("")}
               />
             </div>
           </div>

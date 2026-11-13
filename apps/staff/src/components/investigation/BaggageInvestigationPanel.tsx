@@ -6,6 +6,7 @@ import {
   AlertCircleIcon,
   AlertTriangleIcon,
   CheckIcon,
+  CloseIcon,
   PlaneIcon,
 } from "../icons/DashboardIcons";
 import { RiskScoreGauge } from "./RiskScoreGauge";
@@ -35,6 +36,7 @@ interface BaggageInvestigationPanelProps {
     features: RiskEvaluationFeatures,
     tagNumber: string,
   ) => void | boolean | undefined | Promise<void | boolean | undefined>;
+  onClose?: () => void;
 }
 
 const TABS: Array<{ id: InvestigationTab; label: string }> = [
@@ -49,6 +51,7 @@ export function BaggageInvestigationPanel({
   isSyncing,
   onRequestAction,
   onEvaluateRisk,
+  onClose,
 }: BaggageInvestigationPanelProps) {
   const [activeTab, setActiveTab] = useState<InvestigationTab>("overview");
   const [riskModalOpen, setRiskModalOpen] = useState(false);
@@ -100,7 +103,7 @@ export function BaggageInvestigationPanel({
     return (
       <aside
         className="card-surface"
-        style={{ padding: "36px 24px", textAlign: "center", color: "#6B7280" }}
+        style={{ padding: "36px 24px", textAlign: "center", color: "#000000" }}
       >
         Select a baggage tag from the queue to inspect transfer status and
         recovery controls.
@@ -113,13 +116,13 @@ export function BaggageInvestigationPanel({
     ? {
         bg: "#F3F1EC",
         border: "#D8D3CB",
-        color: "#762830",
+        color: "#000000",
         icon: <AlertTriangleIcon size={12} color="#762830" />,
       }
     : {
         bg: "#EFEEE9",
         border: "#C8D1CB",
-        color: "#004B4A",
+        color: "#000000",
         icon: <CheckIcon size={12} color="#004B4A" />,
       };
 
@@ -180,7 +183,7 @@ export function BaggageInvestigationPanel({
             <div
               style={{
                 fontSize: "12.5px",
-                color: "#4C5755",
+                color: "#000000",
                 fontWeight: 500,
               }}
             >
@@ -201,7 +204,7 @@ export function BaggageInvestigationPanel({
                   fontSize: "clamp(24px, 2.1vw, 34px)",
                   fontWeight: 700,
                   lineHeight: 1.05,
-                  color: "#141918",
+                  color: "#000000",
                   letterSpacing: "-0.03em",
                 }}
               >
@@ -216,7 +219,7 @@ export function BaggageInvestigationPanel({
                   borderRadius: "999px",
                   backgroundColor: statusBadge.bg,
                   border: `1px solid ${statusBadge.border}`,
-                  color: statusBadge.color,
+                  color: "#000000",
                   fontSize: "11.5px",
                   fontWeight: 600,
                 }}
@@ -229,15 +232,15 @@ export function BaggageInvestigationPanel({
             <div
               style={{
                 fontSize: "12.5px",
-                color: "#4C5755",
+                color: "#000000",
                 marginTop: "6px",
                 fontWeight: 500,
               }}
             >
-              <span style={{ fontWeight: 500, color: "#1F2937" }}>
+              <span style={{ fontWeight: 500, color: "#000000" }}>
                 {bag.passenger_name.replace("/", " / ")}
               </span>
-              <span style={{ margin: "0 6px", color: "#9CA3AF" }}>·</span>
+              <span style={{ margin: "0 6px", color: "#000000" }}>·</span>
               <span className="tabular-nums">PNR {bag.booking_reference}</span>
             </div>
 
@@ -248,7 +251,7 @@ export function BaggageInvestigationPanel({
                 gap: "8px",
                 marginTop: "8px",
                 fontSize: "13px",
-                color: "#141918",
+                color: "#000000",
                 fontWeight: 600,
               }}
             >
@@ -267,25 +270,68 @@ export function BaggageInvestigationPanel({
             </div>
           </div>
 
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div
-              style={{ fontSize: "11.5px", color: "#6B7280", fontWeight: 500 }}
-            >
-              Connection buffer
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px",
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{ fontSize: "11.5px", color: "#000000", fontWeight: 500 }}
+              >
+                Connection buffer
+              </div>
+              <div
+                className="tabular-nums"
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "#000000",
+                  marginTop: "2px",
+                }}
+              >
+                {bag.connection_minutes != null
+                  ? `${bag.connection_minutes} min`
+                  : "Unavailable"}
+              </div>
             </div>
-            <div
-              className="tabular-nums"
-              style={{
-                fontSize: "20px",
-                fontWeight: 700,
-                color: "#141918",
-                marginTop: "2px",
-              }}
-            >
-              {bag.connection_minutes != null
-                ? `${bag.connection_minutes} min`
-                : "Unavailable"}
-            </div>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close baggage case"
+                title="Close baggage case"
+                className="focus-ring"
+                style={{
+                  background: "#FAF9F5",
+                  border: "1px solid #E5E2DA",
+                  color: "#000000",
+                  cursor: "pointer",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                  marginTop: "-2px",
+                  transition: "background-color 0.15s ease, color 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#EAE7DF";
+                  e.currentTarget.style.color = "#000000";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#FAF9F5";
+                  e.currentTarget.style.color = "#000000";
+                }}
+              >
+                <CloseIcon size={14} color="#000000" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -327,7 +373,7 @@ export function BaggageInvestigationPanel({
                   padding: "8px 2px",
                   fontSize: "clamp(11px, 2.8vw, 12.5px)",
                   fontWeight: active ? 700 : 500,
-                  color: active ? "#141918" : "#6B7280",
+                  color: "#000000",
                   cursor: "pointer",
                   textAlign: "center",
                   whiteSpace: "nowrap",
@@ -385,8 +431,7 @@ export function BaggageInvestigationPanel({
                     style={{
                       fontSize: "12.5px",
                       fontWeight: 700,
-                      color:
-                        isExc || bag.risk_score >= 65 ? "#762830" : "#004B4A",
+                      color: "#000000",
                     }}
                   >
                     {isExc || bag.risk_score >= 70
@@ -398,8 +443,7 @@ export function BaggageInvestigationPanel({
                   <div
                     style={{
                       fontSize: "12px",
-                      color:
-                        isExc || bag.risk_score >= 65 ? "#7F1D1D" : "#1E463A",
+                      color: "#000000",
                       marginTop: "2px",
                       lineHeight: 1.4,
                     }}
@@ -421,7 +465,7 @@ export function BaggageInvestigationPanel({
                     backgroundColor: "#FAF9F5",
                     border: "1px solid #E5E2DA",
                     fontSize: "12px",
-                    color: "#004B4A",
+                    color: "#000000",
                   }}
                 >
                   <strong>Passenger recovery preference: </strong>
@@ -468,13 +512,13 @@ export function BaggageInvestigationPanel({
                 }}
               >
                 <div>
-                  <div style={{ color: "#6B7280", fontSize: "11px" }}>
+                  <div style={{ color: "#000000", fontSize: "11px" }}>
                     Tier &amp; Cabin
                   </div>
                   <div
                     style={{
                       fontWeight: 600,
-                      color: "#141918",
+                      color: "#000000",
                       marginTop: "1px",
                     }}
                   >
@@ -482,14 +526,14 @@ export function BaggageInvestigationPanel({
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#6B7280", fontSize: "11px" }}>
+                  <div style={{ color: "#000000", fontSize: "11px" }}>
                     Weight &amp; Carousel
                   </div>
                   <div
                     className="tabular-nums"
                     style={{
                       fontWeight: 600,
-                      color: "#141918",
+                      color: "#000000",
                       marginTop: "1px",
                     }}
                   >
@@ -503,7 +547,7 @@ export function BaggageInvestigationPanel({
                   style={{
                     fontSize: "12px",
                     fontWeight: 700,
-                    color: "#141918",
+                    color: "#000000",
                     marginBottom: "8px",
                   }}
                 >
@@ -516,7 +560,7 @@ export function BaggageInvestigationPanel({
                       padding: "16px",
                       textAlign: "center",
                       fontSize: "12.5px",
-                      color: "#6B7280",
+                      color: "#000000",
                     }}
                   >
                     No journey scan events recorded in station custody log.
@@ -574,7 +618,7 @@ export function BaggageInvestigationPanel({
                               style={{
                                 fontSize: "12.5px",
                                 fontWeight: 700,
-                                color: "#141918",
+                                color: "#000000",
                               }}
                             >
                               {formatStatusLabel(evt.event_type)}
@@ -586,7 +630,7 @@ export function BaggageInvestigationPanel({
                                 padding: "2px 7px",
                                 borderRadius: "999px",
                                 backgroundColor: "#EFEEE9",
-                                color: "#004B4A",
+                                color: "#000000",
                               }}
                             >
                               {scannerBadgeLabel(evt.scanner_type)}
@@ -595,7 +639,7 @@ export function BaggageInvestigationPanel({
                           <div
                             style={{
                               fontSize: "11.5px",
-                              color: "#4C5755",
+                              color: "#000000",
                               marginTop: "2px",
                             }}
                           >
@@ -608,7 +652,7 @@ export function BaggageInvestigationPanel({
                             <div
                               style={{
                                 fontSize: "11px",
-                                color: "#6B7280",
+                                color: "#000000",
                                 marginTop: "2px",
                                 lineHeight: 1.35,
                               }}
@@ -620,7 +664,7 @@ export function BaggageInvestigationPanel({
                             className="tabular-nums"
                             style={{
                               fontSize: "10.5px",
-                              color: "#76827F",
+                              color: "#000000",
                               marginTop: "3px",
                             }}
                           >
@@ -666,45 +710,45 @@ export function BaggageInvestigationPanel({
                   rowGap: "6px",
                 }}
               >
-                <span style={{ color: "#6B7280" }}>NFC Tag UID</span>
+                <span style={{ color: "#000000" }}>NFC Tag UID</span>
                 <span
                   style={{
                     fontFamily: "ui-monospace, monospace",
                     fontWeight: 600,
-                    color: "#141918",
+                    color: "#000000",
                   }}
                 >
                   {bag.tag_code}
                 </span>
-                <span style={{ color: "#6B7280" }}>Tag Interface</span>
-                <span style={{ fontWeight: 600, color: "#141918" }}>
+                <span style={{ color: "#000000" }}>Tag Interface</span>
+                <span style={{ fontWeight: 600, color: "#000000" }}>
                   {bag.tag_interface || "Standard SmartTag"}
                 </span>
-                <span style={{ color: "#6B7280" }}>E-Ink Banner</span>
-                <span style={{ fontWeight: 700, color: "#004B4A" }}>
+                <span style={{ color: "#000000" }}>E-Ink Banner</span>
+                <span style={{ fontWeight: 700, color: "#000000" }}>
                   {bag.eink_banner || "—"}
                 </span>
-                <span style={{ color: "#6B7280" }}>Last Location</span>
-                <span style={{ fontWeight: 500, color: "#141918" }}>
+                <span style={{ color: "#000000" }}>Last Location</span>
+                <span style={{ fontWeight: 500, color: "#000000" }}>
                   {bag.last_known_location}
                 </span>
-                <span style={{ color: "#6B7280" }}>Hardware Telemetry</span>
-                <span style={{ fontWeight: 500, color: "#76827F" }}>
+                <span style={{ color: "#000000" }}>Hardware Telemetry</span>
+                <span style={{ fontWeight: 500, color: "#000000" }}>
                   Hardware confirmation unavailable
                 </span>
               </div>
               <div
                 style={{
                   fontSize: "11.5px",
-                  color: "#6B7280",
+                  color: "#000000",
                   lineHeight: 1.45,
                 }}
               >
                 Tag records are stored in station database. Physical PN532 NFC
                 scans record scanner type{" "}
-                <code style={{ color: "#004B4A" }}>NFC_TAP</code>; staff portal
+                <code style={{ color: "#000000" }}>NFC_TAP</code>; staff portal
                 actions record{" "}
-                <code style={{ color: "#004B4A" }}>MANUAL_OVERRIDE</code>.
+                <code style={{ color: "#000000" }}>MANUAL_OVERRIDE</code>.
               </div>
             </div>
           )}
@@ -728,7 +772,7 @@ export function BaggageInvestigationPanel({
               }}
             >
               {auditEvents.length === 0 ? (
-                <div style={{ fontSize: "12.5px", color: "#6B7280" }}>
+                <div style={{ fontSize: "12.5px", color: "#000000" }}>
                   No audit events recorded.
                 </div>
               ) : (
@@ -754,7 +798,7 @@ export function BaggageInvestigationPanel({
                         style={{
                           fontSize: "12px",
                           fontWeight: 700,
-                          color: "#141918",
+                          color: "#000000",
                         }}
                       >
                         {formatStatusLabel(evt.event_type)}
@@ -766,7 +810,7 @@ export function BaggageInvestigationPanel({
                           padding: "2px 7px",
                           borderRadius: "999px",
                           backgroundColor: "#EFEEE9",
-                          color: "#004B4A",
+                          color: "#000000",
                         }}
                       >
                         {scannerBadgeLabel(evt.scanner_type)}
@@ -775,7 +819,7 @@ export function BaggageInvestigationPanel({
                     <div
                       style={{
                         fontSize: "11.5px",
-                        color: "#4C5755",
+                        color: "#000000",
                         marginTop: "3px",
                       }}
                     >
@@ -785,7 +829,7 @@ export function BaggageInvestigationPanel({
                       className="tabular-nums"
                       style={{
                         fontSize: "10.5px",
-                        color: "#76827F",
+                        color: "#000000",
                         marginTop: "3px",
                       }}
                     >
@@ -847,7 +891,7 @@ export function BaggageInvestigationPanel({
                 margin: 0,
                 fontSize: "16px",
                 fontWeight: 700,
-                color: "#141918",
+                color: "#000000",
               }}
             >
               Evaluate AI Transfer Risk
@@ -856,7 +900,7 @@ export function BaggageInvestigationPanel({
               style={{
                 margin: "6px 0 14px",
                 fontSize: "12.5px",
-                color: "#4C5755",
+                color: "#000000",
                 lineHeight: 1.45,
               }}
             >
@@ -879,7 +923,7 @@ export function BaggageInvestigationPanel({
                       display: "block",
                       fontSize: "11.5px",
                       fontWeight: 600,
-                      color: "#374151",
+                      color: "#000000",
                       marginBottom: "4px",
                     }}
                   >
@@ -910,7 +954,7 @@ export function BaggageInvestigationPanel({
                       display: "block",
                       fontSize: "11.5px",
                       fontWeight: 600,
-                      color: "#374151",
+                      color: "#000000",
                       marginBottom: "4px",
                     }}
                   >
@@ -944,7 +988,7 @@ export function BaggageInvestigationPanel({
                       display: "block",
                       fontSize: "11.5px",
                       fontWeight: 600,
-                      color: "#374151",
+                      color: "#000000",
                       marginBottom: "4px",
                     }}
                   >
@@ -965,6 +1009,7 @@ export function BaggageInvestigationPanel({
                       borderRadius: "8px",
                       border: "1px solid #D1D5DB",
                       fontSize: "13px",
+                      color: "#000000",
                     }}
                   />
                 </label>
@@ -975,7 +1020,7 @@ export function BaggageInvestigationPanel({
                       display: "block",
                       fontSize: "11.5px",
                       fontWeight: 600,
-                      color: "#374151",
+                      color: "#000000",
                       marginBottom: "4px",
                     }}
                   >
@@ -1022,7 +1067,7 @@ export function BaggageInvestigationPanel({
                     borderRadius: "8px",
                     border: "1px solid #D6D1C6",
                     backgroundColor: "#FFFFFF",
-                    color: "#374151",
+                    color: "#000000",
                     fontSize: "13px",
                     fontWeight: 600,
                     cursor: "pointer",

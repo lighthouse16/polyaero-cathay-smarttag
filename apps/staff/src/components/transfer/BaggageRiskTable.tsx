@@ -71,7 +71,7 @@ export function BaggageRiskTable({
   const data = tab === "risk" ? riskRows : filtered;
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !selectedTagNumber) return;
     if (data.length > 0 && !data.some((b) => b.tag_number === selectedTagNumber)) {
       onSelectBag(data[0].tag_number);
     }
@@ -256,14 +256,14 @@ export function BaggageRiskTable({
         header: "Last Event",
         enableSorting: false,
         cell: ({ row }) => (
-          <span style={{ color: "#374151" }}>
+          <span style={{ color: "#000000" }}>
             {formatLastEventSummary(row.original)}
           </span>
         ),
       },
       {
         id: "actions",
-        header: () => <span style={{ color: "#9CA3AF" }}>•••</span>,
+        header: () => <span style={{ color: "#000000" }}>•••</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const bag = row.original;
@@ -394,7 +394,7 @@ export function BaggageRiskTable({
             aria-pressed={searchOpen}
             onClick={() => setSearchOpen((prev) => !prev)}
           >
-            <SearchIcon size={14} color="#4B5563" />
+            <SearchIcon size={14} color="#000000" />
           </button>
 
           <select
