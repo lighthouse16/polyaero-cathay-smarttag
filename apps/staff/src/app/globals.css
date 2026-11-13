@@ -261,6 +261,17 @@ dialog::backdrop {
   background: #a8a296;
 }
 
+/* Hide scrollbars for timeline container */
+.timeline-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.timeline-scroll {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 /* Entrance selectors stay mounted across polling; only deliberate navigation replays. */
 .kpi-grid > * {
   animation: fadeSlideUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;

@@ -147,9 +147,32 @@ export function FlightTransferTimeline({
           tabIndex={0}
           role="region"
           aria-label="Flight transfer timeline bars"
-          style={{ overflowX: "auto", paddingBottom: "2px" }}
+          style={{
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            paddingTop: "4px",
+            paddingBottom: "4px",
+          }}
         >
           <div style={{ minWidth: "560px", position: "relative" }}>
+            {/* Continuous vertical 14:32 line running from badge down through bars */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: `calc(166px + (100% - 166px) * ${nowMarkerLeftPct / 100})`,
+                top: "22px",
+                bottom: "0px",
+                width: "1.5px",
+                transform: "translateX(-50%)",
+                backgroundColor: "#0B4D3E",
+                zIndex: 2,
+                pointerEvents: "none",
+              }}
+            />
+
             {/* Time axis header */}
             <div
               style={{
@@ -158,7 +181,7 @@ export function FlightTransferTimeline({
                 alignItems: "end",
                 gap: "12px",
                 marginBottom: "8px",
-                paddingTop: "18px",
+                paddingTop: "28px",
               }}
             >
               <div />
@@ -176,17 +199,19 @@ export function FlightTransferTimeline({
                   style={{
                     position: "absolute",
                     left: `${nowMarkerLeftPct}%`,
-                    top: "-22px",
+                    top: "-24px",
                     transform: "translateX(-50%)",
                     backgroundColor: "#0B4D3E",
                     color: "#FFFFFF",
-                    fontSize: "10.5px",
+                    fontSize: "11px",
                     fontWeight: 700,
+                    lineHeight: 1.25,
                     padding: "2px 7px",
                     borderRadius: "5px",
                     letterSpacing: "0.01em",
-                    boxShadow: "0 1px 3px rgba(11,77,62,0.22)",
+                    boxShadow: "0 1px 3px rgba(11,77,62,0.25)",
                     zIndex: 3,
+                    display: "inline-block",
                   }}
                 >
                   14:32
@@ -206,20 +231,6 @@ export function FlightTransferTimeline({
                 position: "relative",
               }}
             >
-              {/* Continuous vertical 14:32 line across bar area */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  left: `calc(166px + (100% - 166px) * ${nowMarkerLeftPct / 100})`,
-                  top: "-6px",
-                  bottom: "-4px",
-                  width: "1.5px",
-                  backgroundColor: "#0B4D3E",
-                  zIndex: 2,
-                  pointerEvents: "none",
-                }}
-              />
 
               {rows.map((row) => {
                 const isSelected = selectedFlight === row.flightNumber;
