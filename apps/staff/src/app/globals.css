@@ -76,7 +76,7 @@ dialog {
 }
 
 .font-editorial {
-  font-family: var(--font-editorial), Georgia, serif;
+  font-family: var(--font-editorial), "Newsreader", Georgia, serif;
   font-weight: 500;
   letter-spacing: -0.02em;
 }

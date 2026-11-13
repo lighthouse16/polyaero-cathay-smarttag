@@ -179,14 +179,12 @@ export function BaggageInvestigationPanel({
           <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontSize: "12px",
-                color: "#6B7280",
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
+                fontSize: "12.5px",
+                color: "#4C5755",
+                fontWeight: 500,
               }}
             >
-              Baggage Case
+              Baggage case
             </div>
             <div
               style={{
@@ -236,8 +234,8 @@ export function BaggageInvestigationPanel({
                 fontWeight: 500,
               }}
             >
-              <span style={{ fontWeight: 600, color: "#1F2937" }}>
-                {bag.passenger_name}
+              <span style={{ fontWeight: 500, color: "#1F2937" }}>
+                {bag.passenger_name.replace("/", " / ")}
               </span>
               <span style={{ margin: "0 6px", color: "#9CA3AF" }}>·</span>
               <span className="tabular-nums">PNR {bag.booking_reference}</span>
@@ -280,8 +278,7 @@ export function BaggageInvestigationPanel({
               style={{
                 fontSize: "20px",
                 fontWeight: 700,
-                color:
-                  (bag.connection_minutes ?? 99) < 45 ? "#991B1B" : "#006564",
+                color: "#141918",
                 marginTop: "2px",
               }}
             >

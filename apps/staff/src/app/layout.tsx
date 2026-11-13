@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Lora } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
 });
 
-const lora = Lora({
+const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-editorial",
@@ -32,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${lora.variable}`}>
-      <body className={dmSans.className}>{children}</body>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
