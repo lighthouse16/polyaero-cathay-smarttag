@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface OperationalMetricCardProps {
   title: string;
@@ -12,7 +12,47 @@ interface OperationalMetricCardProps {
   borderColor?: string;
   iconBg?: string;
   sparklinePoints?: number[];
+  animationDelay?: number;
   onClick?: () => void;
+}
+
+function parseNumberMeta(val: string | number) {
+  if (typeof val === "number") {
+    return {
+      num: val,
+      decimals: Number.isInteger(val) ? 0 : 1,
+      suffix: "",
+      hasCommas: false,
+    };
+  }
+  const str = String(val).trim();
+  if (str === "—" || str === "-" || str === "") {
+    return { num: null, decimals: 0, suffix: "", hasCommas: false };
+  }
+  const isPercent = str.endsWith("%");
+  const clean = isPercent ? str.slice(0, -1).trim() : str;
+  const hasCommas = clean.includes(",");
+  const uncomma = clean.replace(/,/g, "");
+  const num = parseFloat(uncomma);
+  if (isNaN(num)) {
+    return { num: null, decimals: 0, suffix: "", hasCommas: false };
+  }
+  const parts = uncomma.split(".");
+  const decimals = parts.length > 1 ? parts[1].length : 0;
+  return { num, decimals, suffix: isPercent ? "%" : "", hasCommas };
+}
+
+function formatValue(current: number, meta: ReturnType<typeof parseNumberMeta>) {
+  if (meta.num === null) return "";
+  let formatted = "";
+  if (meta.hasCommas) {
+    formatted = Math.round(current).toLocaleString("en-US");
+  } else if (meta.decimals > 0) {
+    formatted = current.toFixed(meta.decimals);
+  } else {
+    formatted = Math.round(current).toString();
+  }
+  return formatted + meta.suffix;
 }
 
 export function OperationalMetricCard({
@@ -25,8 +65,65 @@ export function OperationalMetricCard({
   borderColor = "#E8E5DE",
   iconBg = "#F0EFEB",
   sparklinePoints,
+  animationDelay = 0,
   onClick,
 }: OperationalMetricCardProps) {
+  const [displayValue, setDisplayValue] = useState<string | number>(value);
+  const [isLineDrawn, setIsLineDrawn] = useState(false);
+  const prevValueRef = useRef(value);
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setDisplayValue(value);
+      setIsLineDrawn(true);
+      return;
+    }
+
+    const targetMeta = parseNumberMeta(value);
+    if (targetMeta.num === null) {
+      setDisplayValue(value);
+      setIsLineDrawn(true);
+      return;
+    }
+
+    const prevMeta = parseNumberMeta(prevValueRef.current);
+    const startNum =
+      prevMeta.num !== null && prevMeta.num !== targetMeta.num
+        ? prevMeta.num
+        : 0;
+    prevValueRef.current = value;
+
+    const duration = 1200;
+    let frameId: number;
+    let startTime: number | null = null;
+
+    const startTimeout = setTimeout(() => {
+      setIsLineDrawn(true);
+      const step = (timestamp: number) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const current = startNum + (targetMeta.num! - startNum) * ease;
+
+        if (progress < 1) {
+          setDisplayValue(formatValue(current, targetMeta));
+          frameId = requestAnimationFrame(step);
+        } else {
+          setDisplayValue(value);
+        }
+      };
+      frameId = requestAnimationFrame(step);
+    }, animationDelay);
+
+    return () => {
+      clearTimeout(startTimeout);
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [value, animationDelay]);
+
   // Draw only genuine historical samples; no sparkline for snapshot-only data.
   const pts =
     sparklinePoints && sparklinePoints.length >= 2 ? sparklinePoints : [1, 1];
@@ -48,7 +145,6 @@ export function OperationalMetricCard({
   const linePath = coords
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
     .join(" ");
-  // Operational series are strokes only: gradients turn microcharts into decoration.
 
   return (
     <div
@@ -106,7 +202,7 @@ export function OperationalMetricCard({
               letterSpacing: "-0.02em",
             }}
           >
-            {value}
+            {displayValue}
           </div>
           <div
             style={{
@@ -152,11 +248,19 @@ export function OperationalMetricCard({
           >
             <path
               d={linePath}
+              pathLength={1}
               fill="none"
               stroke={accentColor}
               strokeWidth="1.75"
               strokeLinecap="round"
               strokeLinejoin="round"
+              style={{
+                strokeDasharray: 1,
+                strokeDashoffset: isLineDrawn ? 0 : 1,
+                transition:
+                  "stroke-dashoffset 1.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                transitionDelay: `${animationDelay}ms`,
+              }}
             />
           </svg>
         </div>

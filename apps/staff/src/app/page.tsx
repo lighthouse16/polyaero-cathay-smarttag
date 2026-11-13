@@ -489,6 +489,7 @@ export default function StaffDashboardPage() {
                       iconBg="#F0EFEB"
                       accentColor="#006564"
                       sparklinePoints={[18, 25, 22, 30, 28, 34, 38, 43]}
+                      animationDelay={0}
                     />
                     <OperationalMetricCard
                       title="At risk"
@@ -500,6 +501,7 @@ export default function StaffDashboardPage() {
                       borderColor="#DDD8CF"
                       accentColor="#856432"
                       sparklinePoints={[2, 4, 3, 5, 4, 6, 7, 7]}
+                      animationDelay={100}
                     />
                     <OperationalMetricCard
                       title={kpi.exceptions === 1 ? "Exception" : "Exceptions"}
@@ -511,6 +513,7 @@ export default function StaffDashboardPage() {
                       borderColor={kpi.exceptions > 0 ? "#D8D3CB" : "#E8E5DE"}
                       accentColor="#87323A"
                       sparklinePoints={[0, 1, 1, 2, 1, 1, 1, 1]}
+                      animationDelay={200}
                       onClick={() => setActiveView("exceptions")}
                     />
                     <OperationalMetricCard
@@ -529,6 +532,7 @@ export default function StaffDashboardPage() {
                       borderColor="#E1DED6"
                       accentColor="#0D6E4E"
                       sparklinePoints={[98.8, 99.1, 99.0, 99.3, 99.4, 99.4, 99.5, 99.6]}
+                      animationDelay={300}
                     />
                   </div>
 
