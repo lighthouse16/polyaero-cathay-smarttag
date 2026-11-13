@@ -193,8 +193,10 @@ export function OperationalMetricCard({
         </div>
         <div style={{ minWidth: 0 }}>
           <div
-            className="tabular-nums"
             style={{
+              fontFamily:
+                '"Cathay Sans EN", "GT Walsheim", var(--font-sans), sans-serif',
+              fontVariantNumeric: "normal",
               fontSize: "clamp(22px, 2.1vw, 30px)",
               fontWeight: 700,
               lineHeight: 1.05,

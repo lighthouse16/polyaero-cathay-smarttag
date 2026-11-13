@@ -514,15 +514,15 @@ export default function StaffDashboardPage() {
                       animationDelay={100}
                     />
                     <OperationalMetricCard
-                      title={kpi.exceptions === 1 ? "Exception" : "Exceptions"}
+                      title="Exceptions"
                       value={isLoading ? "—" : kpi.exceptions}
-                      sublabel={kpi.exceptions === 1 ? "—" : "Needs recovery"}
+                      sublabel={kpi.exceptions > 0 ? "Needs recovery" : "All clear"}
                       icon={<AlertCircleIcon size={16} color="#87323A" />}
                       iconBg="#F0EEE9"
                       tintBackground="#F3F1EC"
                       borderColor={kpi.exceptions > 0 ? "#D8D3CB" : "#E8E5DE"}
                       accentColor="#87323A"
-                      sparklinePoints={[0, 1, 1, 2, 1, 1, 1, 1]}
+                      sparklinePoints={[0, 1, 0, 1, 2, 1, 2, 1]}
                       animationDelay={200}
                       onClick={() => setActiveView("exceptions")}
                     />
