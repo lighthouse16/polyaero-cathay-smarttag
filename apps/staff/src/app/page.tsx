@@ -341,11 +341,6 @@ export default function StaffDashboardPage() {
         onResetDemo={handleResetDemo}
         onOpenExceptions={() => setActiveView("exceptions")}
         isSyncing={isSyncing}
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => {
-          setSidebarOpen((v) => !v);
-          setMobileMenuOpen((v) => !v);
-        }}
       />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>

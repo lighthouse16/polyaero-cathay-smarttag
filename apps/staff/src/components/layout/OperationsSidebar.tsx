@@ -297,6 +297,44 @@ export function OperationsSidebar({
           }
         `}</style>
       </aside>
+
+      {!isOpen && !isMobile && onToggle && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Expand sidebar"
+          title="Expand sidebar (Ctrl+B)"
+          className="focus-ring"
+          style={{
+            position: "fixed",
+            left: "12px",
+            bottom: "16px",
+            zIndex: 45,
+            background: "#052f2d",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            borderRadius: "8px",
+            color: "#FFFFFF",
+            padding: "8px 12px",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "7px",
+            fontSize: "12px",
+            fontWeight: 600,
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
+            transition: "background-color 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#08413f";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#052f2d";
+          }}
+        >
+          <SidebarToggleIcon size={14} color="#FFFFFF" collapsed={true} />
+          <span>Expand sidebar</span>
+        </button>
+      )}
     </>
   );
 }

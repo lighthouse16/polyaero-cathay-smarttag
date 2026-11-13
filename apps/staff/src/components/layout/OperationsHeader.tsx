@@ -6,7 +6,6 @@ import {
   BellIcon,
   ChevronDownIcon,
   SearchIcon,
-  SidebarToggleIcon,
 } from "../icons/DashboardIcons";
 import { formatHongKongClock } from "../../lib/utils";
 
@@ -19,9 +18,6 @@ interface OperationsHeaderProps {
   onResetDemo: () => void;
   onOpenExceptions: () => void;
   isSyncing: boolean;
-  sidebarOpen?: boolean;
-  onToggleSidebar?: () => void;
-  onToggleMobileMenu?: () => void;
 }
 
 export function OperationsHeader({
@@ -32,9 +28,6 @@ export function OperationsHeader({
   onResetDemo,
   onOpenExceptions,
   isSyncing,
-  sidebarOpen = true,
-  onToggleSidebar,
-  onToggleMobileMenu,
 }: OperationsHeaderProps) {
   const [clock, setClock] = useState<{
     dateLine: string;
@@ -88,40 +81,6 @@ export function OperationsHeader({
           minWidth: 0,
         }}
       >
-        {(onToggleSidebar || onToggleMobileMenu) && (
-          <button
-            type="button"
-            onClick={onToggleSidebar || onToggleMobileMenu}
-            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            title={
-              sidebarOpen
-                ? "Collapse sidebar (Ctrl+B)"
-                : "Expand sidebar (Ctrl+B)"
-            }
-            className="sidebar-toggle-btn focus-ring touch-target"
-            style={{
-              background: "rgba(255, 255, 255, 0.08)",
-              border: "1px solid rgba(255, 255, 255, 0.16)",
-              borderRadius: "8px",
-              color: "#FFFFFF",
-              padding: "6px 8px",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              transition:
-                "background-color 0.15s ease, border-color 0.15s ease",
-            }}
-          >
-            <SidebarToggleIcon
-              size={18}
-              color="#FFFFFF"
-              collapsed={!sidebarOpen}
-            />
-          </button>
-        )}
-
         <div
           style={{
             display: "flex",
