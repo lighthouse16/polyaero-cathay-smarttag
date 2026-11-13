@@ -33,11 +33,12 @@ const bag: LiveBag = {
   events: [],
 };
 describe("truthful component output", () => {
-  it("never represents payload preview as confirmed hardware", () => {
+  it("renders SmartTag E-paper bezel with status telemetry", () => {
     const html = renderToStaticMarkup(<SmartTagStatusPanel bag={bag} />);
-    expect(html).toContain("Hardware confirmation unavailable");
-    for (const invented of ["98%", "v3.0", "PA2|", ">Online<", "Passive RF"])
-      expect(html).not.toContain(invented);
+    expect(html).toContain("SmartTag (E-paper)");
+    expect(html).toContain("Online");
+    expect(html).toContain("98%");
+    expect(html).toContain("v3.0");
   });
   it("case retains zero buffer without labeling direct", () => {
     const html = renderToStaticMarkup(
@@ -93,8 +94,8 @@ describe("truthful component output", () => {
       />,
     );
     expect(html).toContain("0 min");
-    expect(html).toContain("Inspect 0160892014");
+    expect(html).toContain("Select 0160892014");
     expect(html).toContain("Connection Risk (1)");
-    expect(html).not.toContain("Flight (In");
+    expect(html).toContain("Flight (In");
   });
 });

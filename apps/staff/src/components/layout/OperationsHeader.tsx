@@ -497,13 +497,16 @@ export function OperationsHeader({
             display: inline-flex !important;
           }
         }
-        @media (max-width: 640px) {
+        @media (max-width: 720px) {
           .ops-header {
             padding: 0 12px !important;
             gap: 8px !important;
+            height: 64px !important;
           }
           .header-brand-text,
           .header-brand-divider,
+          .header-title,
+          .header-ops-title,
           .header-subtitle {
             display: none !important;
           }

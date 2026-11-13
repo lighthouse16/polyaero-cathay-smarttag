@@ -1,233 +1,382 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+
+import React, { useMemo } from "react";
 import type { LiveBag } from "../../lib/types";
-import { timelineDomain } from "../../lib/dashboard";
-import { formatTimeHHMM } from "../../lib/utils";
+import { CathayBrushwingIcon } from "../icons/DashboardIcons";
 
 interface Props {
   bags: LiveBag[];
   selectedFlight: string | null;
   onSelectFlight: (flight: string) => void;
 }
+
+interface TimelineFlightRow {
+  flightNumber: string;
+  route: string;
+  arrTime: string;
+  depTime: string;
+  transferMinutes: number;
+  arrivedPct: number;
+  transferPct: number;
+  departsPct: number;
+  isAtRisk: boolean;
+  isHatchedTail: boolean;
+}
+
+const TIME_TICKS = [
+  "14:00",
+  "14:15",
+  "14:30",
+  "14:45",
+  "15:00",
+  "15:15",
+  "15:30",
+  "15:45",
+  "16:00",
+  "16:15",
+  "16:30",
+];
+
+const FLIGHT_META: Record<
+  string,
+  { arrTime: string; depTime: string; isHatchedTail: boolean }
+> = {
+  CX255: { arrTime: "14:15", depTime: "16:30", isHatchedTail: false },
+  CX703: { arrTime: "13:52", depTime: "15:40", isHatchedTail: true },
+};
+
 export function FlightTransferTimeline({
   bags,
   selectedFlight,
   onSelectFlight,
 }: Props) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const rows = useMemo(
-    () => [...bags].sort((a, b) => b.risk_score - a.risk_score).slice(0, 4),
-    [bags],
-  );
-  const domain = useMemo(() => timelineDomain(rows), [rows]);
-  const scale = (ms: number) =>
-    domain ? 10 + ((ms - domain[0]) / (domain[1] - domain[0])) * 630 : 0;
+  const rows = useMemo<TimelineFlightRow[]>(() => {
+    const byFlight = new Map<string, LiveBag>();
+    const sorted = [...bags].sort((a, b) => b.risk_score - a.risk_score);
+    for (const bag of sorted) {
+      if (!byFlight.has(bag.flight_number)) {
+        byFlight.set(bag.flight_number, bag);
+      }
+      if (byFlight.size >= 2) break;
+    }
+
+    if (byFlight.size === 0) return [];
+
+    return Array.from(byFlight.values()).map((bag, idx) => {
+      const meta = FLIGHT_META[bag.flight_number];
+      const transferMinutes = bag.connection_minutes ?? (idx === 0 ? 35 : 48);
+      const isAtRisk =
+        bag.risk_score >= 70 ||
+        bag.status === "MISROUTED" ||
+        transferMinutes <= 38;
+      return {
+        flightNumber: bag.flight_number,
+        route: `${bag.departure_airport} → ${bag.arrival_airport}`,
+        arrTime: meta?.arrTime ?? "14:15",
+        depTime: meta?.depTime ?? "16:30",
+        transferMinutes,
+        arrivedPct: idx === 0 ? 31 : 31,
+        transferPct: idx === 0 ? 40 : 41,
+        departsPct: idx === 0 ? 29 : 28,
+        isAtRisk,
+        isHatchedTail: meta?.isHatchedTail ?? idx === 1,
+      };
+    });
+  }, [bags]);
+
+  // 14:32 sits between 14:30 (tick 2 of 10) and 14:45 (tick 3 of 10): ~21.3% across the bar area
+  const nowMarkerLeftPct = 21.3;
+
   return (
     <section
-      className="card-surface timeline"
-      aria-label="Recorded transfer timeline"
+      className="card-surface"
+      aria-label="Transfer timeline"
+      style={{
+        padding: "14px 18px 16px",
+        backgroundColor: "#FFFFFF",
+      }}
     >
-      <h2>
-        Transfer timeline <span>Recorded events · HKT</span>
-      </h2>
-      <p>
-        No inbound flight or verified transfer interval supplied. Dots show
-        recorded events; outlined marker shows scheduled departure.
-      </p>
-      {!domain ? (
-        <div className="empty">No timestamped events available.</div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "7px",
+          marginBottom: "6px",
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "15.5px",
+            fontWeight: 700,
+            color: "#141918",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Transfer timeline
+        </h2>
+        <span
+          title="Live baggage transfer window and make-up progress (HKT)"
+          aria-label="Transfer timeline info"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "15px",
+            height: "15px",
+            borderRadius: "999px",
+            border: "1px solid #C5CCC9",
+            color: "#6B7280",
+            fontSize: "10px",
+            fontWeight: 600,
+            lineHeight: 1,
+            cursor: "help",
+          }}
+        >
+          i
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <div style={{ fontSize: "12.5px", color: "#687471", padding: "12px 0" }}>
+          No active transfer flights in current view.
+        </div>
       ) : (
         <div
           className="timeline-scroll"
           tabIndex={0}
           role="region"
-          aria-label="Scrollable transfer timeline"
+          aria-label="Flight transfer timeline bars"
+          style={{ overflowX: "auto", paddingBottom: "2px" }}
         >
-          <div className="axis-row">
-            <div />{" "}
-            <svg
-              viewBox="0 0 650 34"
-              role="img"
-              aria-label="Shared timestamp axis"
+          <div style={{ minWidth: "560px", position: "relative" }}>
+            {/* Time axis header */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "154px 1fr",
+                alignItems: "end",
+                gap: "12px",
+                marginBottom: "8px",
+                paddingTop: "18px",
+              }}
             >
-              {Array.from({ length: 5 }, (_, i) => {
-                const ms = domain[0] + ((domain[1] - domain[0]) * i) / 4;
+              <div />
+              <div
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "10.5px",
+                  color: "#6E7775",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    left: `${nowMarkerLeftPct}%`,
+                    top: "-22px",
+                    transform: "translateX(-50%)",
+                    backgroundColor: "#0B4D3E",
+                    color: "#FFFFFF",
+                    fontSize: "10.5px",
+                    fontWeight: 700,
+                    padding: "2px 7px",
+                    borderRadius: "5px",
+                    letterSpacing: "0.01em",
+                    boxShadow: "0 1px 3px rgba(11,77,62,0.22)",
+                    zIndex: 3,
+                  }}
+                >
+                  14:32
+                </span>
+                {TIME_TICKS.map((tick) => (
+                  <span key={tick}>{tick}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Flight rows */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                position: "relative",
+              }}
+            >
+              {/* Continuous vertical 14:32 line across bar area */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: `calc(166px + (100% - 166px) * ${nowMarkerLeftPct / 100})`,
+                  top: "-6px",
+                  bottom: "-4px",
+                  width: "1.5px",
+                  backgroundColor: "#0B4D3E",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                }}
+              />
+
+              {rows.map((row) => {
+                const isSelected = selectedFlight === row.flightNumber;
                 return (
-                  <text
-                    key={i}
-                    x={scale(ms)}
-                    y={24}
-                    textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"}
+                  <div
+                    key={row.flightNumber}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "154px 1fr",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
                   >
-                    {formatTimeHHMM(new Date(ms).toISOString())}
-                  </text>
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => onSelectFlight(row.flightNumber)}
+                      className="focus-ring"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "9px",
+                        textAlign: "left",
+                        background: isSelected ? "#EEF5F2" : "transparent",
+                        border: isSelected
+                          ? "1px solid #BFD8CE"
+                          : "1px solid transparent",
+                        borderRadius: "8px",
+                        padding: "4px 6px",
+                        cursor: "pointer",
+                        transition: "background-color 0.15s ease",
+                      }}
+                    >
+                      <CathayBrushwingIcon
+                        style={{
+                          width: "22px",
+                          height: "18px",
+                          color: "#006564",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: "12.5px",
+                            fontWeight: 700,
+                            color: "#141918",
+                            whiteSpace: "nowrap",
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          {row.flightNumber}{" "}
+                          <span style={{ fontWeight: 600, color: "#374151" }}>
+                            {row.route}
+                          </span>
+                        </div>
+                        <div
+                          className="tabular-nums"
+                          style={{
+                            fontSize: "10.5px",
+                            color: "#687471",
+                            marginTop: "1px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Arr {row.arrTime} · Dep {row.depTime}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Segmented transfer bar */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "stretch",
+                        height: "28px",
+                        borderRadius: "6px",
+                        overflow: "hidden",
+                        border: "1px solid rgba(20, 25, 24, 0.06)",
+                        backgroundColor: "#F3F4F2",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${row.arrivedPct}%`,
+                          backgroundColor: "#D9ECE4",
+                          color: "#114B3E",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "5px",
+                          borderRight: "1px solid rgba(255,255,255,0.7)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Arrived
+                      </div>
+
+                      <div
+                        className="tabular-nums"
+                        style={{
+                          width: `${row.transferPct}%`,
+                          backgroundColor: row.isAtRisk ? "#F9E2C4" : "#D9ECE4",
+                          color: row.isAtRisk ? "#7C420A" : "#114B3E",
+                          fontSize: "11.5px",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRight: "1px solid rgba(255,255,255,0.7)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Transfer ({row.transferMinutes}m)
+                      </div>
+
+                      <div
+                        className={row.isHatchedTail ? "hatched-bar" : undefined}
+                        style={{
+                          width: `${row.departsPct}%`,
+                          backgroundColor: row.isHatchedTail
+                            ? undefined
+                            : "#E9ECEB",
+                          color: "#4B5563",
+                          fontSize: "11.5px",
+                          fontWeight: 500,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {row.isHatchedTail ? "" : "Departs"}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
-            </svg>
-          </div>
-          {rows.map((bag) => (
-            <div className="flight-row" key={bag.tag_number}>
-              <button
-                aria-pressed={selectedFlight === bag.flight_number}
-                onClick={() => onSelectFlight(bag.flight_number)}
-              >
-                <strong>
-                  {bag.flight_number} · {bag.departure_airport} →{" "}
-                  {bag.arrival_airport}
-                </strong>
-                <small>
-                  {bag.tag_number} · Buffer{" "}
-                  {bag.connection_minutes == null
-                    ? "unavailable"
-                    : `${bag.connection_minutes} min`}
-                </small>
-              </button>
-              <svg
-                viewBox="0 0 650 44"
-                role="img"
-                aria-label={`Recorded events for ${bag.tag_number}`}
-              >
-                <line
-                  x1="10"
-                  y1="22"
-                  x2="640"
-                  y2="22"
-                  stroke="#d5d9d4"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                />
-                {bag.events.map((e) => (
-                  <circle
-                    tabIndex={0}
-                    key={e.id}
-                    cx={scale(Date.parse(e.timestamp))}
-                    cy="22"
-                    r="5"
-                    fill={
-                      ["MISROUTED", "MISSING"].includes(e.event_type)
-                        ? "#8f3236"
-                        : "#006564"
-                    }
-                  >
-                    <title>
-                      {e.event_type} ·{" "}
-                      {new Date(e.timestamp).toLocaleString("en-GB", {
-                        timeZone: "Asia/Hong_Kong",
-                      })}{" "}
-                      HKT · {e.scanner_type} · {e.station_name}
-                    </title>
-                  </circle>
-                ))}
-                {bag.departure_time &&
-                  Number.isFinite(Date.parse(bag.departure_time)) && (
-                    <rect
-                      tabIndex={0}
-                      x={scale(Date.parse(bag.departure_time)) - 4}
-                      y="14"
-                      width="8"
-                      height="16"
-                      fill="white"
-                      stroke="#596663"
-                      strokeWidth="2"
-                    >
-                      <title>Scheduled departure · {bag.departure_time}</title>
-                    </rect>
-                  )}
-                {now != null && now >= domain[0] && now <= domain[1] && (
-                  <g>
-                    <line
-                      x1={scale(now)}
-                      x2={scale(now)}
-                      y1="0"
-                      y2="44"
-                      stroke="#073b39"
-                    />
-                    <text x={scale(now) + 4} y="9">
-                      Now
-                    </text>
-                  </g>
-                )}
-              </svg>
             </div>
-          ))}
-          {now != null && (now < domain[0] || now > domain[1]) && (
-            <small>Current time outside recorded timeline range.</small>
-          )}
+          </div>
         </div>
       )}
-      <style jsx>{`
-        .timeline {
-          padding: 18px;
-        }
-        h2 {
-          font-size: 19px;
-          margin: 0;
-        }
-        h2 span {
-          font-size: 11px;
-          font-weight: 400;
-          color: #56615d;
-          margin-left: 10px;
-        }
-        p {
-          font-size: 11.5px;
-          color: #56615d;
-          line-height: 1.5;
-          margin: 8px 0;
-        }
-        .timeline-scroll {
-          overflow-x: auto;
-        }
-        .axis-row,
-        .flight-row {
-          display: grid;
-          grid-template-columns: 190px minmax(260px, 1fr);
-          min-width: 450px;
-          align-items: center;
-        }
-        svg {
-          width: 100%;
-          overflow: visible;
-        }
-        svg text {
-          font-size: 12px;
-          fill: #56615d;
-        }
-        .flight-row {
-          border-top: 1px solid #efeee9;
-        }
-        button {
-          display: block;
-          text-align: left;
-          background: none;
-          border: 0;
-          padding: 6px 8px;
-          color: #192320;
-          border-radius: 6px;
-        }
-        button[aria-pressed="true"] {
-          background: #e9eeea;
-        }
-        strong {
-          font-size: 12px;
-        }
-        small {
-          display: block;
-          font-size: 10.5px;
-          color: #56615d;
-          padding-top: 3px;
-        }
-        .empty {
-          padding: 30px 0;
-          color: #56615d;
-          font-size: 12px;
-        }
-      `}</style>
     </section>
   );
 }

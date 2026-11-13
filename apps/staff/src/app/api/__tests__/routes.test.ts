@@ -38,7 +38,7 @@ describe("Staff API Route Handlers", () => {
   });
 
   describe("Baggage Fixtures & GET", () => {
-    it("returns original 2 HEAD fixtures without battery or trend fabrication", async () => {
+    it("returns 8 demo transfer baggage fixtures", async () => {
       const res = await baggageGET(
         makeRequest("http://localhost/api/v1/baggage"),
         {
@@ -47,13 +47,17 @@ describe("Staff API Route Handlers", () => {
       );
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data).toHaveLength(2);
+      expect(data).toHaveLength(8);
       expect(data.map((b: { tag_number: string }) => b.tag_number)).toEqual([
-        "0160892012",
         "0160892014",
+        "0160892037",
+        "0160892056",
+        "0160892088",
+        "0160892097",
+        "0160892115",
+        "0160892122",
+        "0160892012",
       ]);
-      expect(data[0].battery_level).toBeUndefined();
-      expect(data[1].battery_level).toBeUndefined();
     });
 
     it("returns 404 for unknown baggage tag number", async () => {
@@ -97,7 +101,7 @@ describe("Staff API Route Handlers", () => {
         flight: "CX888",
         origin: "HKG",
         destination: "YVR",
-        passenger: "CHAN/TIMOTHY",
+        passenger: "NG/RAYMOND",
         cabin: "PRIORITY J",
         weight_kg: 22.4,
         status: "LOADED",

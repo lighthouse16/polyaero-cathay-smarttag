@@ -86,8 +86,12 @@ export function getLatestEvent(bag: LiveBag): BaggageEventItem | null {
 export function formatLastEventSummary(bag: LiveBag): string {
   const evt = getLatestEvent(bag);
   if (!evt) return "No events yet";
+  const rawNotes = evt.notes?.trim() ?? "";
+  if (/^\d{2}:\d{2}\s*·\s*.+$/.test(rawNotes) && rawNotes.length <= 40) {
+    return rawNotes;
+  }
   const time = formatTimeHHMM(evt.timestamp);
-  const note = evt.notes?.split("·")[0].trim();
+  const note = rawNotes.split("·")[0].trim();
   if (note && note.length <= 28) return `${time} · ${note}`;
   const labelMap: Record<string, string> = {
     MISROUTED: "Transfer exception",
@@ -114,6 +118,20 @@ export function parseRiskFactors(bag: LiveBag): ParsedRiskFactor[] {
   const raw = bag.risk_factors;
   if (raw && raw.length > 0) {
     return raw.map((item, idx) => {
+      const match = item.match(/^(.*?)\s*\[(\d+(?:\.\d+)?)%\]\s*$/);
+      if (match) {
+        const weightPct = Math.round(Number(match[2]));
+        return {
+          label: match[1].trim(),
+          weightPct,
+          severity:
+            weightPct >= 45
+              ? "high"
+              : weightPct >= 20
+                ? "medium"
+                : "low",
+        };
+      }
       return {
         label: item,
         weightPct: null,

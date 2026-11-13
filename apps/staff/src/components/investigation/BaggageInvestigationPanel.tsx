@@ -41,7 +41,7 @@ const TABS: Array<{ id: InvestigationTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "journey", label: "Journey" },
   { id: "smarttag", label: "SmartTag" },
-  { id: "history", label: "Audit Log" },
+  { id: "history", label: "History" },
 ];
 
 export function BaggageInvestigationPanel({
@@ -391,8 +391,8 @@ export function BaggageInvestigationPanel({
                         isExc || bag.risk_score >= 65 ? "#991B1B" : "#004B4A",
                     }}
                   >
-                    {isExc
-                      ? "Connection transfer exception active"
+                    {isExc || bag.risk_score >= 70
+                      ? "High risk of missed connection"
                       : bag.risk_score >= 45
                         ? "Monitored connection transfer"
                         : "Transfer on schedule"}

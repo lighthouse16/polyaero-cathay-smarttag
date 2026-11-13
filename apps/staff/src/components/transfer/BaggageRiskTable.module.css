@@ -1,103 +1,262 @@
-.risk-table .risk-table {
+.risk-table {
   overflow: hidden;
+  background: #ffffff;
 }
-.risk-table .queue-toolbar {
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border-hairline);
-}
-.risk-table .queue-tabs {
-  display: flex;
-  gap: 18px;
-}
-.risk-table .queue-tabs button {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: #56615d;
-  font-weight: 600;
-}
-.risk-table .queue-tabs button[aria-pressed="true"] {
-  color: #073b39;
-  border-color: #073b39;
-}
-.risk-table .queue-filters {
+
+.queue-toolbar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid #eae8e1;
+}
+
+.queue-tabs {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.queue-tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2.5px solid transparent;
+  padding: 6px 2px 10px;
+  color: #56615d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.queue-tabs button[aria-selected="true"] {
+  color: #0b4d3e;
+  border-color: #0b4d3e;
+  font-weight: 700;
+}
+
+.queue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  padding: 8px 0 0;
+  padding-bottom: 8px;
 }
-.risk-table .queue-filters input {
-  flex: 1 1 160px;
-  min-width: 100px;
+
+.filter-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #ffffff;
+  border: 1px solid #dcdfe2;
+  border-radius: 6px;
+  color: #4b5563;
+  cursor: pointer;
 }
-.risk-table .queue-filters input,
-.risk-table .queue-filters select,
-.risk-table .queue-filters button {
-  background: white;
+
+.filter-icon-btn:hover {
+  background: #f5f5f1;
+}
+
+.queue-search-input {
+  width: 150px;
+  height: 28px;
+  background: #ffffff;
   border: 1px solid #d5d9d4;
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 0 8px;
   font-size: 12px;
+  color: #141918;
 }
-.risk-table .table-scroll {
-  max-height: 420px;
+
+.filter-select {
+  height: 28px;
+  background: #ffffff;
+  border: 1px solid #dcdfe2;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+.table-scroll {
+  max-height: 360px;
   overflow: auto;
 }
+
 .risk-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 11.5px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
 .risk-table th,
 .risk-table td {
   text-align: left;
-  border-bottom: 1px solid #e4e5e1;
-  padding: 0 8px;
-  height: 46px;
+  border-bottom: 1px solid #efede7;
+  padding: 0 5px;
+  height: 40px;
 }
+
 .risk-table th {
   background: #faf9f6;
   position: sticky;
   top: 0;
-  z-index: 1;
-  color: #56615d;
-  font-size: 11.5px;
+  z-index: 2;
+  color: #5c6663;
+  font-size: 11px;
+  font-weight: 600;
 }
-.risk-table th button,
-.risk-table td button {
+
+.risk-table th button {
   background: none;
   border: none;
   color: inherit;
   font-size: inherit;
-  padding: 0 4px;
+  font-weight: inherit;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
-.risk-table td .tag-link {
+
+.risk-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.risk-table tbody tr:hover {
+  background: #f7f6f2;
+}
+
+.risk-table tr.selected {
+  background: #faf3f1;
+}
+
+.tag-link {
+  background: none;
+  border: none;
+  padding: 0;
   font-weight: 700;
-  color: #192320;
+  color: #141918;
+  font-size: 12px;
+  cursor: pointer;
 }
-.risk-table td .risk-score {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #f4f1e9;
+
+.risk-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.risk-critical {
+  background: #a62b2b;
+  color: #ffffff;
+}
+
+.risk-high {
+  background: #f9dfc8;
+  color: #8c3f14;
+}
+
+.risk-medium {
+  background: #fbf1d8;
+  color: #7c5812;
+}
+
+.risk-low {
+  background: #eef2f1;
+  color: #374151;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 600;
 }
-.risk-table td .risk-score.critical {
-  background: #8f3236;
-  color: white;
+
+.status-exception {
+  background: #f8d8d6;
+  color: #932724;
 }
-.risk-table td .status-label {
-  font-size: 11px;
+
+.status-transfer {
+  background: #f9ebd2;
+  color: #7d4e14;
 }
-.risk-table tr.selected {
-  background: #f1f3f0;
-  box-shadow: inset 3px 0 #006564;
+
+.status-ok {
+  background: #d9ece4;
+  color: #114b3e;
 }
-.risk-table tbody tr:hover {
-  background: #f5f5f1;
+
+.kebab-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
 }
-.risk-table td:first-child {
-  padding-left: 16px;
+
+.kebab-btn:hover {
+  background: #eae8e1;
+  color: #141918;
+}
+
+.kebab-menu {
+  position: absolute;
+  right: 8px;
+  top: 34px;
+  z-index: 20;
+  min-width: 170px;
+  background: #ffffff;
+  border: 1px solid #e2dfd7;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(20, 25, 24, 0.12);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kebab-menu button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #141918;
+  cursor: pointer;
+}
+
+.kebab-menu button:hover {
+  background: #f3f5f4;
+}
+
+.empty-cell {
+  text-align: center !important;
+  color: #687471;
+  padding: 24px 12px !important;
 }

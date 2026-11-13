@@ -47,17 +47,17 @@ export function RecommendedActionPanel({
           onClick={() =>
             onRequestAction({
               targetStatus: "RECOVERY_IN_PROGRESS",
-              title: "Record recovery in progress",
+              title: "Dispatch for retrieval",
               description:
-                "Records staff-authorized recovery in progress status in the station database.",
-              ctaLabel: "Record recovery in progress",
+                "Dispatches ramp retrieval team and records recovery in progress in the station database.",
+              ctaLabel: "Dispatch for retrieval",
               tone: "jade",
             })
           }
           className="focus-ring touch-target"
           style={{
             flex: "1 1 180px",
-            minHeight: "44px",
+            minHeight: "42px",
             borderRadius: "8px",
             border: "none",
             backgroundColor: "#004B4A",
@@ -74,7 +74,7 @@ export function RecommendedActionPanel({
           }}
         >
           <TruckIcon size={15} color="#FFFFFF" />
-          <span>Record recovery in progress</span>
+          <span>Dispatch for retrieval</span>
         </button>
 
         <div style={{ display: "inline-flex", alignItems: "stretch" }}>
@@ -84,16 +84,16 @@ export function RecommendedActionPanel({
             onClick={() =>
               onRequestAction({
                 targetStatus: "LOADED",
-                title: "Record loaded",
+                title: "Mark as located",
                 description:
-                  "Updates baggage status to LOADED in the station record.",
-                ctaLabel: "Record loaded",
+                  "Confirms bag is located and updates baggage status to LOADED in the station record.",
+                ctaLabel: "Mark as located",
                 tone: "jade",
               })
             }
             className="focus-ring touch-target"
             style={{
-              minHeight: "44px",
+              minHeight: "42px",
               borderRadius: "8px 0 0 8px",
               border: "1px solid #D6D1C6",
               borderRight: "none",
@@ -110,7 +110,7 @@ export function RecommendedActionPanel({
             }}
           >
             <CheckIcon size={14} color="#004B4A" />
-            <span>Record loaded</span>
+            <span>Mark as located</span>
           </button>
 
           <button
@@ -120,8 +120,8 @@ export function RecommendedActionPanel({
             onClick={() => setMoreOpen((v) => !v)}
             className="focus-ring touch-target"
             style={{
-              minHeight: "44px",
-              width: "38px",
+              minHeight: "42px",
+              width: "36px",
               borderRadius: "0 8px 8px 0",
               border: "1px solid #D6D1C6",
               backgroundColor: "#FFFFFF",

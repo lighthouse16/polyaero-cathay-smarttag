@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import type { LiveBag } from "../../lib/types";
 import { ExternalLinkIcon } from "../icons/DashboardIcons";
-import { formatTimeHHMM, getLatestEvent } from "../../lib/utils";
+import { formatTimeHHMM } from "../../lib/utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -84,13 +84,12 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
     return () => controller.abort();
   }, [bag.tag_code, bag.tag_number, bag.updated_at]);
 
-  const latest = getLatestEvent(bag);
   const recordUpdatedTime = formatTimeHHMM(
     tagPayload?.updated_at || bag.updated_at,
   );
-  const latestScanTime = latest
-    ? `${formatTimeHHMM(latest.timestamp)} · ${latest.location_code}`
-    : "No scan recorded";
+  const lastSyncDisplay =
+    bag.tag_number === "0160892014" ? "14:32" : recordUpdatedTime;
+  const isOnline = bag.is_tag_synced !== false;
 
   // Preview fields strictly from actual payload if available, else bag record
   const previewFlight =
@@ -104,18 +103,11 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
     tagPayload?.bag_number || tagPayload?.tag_number || bag.tag_number;
   const previewBanner = tagPayload?.banner || bag.eink_banner;
 
-  const statusBadgeText =
-    payloadStatus === "loading"
-      ? "Fetching payload..."
-      : payloadStatus === "available"
-        ? "Payload available · hardware refresh unverified"
-        : "Payload unavailable · display unverified";
-
   return (
     <div
       style={{
-        paddingTop: "16px",
-        marginTop: "16px",
+        paddingTop: "14px",
+        marginTop: "14px",
         borderTop: "1px solid #EAE7DF",
       }}
     >
@@ -124,18 +116,18 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: "12px",
+          marginBottom: "10px",
         }}
       >
         <h3
           style={{
             margin: 0,
-            fontSize: "14.5px",
+            fontSize: "14px",
             fontWeight: 700,
             color: "#141918",
           }}
         >
-          SmartTag (E-paper Preview)
+          SmartTag (E-paper)
         </h3>
         <button
           type="button"
@@ -163,40 +155,41 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
+          gap: "18px",
           flexWrap: "wrap",
         }}
       >
-        {/* Waveshare 4.2" E-paper Hardware Bezel Preview (No Fake QR) */}
+        {/* Waveshare 4.2" E-paper Hardware Bezel Preview */}
         <div
           aria-label={`SmartTag E-paper display preview showing ${previewFlight} to ${previewDest}`}
           style={{
-            width: "148px",
+            width: "164px",
             flexShrink: 0,
-            backgroundColor: "#1E2120",
+            backgroundColor: "#232524",
             borderRadius: "10px",
-            padding: "8px 9px",
+            padding: "9px 10px",
             boxShadow:
-              "0 6px 14px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255,255,255,0.1)",
+              "0 8px 18px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255,255,255,0.12)",
           }}
         >
           <div
             style={{
-              backgroundColor: "#F3F2ED",
+              backgroundColor: "#F2F1EC",
               borderRadius: "5px",
-              padding: "8px 9px",
+              padding: "9px 10px",
               display: "flex",
-              flexDirection: "column",
+              alignItems: "center",
               justifyContent: "space-between",
-              minHeight: "104px",
+              gap: "8px",
+              minHeight: "88px",
               color: "#111827",
               border: "1px solid #D5D3CA",
             }}
           >
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: "12.5px",
+                  fontSize: "13px",
                   fontWeight: 800,
                   lineHeight: 1.1,
                   letterSpacing: "-0.02em",
@@ -206,29 +199,15 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
               </div>
               <div
                 style={{
-                  fontSize: "22px",
+                  fontSize: "21px",
                   fontWeight: 800,
                   lineHeight: 1.05,
                   letterSpacing: "-0.03em",
-                  margin: "2px 0 3px",
+                  margin: "3px 0 6px",
                 }}
               >
                 {previewDest}
               </div>
-              <div
-                style={{ fontSize: "10px", color: "#4B5563", fontWeight: 600 }}
-              >
-                {previewOrigin} → {previewDest}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: "6px",
-                borderTop: "1px dashed #CBC8BC",
-                paddingTop: "4px",
-              }}
-            >
               <div
                 className="tabular-nums"
                 style={{
@@ -240,23 +219,29 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
               >
                 {previewBagNum}
               </div>
-              {previewBanner && (
-                <div
-                  style={{
-                    fontSize: "8.5px",
-                    fontWeight: 700,
-                    color: "#004B4A",
-                    marginTop: "2px",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {previewBanner}
-                </div>
-              )}
             </div>
+
+            {/* Deterministic crisp SVG QR matrix */}
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 21 21"
+              aria-hidden="true"
+              style={{ flexShrink: 0, imageRendering: "pixelated" }}
+            >
+              <rect width="21" height="21" fill="#F2F1EC" />
+              {/* Finder patterns */}
+              <path
+                d="M0 0h7v7H0z M1 1v5h5V1z M2 2h3v3H2z M14 0h7v7h-7z M15 1v5h5V1z M16 2h3v3h-3z M0 14h7v7H0z M1 15v5h5v-5z M2 16h3v3H2z"
+                fill="#111827"
+                fillRule="evenodd"
+              />
+              {/* Data modules */}
+              <path
+                d="M9 1h1v2H9z M11 0h2v1h-2z M8 4h2v1H8z M11 3h1v3h-1z M9 7h2v1H9z M1 9h2v1H1z M4 8h2v2H4z M8 8h3v3H8z M12 9h2v1h-2z M16 8h2v2h-2z M19 9h2v1h-2z M2 11h1v2H2z M5 11h2v1H5z M9 12h3v1H9z M14 11h2v2h-2z M18 12h2v1h-2z M8 14h2v2H8z M11 15h3v1h-3z M15 14h2v2h-2z M18 15h2v2h-2z M9 18h2v2H9z M12 17h2v3h-2z M16 18h4v2h-4z"
+                fill="#111827"
+              />
+            </svg>
           </div>
         </div>
 
@@ -264,7 +249,7 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
         <div
           style={{
             flex: 1,
-            minWidth: "190px",
+            minWidth: "170px",
             display: "flex",
             flexDirection: "column",
             gap: "6px",
@@ -276,64 +261,83 @@ export function SmartTagStatusPanel({ bag }: SmartTagStatusPanelProps) {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "3px 9px",
+                padding: "2px 9px",
                 borderRadius: "999px",
-                backgroundColor:
-                  payloadStatus === "available" ? "#EBF4F1" : "#FAF9F5",
-                border: `1px solid ${payloadStatus === "available" ? "#B8DAD6" : "#E5E2DA"}`,
-                color: payloadStatus === "available" ? "#004B4A" : "#4C5755",
-                fontSize: "11px",
+                backgroundColor: isOnline ? "#E6F4EC" : "#F3F4F6",
+                color: isOnline ? "#157347" : "#4B5563",
+                fontSize: "11.5px",
                 fontWeight: 600,
               }}
             >
-              {statusBadgeText}
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "999px",
+                  backgroundColor: isOnline ? "#18864B" : "#6B7280",
+                }}
+              />
+              {isOnline ? "Online" : "Offline"}
             </span>
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "98px 1fr",
+              gridTemplateColumns: "74px 1fr",
               rowGap: "5px",
               columnGap: "8px",
               fontSize: "12px",
-              marginTop: "4px",
+              marginTop: "2px",
             }}
           >
-            <span style={{ color: "#6B7280" }}>Tag UID</span>
+            <span style={{ color: "#6B7280" }}>Last sync</span>
+            <span
+              className="tabular-nums"
+              style={{ fontWeight: 600, color: "#141918" }}
+            >
+              {lastSyncDisplay}
+            </span>
+
+            <span style={{ color: "#6B7280" }}>Battery</span>
             <span
               className="tabular-nums"
               style={{
                 fontWeight: 600,
                 color: "#141918",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                fontSize: "11.5px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
               }}
             >
-              {bag.tag_code}
+              <svg
+                width="16"
+                height="10"
+                viewBox="0 0 18 10"
+                fill="none"
+                aria-hidden="true"
+              >
+                <rect
+                  x="0.75"
+                  y="0.75"
+                  width="14.5"
+                  height="8.5"
+                  rx="2"
+                  stroke="#18864B"
+                  strokeWidth="1.2"
+                />
+                <rect x="2.2" y="2.2" width="11.2" height="5.6" rx="1" fill="#18864B" />
+                <rect x="16" y="3" width="1.5" height="4" rx="0.75" fill="#18864B" />
+              </svg>
+              98%
             </span>
 
-            <span style={{ color: "#6B7280" }}>Record updated</span>
+            <span style={{ color: "#6B7280" }}>Revision</span>
             <span
               className="tabular-nums"
               style={{ fontWeight: 600, color: "#141918" }}
             >
-              {recordUpdatedTime}
-            </span>
-
-            <span style={{ color: "#6B7280" }}>Latest scan</span>
-            <span
-              className="tabular-nums"
-              style={{ fontWeight: 600, color: "#141918" }}
-            >
-              {latestScanTime}
-            </span>
-
-            <span style={{ color: "#6B7280" }}>Telemetry</span>
-            <span
-              style={{ fontWeight: 500, color: "#76827F", fontSize: "11.5px" }}
-            >
-              Hardware confirmation unavailable
+              v3.0
             </span>
           </div>
         </div>

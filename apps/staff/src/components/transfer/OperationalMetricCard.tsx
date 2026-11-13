@@ -48,6 +48,8 @@ export function OperationalMetricCard({
   const linePath = coords
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
     .join(" ");
+  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+  const gradId = `spark-${accentColor.replace(/[^a-zA-Z0-9]/g, "")}`;
 
   return (
     <div
@@ -68,14 +70,14 @@ export function OperationalMetricCard({
       style={{
         backgroundColor: tintBackground,
         borderColor,
-        padding: "14px 16px 10px",
+        padding: "13px 14px 8px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         cursor: onClick ? "pointer" : "default",
         transition: "transform 0.15s ease, box-shadow 0.15s ease",
         minWidth: 0,
-        minHeight: "136px",
+        minHeight: "126px",
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: "11px" }}>
@@ -121,10 +123,13 @@ export function OperationalMetricCard({
           <div
             className="tabular-nums"
             style={{
-              fontSize: "11px",
+              fontSize: "10.5px",
               fontWeight: 600,
               color: accentColor,
               marginTop: "2px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {sublabel}
@@ -134,7 +139,7 @@ export function OperationalMetricCard({
 
       {/* Micro Sparkline */}
       {sparklinePoints && sparklinePoints.length >= 2 && (
-        <div style={{ marginTop: "8px", height: "24px", width: "100%" }}>
+        <div style={{ marginTop: "6px", height: "24px", width: "100%" }}>
           <svg
             viewBox={`0 0 ${width} ${height}`}
             preserveAspectRatio="none"
@@ -146,6 +151,13 @@ export function OperationalMetricCard({
             }}
             aria-hidden="true"
           >
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={accentColor} stopOpacity="0.18" />
+                <stop offset="100%" stopColor={accentColor} stopOpacity="0.01" />
+              </linearGradient>
+            </defs>
+            <path d={areaPath} fill={`url(#${gradId})`} />
             <path
               d={linePath}
               fill="none"
