@@ -17,7 +17,9 @@
     "android": {
       "package": "com.polyaero.smarttag",
       "adaptiveIcon": {
-        "backgroundColor": "#006564"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#005D63"
       },
       "permissions": ["android.permission.NFC"]
     },
