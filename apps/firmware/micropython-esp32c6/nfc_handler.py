@@ -4,6 +4,7 @@
 
 import ujson as json
 import errno
+import time
 from config import NFC_APDU_TIMEOUT_MS
 
 CC_FILE = bytearray([
@@ -125,8 +126,14 @@ class NfcTarget:
             print(f"    -> Communication error: {e}")
         finally:
             # A host timeout does not cancel TgInitAsTarget/TgGetData on the chip.
-            self.nfc.initialize()
-            self.configure()
+            for attempt in range(3):
+                try:
+                    self.nfc.initialize()
+                    self.configure()
+                    break
+                except Exception as exc:
+                    print(f"    -> NFC re-init retry {attempt + 1}/3: {exc}")
+                    time.sleep_ms(100)
 
         return None
 
