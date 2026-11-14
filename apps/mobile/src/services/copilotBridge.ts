@@ -1,8 +1,6 @@
-import { Platform } from 'react-native';
+import { API_BASE_URL } from './apiConfig';
 
-export const COPILOT_API_BASE =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1');
+export const COPILOT_API_BASE = API_BASE_URL;
 
 let activePassengerTagNumber = '0160892012';
 let activePassengerTagCode = '04:A2:3B:4C:5D:6E:70';

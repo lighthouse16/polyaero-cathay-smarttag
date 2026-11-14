@@ -5,7 +5,7 @@ export type CathayTabId = 'home' | 'book' | 'trips' | 'profile' | 'tools';
 
 export interface UserAuthProfile {
   isLoggedIn: boolean;
-  title: 'Mr' | 'Ms' | 'Mrs' | 'Miss';
+  title: string;
   familyName: string;
   givenName: string;
   email: string;
@@ -14,8 +14,8 @@ export interface UserAuthProfile {
   tierStatus: 'Green' | 'Silver' | 'Gold' | 'Diamond';
   memberSince: string;
   statusPoints: number;
-  asiaMiles: number;
-  pointsToNextTier: number;
+  asiaMiles: number | null;
+  pointsToNextTier: number | null;
 }
 
 export interface FlightBooking {
