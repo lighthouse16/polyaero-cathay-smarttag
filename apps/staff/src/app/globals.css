@@ -25,7 +25,7 @@
 @font-face {
   font-family: "GT Walsheim";
   src: url("/fonts/cathay/GT-Walsheim-Light.woff2") format("woff2");
-  font-weight: 300;
+  font-weight: 200;
   font-style: normal;
   font-display: swap;
 }
@@ -73,7 +73,7 @@
   --shadow-soft: 2px 2px 8px 0 rgb(188 190 176 / 16%);
 }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; max-width: 100%; background: var(--workspace-bg); color: var(--text-primary); font-family: "Cathay Sans EN", "GT Walsheim", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 400; font-synthesis-weight: none; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; padding: 0; max-width: 100%; background: var(--workspace-bg); color: var(--text-primary); font-family: "Cathay Sans EN", "GT Walsheim", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 400; -webkit-font-smoothing: antialiased; }
 button, input, select, textarea, dialog { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
@@ -438,7 +438,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color 0.16s ease, border-color 0.16s ease;
@@ -518,7 +518,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
   border-radius: 0;
   font-family: var(--font-sans);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 550;
   line-height: 1.35;
   white-space: nowrap;
   background: transparent;
@@ -776,7 +776,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
 }
 .workbench-inline-status {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--brand-secondary-gold-active);
 }
 .workbench-panes {
@@ -1119,7 +1119,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
   background: transparent;
   color: var(--text-secondary);
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .trace-muted {
   color: var(--text-secondary);
@@ -1323,7 +1323,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
   background: transparent;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .trace-audit-step-meta {

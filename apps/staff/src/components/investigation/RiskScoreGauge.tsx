@@ -87,7 +87,7 @@ export function RiskScoreGauge({ score }: RiskScoreGaugeProps) {
         <span
           style={{
             fontSize: "11px",
-            fontWeight: 400,
+            fontWeight: 500,
             color: "#000000",
             marginTop: "2px",
           }}

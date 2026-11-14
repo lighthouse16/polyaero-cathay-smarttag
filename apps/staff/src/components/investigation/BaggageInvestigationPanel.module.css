@@ -40,7 +40,7 @@
 
 .heading {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
   font-size: 24px;
   font-weight: 400;
   line-height: 1.25;
@@ -58,7 +58,7 @@
   border: 1px solid #D7D9DB;
   background: #FFFFFF;
   color: #2D2D2D;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", sans-serif;
   font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
@@ -76,7 +76,7 @@
 
 .connection {
   margin-top: 8px;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
   font-weight: 700;
 }
 
@@ -113,14 +113,14 @@
 
 .metrics dd {
   margin: 4px 0 0;
-  font-family: var(--font-display);
+  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .record dd {
   margin: 4px 0 0;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
@@ -142,7 +142,7 @@
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  font-family: var(--font-display);
+  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
   font-size: 13.5px;
   font-weight: 400;
   transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
@@ -273,7 +273,7 @@
 .events h4,
 .smartTag h4 {
   margin: 0 0 8px;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
   font-size: 13.5px;
   font-weight: 700;
 }
@@ -359,9 +359,9 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", sans-serif;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -484,7 +484,7 @@
   border-radius: 3px;
   background: #163230;
   color: #FFFFFF;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", sans-serif;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -492,7 +492,7 @@
 }
 
 .epaperInterface {
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", sans-serif;
   font-size: 11px;
   font-weight: 700;
   color: #66686A;
@@ -500,7 +500,7 @@
 }
 
 .epaperRoute {
-  font-family: var(--font-display);
+  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -515,7 +515,7 @@
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid #E6E7E8;
-  font-family: var(--font-sans);
+  font-family: "Cathay Sans EN", sans-serif;
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

@@ -26,7 +26,7 @@
   padding: 6px 2px 10px;
   color: #000000;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -81,7 +81,7 @@
   border-radius: 6px;
   padding: 0 8px;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
   color: #000000;
   cursor: pointer;
 }
@@ -115,7 +115,7 @@
   z-index: 2;
   color: #000000;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .risk-table th button {
@@ -191,7 +191,7 @@
   padding: 0;
   border-radius: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 550;
   background: transparent;
   border: none;
 }
@@ -249,7 +249,7 @@
   padding: 7px 10px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
   color: #000000;
   cursor: pointer;
 }

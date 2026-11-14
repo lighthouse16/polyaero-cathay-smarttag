@@ -79,6 +79,29 @@ describe("persistent baggage integration", () => {
     expect(fetchMock.mock.calls.every(([url]) => String(url).endsWith("/baggage/dashboard"))).toBe(true);
   });
 
+  it("reads a newly persisted mobile sync on the next request without losing bag identity", async () => {
+    const updatedAt = "2026-11-14T19:00:01Z";
+    const synced = {
+      ...bag,
+      status: "TAGGED",
+      is_tag_synced: true,
+      updated_at: updatedAt,
+      events: [{ id: "mobile-sync-event", event_type: "SYNCHRONIZED", timestamp: updatedAt, scanner_type: "APP", location_code: "MOBILE-APP", station_name: "Cathay App SmartTag Sync" }],
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ ...bag, is_tag_synced: false }])))
+      .mockResolvedValueOnce(new Response(JSON.stringify([synced])));
+    vi.stubGlobal("fetch", fetchMock);
+    const before = await fetchLiveTransferSnapshot(base);
+    const after = await fetchLiveTransferSnapshot(base);
+    expect(before.bags[0].id).toBe(after.bags[0].id);
+    expect(before.bags[0].is_tag_synced).toBe(false);
+    expect(after.bags[0]).toMatchObject({ id: bag.id, tag_number: bag.tag_number, status: "TAGGED", is_tag_synced: true, updated_at: new Date(updatedAt).toISOString() });
+    expect(after.bags[0].events).toContainEqual(expect.objectContaining({ id: "mobile-sync-event", event_type: "SYNCHRONIZED", scanner_type: "APP" }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([, options]) => options.cache === "no-store")).toBe(true);
+  });
+
   it("does not invent risk assessments for records without persisted risk", () => {
     const snapshot = buildLiveTransferSnapshot([bag]);
     expect(snapshot.bagRisks[0]).toMatchObject({ status: "unavailable", score: null });

@@ -77,7 +77,7 @@ export function RiskFactorsList({ bag }: RiskFactorsListProps) {
                   className="tabular-nums"
                   style={{
                     fontSize: "11.5px",
-                    fontWeight: 400,
+                    fontWeight: 500,
                     color: "#000000",
                     textAlign: "right",
                   }}
