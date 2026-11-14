@@ -377,19 +377,33 @@ export function buildLiveTransferSnapshot(
   return validateTransferSnapshot(rawSnapshot);
 }
 
-export async function fetchLiveTransferSnapshot(apiBase: string): Promise<TransferControlSnapshot> {
-  const cleanBase = apiBase.replace(/\/$/, "");
+const DEFAULT_API_BASE = "https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1";
+
+export function getLiveApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  return (envUrl && envUrl.length > 0 ? envUrl : DEFAULT_API_BASE).replace(/\/$/, "");
+}
+
+export async function fetchLiveTransferSnapshot(
+  signalOrBase?: AbortSignal | string,
+): Promise<TransferControlSnapshot> {
+  const signal = typeof signalOrBase === "string" ? undefined : signalOrBase;
+  const cleanBase =
+    typeof signalOrBase === "string" && signalOrBase.trim()
+      ? signalOrBase.trim().replace(/\/$/, "")
+      : getLiveApiBase();
   const todayTag = utcDateTag(new Date());
   const yesterdayTag = utcDateTag(new Date(Date.now() - 86_400_000));
   const seedIndices = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09"];
 
   const [baggageRes, ...seedResults] = await Promise.all([
-    fetch(`${cleanBase}/baggage`, { cache: "no-store" }),
+    fetch(`${cleanBase}/baggage`, { cache: "no-store", ...(signal ? { signal } : {}) }),
     ...seedIndices.map(async (idx) => {
       for (const dayStr of [todayTag, yesterdayTag]) {
         try {
           const r = await fetch(`${cleanBase}/tags/SEED-${dayStr}-${idx}/display`, {
             cache: "no-store",
+            ...(signal ? { signal } : {}),
           });
           if (r.ok) {
             return (await r.json()) as TagDisplayPayload;
