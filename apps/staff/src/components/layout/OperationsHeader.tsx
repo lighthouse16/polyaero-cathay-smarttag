@@ -45,11 +45,8 @@ export function OperationsHeader({
   const indicator = useSlidingIndicator(navKey, navRef, `.${styles.navButton}`);
 
   useEffect(() => {
-    const updateClock = () => setClock(formatHongKongClock(new Date()));
-    updateClock();
-    const timer = setInterval(updateClock, 1_000);
-    return () => clearInterval(timer);
-  }, []);
+    setClock(formatHongKongClock(new Date()));
+  }, [activeView, actionRequiredCount]);
 
   useEffect(() => {
     const onScroll = () => {

@@ -22,6 +22,7 @@ import type {
   RecoveryPerformanceReport,
   RecoveryStageKey,
   RecoveryTrendBucket,
+  ResponseTimeBucket,
   RiskCauseBreakdownSummary,
   RiskCauseSlice,
   TransferControlSnapshot,
@@ -95,6 +96,39 @@ export function getWindowBoundsMs(
   const endMs = now.getTime();
   const span = window === "24h" ? 24 * HOUR_MS : window === "7d" ? 7 * DAY_MS : 30 * DAY_MS;
   return { startMs: endMs - span, endMs };
+}
+
+function computeResponseTimeBuckets(samples: number[]): ResponseTimeBucket[] {
+  if (samples.length === 0) return [];
+  const counts: Record<ResponseTimeBucket["bucket"], number> = {
+    "<5m": 0,
+    "5–10m": 0,
+    "10–20m": 0,
+    "20–30m": 0,
+    ">30m": 0,
+  };
+  for (const min of samples) {
+    if (!Number.isFinite(min) || min < 0) continue;
+    if (min < 5) counts["<5m"] += 1;
+    else if (min < 10) counts["5–10m"] += 1;
+    else if (min < 20) counts["10–20m"] += 1;
+    else if (min <= 30) counts["20–30m"] += 1;
+    else counts[">30m"] += 1;
+  }
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total === 0) return [];
+  const order: ResponseTimeBucket["bucket"][] = [
+    "<5m",
+    "5–10m",
+    "10–20m",
+    "20–30m",
+    ">30m",
+  ];
+  return order.map((bucket) => ({
+    bucket,
+    count: counts[bucket],
+    sharePct: roundTo((counts[bucket] / total) * 100, 1),
+  }));
 }
 
 export function computeMedian(values: number[]): number | null {
@@ -877,6 +911,7 @@ export function aggregateRecoveryPerformance(
     resolvedBeforeCutoffDenominator:
       resolvedCutoffDenominator > 0 ? resolvedCutoffDenominator : null,
     pendingExcludedCount,
+    responseTimeBuckets: computeResponseTimeBuckets(alertToActionSamples),
     availabilityNote:
       alertToActionSamples.length === 0 && actionToLocateSamples.length === 0
         ? "Milestone duration timestamps unavailable in cohort."
@@ -1184,6 +1219,7 @@ export function buildUnavailablePerformanceReport({
       resolvedBeforeCutoffPct: null,
       resolvedBeforeCutoffDenominator: null,
       pendingExcludedCount: 0,
+      responseTimeBuckets: [],
       availabilityNote: "Milestone turnaround timestamps unavailable.",
     },
     businessImpact: unavailableBusinessImpact(

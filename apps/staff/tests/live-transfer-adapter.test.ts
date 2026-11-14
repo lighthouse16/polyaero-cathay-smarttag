@@ -137,4 +137,68 @@ describe("persistent baggage integration", () => {
       }),
     ).toEqual(updated);
   });
+
+  it("anchors stale or near-cutoff departures ahead of cutoff so no leg opens overdue", () => {
+    const fixedNow = new Date("2026-11-15T06:00:00Z");
+    const overdueInput: BackendBag[] = [
+      {
+        ...bag,
+        id: "stale-bag",
+        tag_number: "0169000001",
+        departure_time: "2026-11-15T06:05:00Z", // only +5m left (< 20m cutoff)
+        status: "MISROUTED",
+        is_rush_bag: true,
+        risk_score: 88,
+      },
+      {
+        ...bag,
+        id: "very-old-bag",
+        tag_number: "0169000002",
+        flight_number: "CX701",
+        arrival_airport: "BKK",
+        departure_time: "2026-11-10T10:00:00Z",
+        status: "MISSING",
+        is_rush_bag: true,
+        risk_score: 91,
+      },
+    ];
+    const snapshot = buildLiveTransferSnapshot(overdueInput, fixedNow);
+    for (const conn of snapshot.connections) {
+      const deadlineMs = Date.parse(conn.deadline?.at ?? "");
+      expect(deadlineMs).toBeGreaterThan(fixedNow.getTime() + 45 * 60_000);
+    }
+  });
+
+  it("produces multi-day qualified funnel, trends, response buckets, deltas, and business impact for realistic-v1 cohorts", async () => {
+    const realisticCohort: BackendBag[] = Array.from({ length: 40 }, (_, i) => ({
+      ...bag,
+      id: `real-${i}`,
+      dataset: "realistic-v1",
+      tag_number: `016800${String(i).padStart(4, "0")}`,
+      tag_code: `REALISTIC-20261114-${i}`,
+      flight_number: ["CX701", "CX711", "CX888", "CX251", "CX548"][i % 5],
+      arrival_airport: ["BKK", "SIN", "YVR", "LHR", "NRT"][i % 5],
+      status: i % 4 === 0 ? "MISROUTED" : i % 4 === 1 ? "RECOVERY_IN_PROGRESS" : "COLLECTED",
+      risk_score: i % 2 === 0 ? 82 : 14,
+      is_rush_bag: i % 2 === 0,
+    }));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(realisticCohort)));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await fetchLiveRecoveryPerformance({
+      window: "7d",
+      station: "HKG",
+      outboundLegId: "all",
+    });
+
+    expect(report.availability).toBe("available");
+    expect(report.trend.length).toBeGreaterThan(1);
+    const loadedStage = report.funnel.find((s) => s.key === "loaded");
+    const transferredStage = report.funnel.find((s) => s.key === "transferred");
+    expect(loadedStage?.count).toBeGreaterThan(0);
+    expect(transferredStage?.count).toBeGreaterThan(0);
+    expect(report.efficiency.responseTimeBuckets?.length).toBe(5);
+    expect(report.kpis.every((k) => k.comparison !== null)).toBe(true);
+    expect(report.businessImpact.every((b) => b.value !== null && b.value > 0)).toBe(true);
+  });
 });

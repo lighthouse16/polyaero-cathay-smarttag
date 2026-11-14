@@ -17,6 +17,7 @@ import { PerformanceFilterBar } from "./PerformanceFilterBar";
 import { PerformanceKpiGrid } from "./PerformanceKpiGrid";
 import { RecoveryFunnel } from "./RecoveryFunnel";
 import { RecoveryTrendChart } from "./RecoveryTrendChart";
+import { ResponseTimeDistribution } from "./ResponseTimeDistribution";
 import { RiskCauseBreakdown } from "./RiskCauseBreakdown";
 import styles from "./PerformanceView.module.css";
 
@@ -154,27 +155,34 @@ export function PerformanceDashboard({
       data-updating={loading ? "true" : undefined}
       aria-labelledby="performance-title"
     >
-      <h1 id="performance-title" className="sr-only" tabIndex={-1}>
-        Performance
-      </h1>
-      <PerformanceFilterBar
-        filters={filters}
-        onChangeFilters={(next) => {
-          if (next.window === filters.window && next.station === filters.station && next.outboundLegId === filters.outboundLegId) return;
-          ++requestIdRef.current;
-          setLoading(true);
-          setApiReport(null);
-          setLoadError(null);
-          setFilters(next);
-        }}
-        report={report}
-        outboundOptions={outboundOptions}
-        loading={loading}
-        onRefresh={() => {
-          setLoading(true);
-          setRefreshNonce((n) => n + 1);
-        }}
-      />
+      <div className={styles.topHeaderBar}>
+        <div className={styles.headerTitleBlock}>
+          <h1 id="performance-title" className={styles.pageTitle} tabIndex={-1}>
+            Operations Performance — Baggage Transfer
+          </h1>
+          <p className={styles.pageSubtitle}>
+            Transfer recovery execution, risk attribution, turnaround SLA, and operational impact at HKG.
+          </p>
+        </div>
+        <PerformanceFilterBar
+          filters={filters}
+          onChangeFilters={(next) => {
+            if (next.window === filters.window && next.station === filters.station && next.outboundLegId === filters.outboundLegId) return;
+            ++requestIdRef.current;
+            setLoading(true);
+            setApiReport(null);
+            setLoadError(null);
+            setFilters(next);
+          }}
+          report={report}
+          outboundOptions={outboundOptions}
+          loading={loading}
+          onRefresh={() => {
+            setLoading(true);
+            setRefreshNonce((n) => n + 1);
+          }}
+        />
+      </div>
 
       {loadError && <p className="data-notice" role="alert">{loadError}</p>}
       <span className="sr-only" role="status" aria-live="polite">
@@ -185,6 +193,7 @@ export function PerformanceDashboard({
       <div className={styles.upperGrid}>
         <RecoveryFunnel stages={report.funnel} note={report.funnelNote} />
         <RecoveryTrendChart buckets={report.trend} note={report.trendNote} />
+        <RiskCauseBreakdown summary={report.riskCauses} />
       </div>
 
       <div className={styles.lowerGrid}>
@@ -196,8 +205,12 @@ export function PerformanceDashboard({
 
         <div className={styles.lowerRightStack}>
           <div className={styles.middleRightSplit}>
-            <RiskCauseBreakdown summary={report.riskCauses} />
             <OperationalEfficiency efficiency={report.efficiency} />
+            <ResponseTimeDistribution
+              buckets={report.efficiency.responseTimeBuckets ?? []}
+              medianMin={report.efficiency.medianAlertToActionMin}
+              sampleSize={report.efficiency.alertToActionSampleSize}
+            />
           </div>
           <BusinessImpact items={report.businessImpact} />
         </div>

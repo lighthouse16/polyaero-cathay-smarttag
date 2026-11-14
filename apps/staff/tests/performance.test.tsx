@@ -17,6 +17,7 @@ import { PerformanceKpiGrid } from "../src/components/performance/PerformanceKpi
 import { RecoveryFunnel } from "../src/components/performance/RecoveryFunnel";
 import { RecoveryTrendChart } from "../src/components/performance/RecoveryTrendChart";
 import { PerformanceDashboard } from "../src/components/performance/PerformanceDashboard";
+import { ResponseTimeDistribution } from "../src/components/performance/ResponseTimeDistribution";
 
 const PROV: OperationalProvenance = {
   system: "unit-test",
@@ -425,4 +426,54 @@ it("plots rates below 80 without clamping and preserves native funnel button sem
   expect(chart).toContain('cy="60.72"');
   const funnel = renderToStaticMarkup(<RecoveryFunnel note={null} stages={[]} />);
   expect(funnel).not.toContain('role="list"');
+});
+
+it("computes and renders response time distribution buckets cleanly in populated and empty states", () => {
+  const nowDate = new Date("2026-11-14T12:00:00Z");
+  const report = aggregateRecoveryPerformance({
+    episodes: [
+      makeEpisode({
+        episodeId: "rt-1",
+        bagTag: "01691",
+        detectedAt: "2026-11-14T04:00:00Z",
+        actionedAt: "2026-11-14T04:03:00Z", // 3m -> <5m
+      }),
+      makeEpisode({
+        episodeId: "rt-2",
+        bagTag: "01692",
+        detectedAt: "2026-11-14T05:00:00Z",
+        actionedAt: "2026-11-14T05:14:00Z", // 14m -> 10-20m
+      }),
+    ],
+    eligibleTransfers: [],
+    filters: { window: "7d", station: "HKG", outboundLegId: "all" },
+    now: nowDate,
+    generatedAt: nowDate.toISOString(),
+    validUntil: "2026-11-14T18:00:00Z",
+    source: "test",
+  });
+
+  expect(report.efficiency.responseTimeBuckets).toEqual([
+    { bucket: "<5m", count: 1, sharePct: 50 },
+    { bucket: "5–10m", count: 0, sharePct: 0 },
+    { bucket: "10–20m", count: 1, sharePct: 50 },
+    { bucket: "20–30m", count: 0, sharePct: 0 },
+    { bucket: ">30m", count: 0, sharePct: 0 },
+  ]);
+
+  const populatedDist = renderToStaticMarkup(
+    <ResponseTimeDistribution
+      buckets={report.efficiency.responseTimeBuckets ?? []}
+      medianMin={report.efficiency.medianAlertToActionMin}
+      sampleSize={report.efficiency.alertToActionSampleSize}
+    />,
+  );
+  expect(populatedDist).toContain("Response Time Distribution");
+  expect(populatedDist).toContain("&lt;5m");
+  expect(populatedDist).toContain("50%");
+
+  const emptyDist = renderToStaticMarkup(
+    <ResponseTimeDistribution buckets={[]} medianMin={null} sampleSize={0} />,
+  );
+  expect(emptyDist).toContain("Response buckets unavailable");
 });

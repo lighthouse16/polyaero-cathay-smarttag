@@ -308,6 +308,12 @@ export interface RiskCauseBreakdownSummary {
   availabilityNote: string | null;
 }
 
+export interface ResponseTimeBucket {
+  bucket: "<5m" | "5–10m" | "10–20m" | "20–30m" | ">30m";
+  count: number;
+  sharePct: number;
+}
+
 export interface OperationalEfficiencySummary {
   medianAlertToActionMin: number | null;
   alertToActionSampleSize: number;
@@ -317,6 +323,7 @@ export interface OperationalEfficiencySummary {
   resolvedBeforeCutoffPct: number | null;
   resolvedBeforeCutoffDenominator: number | null;
   pendingExcludedCount: number;
+  responseTimeBuckets?: ResponseTimeBucket[];
   availabilityNote: string | null;
 }
 

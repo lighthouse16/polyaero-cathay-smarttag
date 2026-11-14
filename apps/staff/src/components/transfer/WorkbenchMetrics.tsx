@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import type { OutboundFlightSummary } from "../../lib/types";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
 
@@ -107,40 +107,12 @@ interface WorkbenchMetricsProps {
 
 export function WorkbenchMetrics({ header, fresh, now }: WorkbenchMetricsProps) {
   const baseNowMs = now.getTime();
-  const [tickOffset, setTickOffset] = useState<{ base: number; elapsed: number }>({
-    base: baseNowMs,
-    elapsed: 0,
-  });
-  const syncedAtWallMsRef = useRef<number>(0);
-
   const earliestActionAt = fresh ? header?.earliestActionAt ?? null : null;
   const deadlineMs = earliestActionAt && Number.isFinite(Date.parse(earliestActionAt))
     ? Date.parse(earliestActionAt)
     : null;
 
-  useEffect(() => {
-    syncedAtWallMsRef.current = Date.now();
-    if (deadlineMs === null) return;
-
-    const syncTick = () => {
-      if (document.visibilityState === "hidden") return;
-      setTickOffset({
-        base: baseNowMs,
-        elapsed: Math.max(0, Date.now() - syncedAtWallMsRef.current),
-      });
-    };
-
-    const intervalId = window.setInterval(syncTick, 1000);
-    document.addEventListener("visibilitychange", syncTick);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", syncTick);
-    };
-  }, [baseNowMs, deadlineMs]);
-
-  const elapsedMs = tickOffset.base === baseNowMs ? tickOffset.elapsed : 0;
-  const effectiveNowMs = baseNowMs + elapsedMs;
+  const effectiveNowMs = baseNowMs;
   const riskScore = fresh ? (header?.riskScore ?? null) : null;
   const riskTier = getRiskTier(riskScore);
   const riskPct = riskScore !== null && Number.isFinite(riskScore)

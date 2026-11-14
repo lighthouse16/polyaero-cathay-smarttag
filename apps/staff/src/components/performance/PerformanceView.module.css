@@ -346,10 +346,10 @@ button.refreshPill {
   color: var(--text-secondary);
 }
 
-/* ── Upper 2-Column Analytical Grid (Funnel + Trend) ── */
+/* ── Upper 3-Column Analytical Grid (Funnel + Trend + Risk Breakdown) ── */
 .upperGrid {
   display: grid;
-  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 0.92fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -1301,6 +1301,7 @@ button.refreshPill {
 }
 
 @media (max-width: 1200px) {
+  .upperGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lowerGrid { grid-template-columns: 1fr; }
 }
 
@@ -1369,7 +1370,7 @@ button.refreshPill {
   }
 }
 
-@container (max-width: 370px) {
+@container (max-width: 390px) {
   .causeBody, .causeUnavailable { flex-direction: column; align-items: stretch; }
   .donutWrap, .emptyDonutRing { align-self: center; }
   .efficiencyRow { flex-wrap: wrap; gap: 6px; }
@@ -1804,6 +1805,110 @@ button.refreshPill {
   }
 }
 
+.topHeaderBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 18px;
+}
+
+.headerTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 240px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.responseDistCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.responseChartWrap {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  flex: 1 1 auto;
+  min-height: 152px;
+  padding-top: 8px;
+}
+
+.responseColBtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 4px 2px 0;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: 100%;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background-color 140ms ease;
+}
+
+.responseColBtn:hover,
+.responseColBtnActive {
+  background: #F4F6F6;
+}
+
+.responseColBtn:focus-visible {
+  outline: 2px solid var(--brand-primary-darkcyan-default);
+  outline-offset: 2px;
+}
+
+.responseBarPct {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.responseBarTrack {
+  width: 100%;
+  max-width: 34px;
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.responseBarFill {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  transition: height 320ms var(--performance-ease);
+}
+
+.responseBucketLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kpiCard,
   .kpiSkeleton,
@@ -1821,7 +1926,8 @@ button.refreshPill {
   .windowSegThumb,
   .saveRateFill,
   .causeBarFill,
-  .efficiencyMeterFill {
+  .efficiencyMeterFill,
+  .responseBarFill {
     transition: none !important;
   }
 }
