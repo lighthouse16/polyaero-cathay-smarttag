@@ -49,6 +49,18 @@ export interface BackendBag {
   events?: BackendScanEvent[];
 }
 
+export interface BackendFlightOption {
+  id: string;
+  flight_number: string;
+  origin_code: string;
+  destination_code: string;
+  departure_time: string;
+  arrival_time: string;
+  terminal?: string | null;
+  gate?: string | null;
+  aircraft?: string | null;
+}
+
 export interface LiveRiskAssessment {
   risk_score: number;
   risk_level: string;
@@ -63,13 +75,7 @@ export interface LiveRiskAssessment {
 
 const DEFAULT_API_BASE = "https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1";
 
-const FEEDER_POOL = [
-  { flightNumber: "CX467", origin: "TPE" },
-  { flightNumber: "CX714", origin: "SIN" },
-  { flightNumber: "CX750", origin: "BKK" },
-  { flightNumber: "CX906", origin: "MNL" },
-  { flightNumber: "CX365", origin: "PVG" },
-];
+const HKG_CORRIDOR_DESTINATIONS = ["NRT", "NKG", "YVR", "LHR"];
 
 export function getLiveApiBase(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -78,8 +84,9 @@ export function getLiveApiBase(): string {
 
 export function buildLiveTransferSnapshot(
   backendBags: BackendBag[],
+  backendFlights: BackendFlightOption[] = [],
   now = new Date(),
-  sourceLabel = "Live Cloud Run + AWS RDS",
+  sourceLabel = "Live PostgreSQL RDS",
 ): TransferControlSnapshot {
   const nowMs = now.getTime();
   const generatedAt = new Date(nowMs).toISOString();
@@ -91,6 +98,40 @@ export function buildLiveTransferSnapshot(
     observedAt: generatedAt,
     validUntil,
   });
+
+  const legsMap = new Map<string, FlightLeg>();
+
+  // 1. Register all real PostgreSQL flights from /api/v1/flights/search first
+  for (const f of backendFlights) {
+    const depMs = Date.parse(f.departure_time);
+    const arrMs = Date.parse(f.arrival_time);
+    if (!Number.isFinite(depMs)) continue;
+    const depIso = new Date(depMs).toISOString();
+    const arrIso = Number.isFinite(arrMs) ? new Date(arrMs).toISOString() : null;
+    const opDate = depIso.slice(0, 10);
+    const origin = (f.origin_code || "").toUpperCase();
+    const dest = (f.destination_code || "").toUpperCase();
+    const flt = (f.flight_number || "").toUpperCase();
+    if (!origin || !dest || origin === dest || !flt) continue;
+
+    const isOutbound = origin === "HKG";
+    const legId = `${isOutbound ? "out" : "in"}-${flt}-${opDate}`;
+    if (!legsMap.has(legId)) {
+      legsMap.set(legId, {
+        id: legId,
+        flightNumber: flt,
+        operatingDate: opDate,
+        origin,
+        destination: dest,
+        scheduledDepartureAt: depIso,
+        scheduledArrivalAt: arrIso,
+        estimatedDepartureAt: depIso,
+        estimatedArrivalAt: arrIso,
+        actualArrivalAt: !isOutbound && arrMs && arrMs <= nowMs ? arrIso : null,
+        provenance: makeProv(`flight:${f.id || legId}`),
+      });
+    }
+  }
 
   const seenTags = new Set<string>();
   const seenIds = new Set<string>();
@@ -106,7 +147,6 @@ export function buildLiveTransferSnapshot(
     return true;
   });
 
-  const legsMap = new Map<string, FlightLeg>();
   const bags: LiveBag[] = [];
   const connections: BagTransferConnection[] = [];
   const bagRisks: BagRiskAssessment[] = [];
@@ -120,48 +160,87 @@ export function buildLiveTransferSnapshot(
 
     const rawOrigin = (b.departure_airport || "HKG").toUpperCase();
     const rawDest = (b.arrival_airport || "YVR").toUpperCase();
+    const rawFlt = (b.flight_number || "CX888").toUpperCase();
     const isOutboundFromHkg = rawOrigin === "HKG";
-    const outFlight = isOutboundFromHkg ? (b.flight_number || "CX888").toUpperCase() : "CX255";
-    const outOrigin = "HKG";
-    const outDest = isOutboundFromHkg && rawDest !== "HKG" ? rawDest : "NRT";
-    const outLegId = `out-${outFlight}-${opDate}`;
 
-    if (!legsMap.has(outLegId)) {
-      legsMap.set(outLegId, {
-        id: outLegId,
-        flightNumber: outFlight,
-        operatingDate: opDate,
-        origin: outOrigin,
-        destination: outDest,
-        scheduledDepartureAt: depIso,
-        scheduledArrivalAt: null,
-        estimatedDepartureAt: depIso,
-        estimatedArrivalAt: null,
-        actualArrivalAt: null,
-        provenance: makeProv(`leg:${outLegId}`),
-      });
+    // Find matching outbound HKG flight leg from real DB flights, or create from bag
+    let outLeg: FlightLeg | undefined;
+    if (isOutboundFromHkg) {
+      outLeg = legsMap.get(`out-${rawFlt}-${opDate}`) ??
+        [...legsMap.values()].find((l) => l.origin === "HKG" && l.flightNumber === rawFlt);
+      if (!outLeg) {
+        const legId = `out-${rawFlt}-${opDate}`;
+        outLeg = {
+          id: legId,
+          flightNumber: rawFlt,
+          operatingDate: opDate,
+          origin: "HKG",
+          destination: rawDest !== "HKG" ? rawDest : "NRT",
+          scheduledDepartureAt: depIso,
+          scheduledArrivalAt: null,
+          estimatedDepartureAt: depIso,
+          estimatedArrivalAt: null,
+          actualArrivalAt: null,
+          provenance: makeProv(`leg:${legId}`),
+        };
+        legsMap.set(legId, outLeg);
+      }
+    } else {
+      // Inbound feeder bag (e.g. CX889 YVR->HKG): attach to real outbound HKG flight (e.g. CX548)
+      outLeg =
+        [...legsMap.values()].find((l) => l.origin === "HKG" && l.flightNumber === "CX548") ??
+        [...legsMap.values()].find((l) => l.origin === "HKG");
+      if (!outLeg) {
+        const legId = `out-CX548-${opDate}`;
+        outLeg = {
+          id: legId,
+          flightNumber: "CX548",
+          operatingDate: opDate,
+          origin: "HKG",
+          destination: "NRT",
+          scheduledDepartureAt: depIso,
+          scheduledArrivalAt: null,
+          estimatedDepartureAt: depIso,
+          estimatedArrivalAt: null,
+          actualArrivalAt: null,
+          provenance: makeProv(`leg:${legId}`),
+        };
+        legsMap.set(legId, outLeg);
+      }
     }
 
-    const feeder = FEEDER_POOL[idx % FEEDER_POOL.length];
-    const inLegId = `in-${feeder.flightNumber}-${opDate}`;
-    const connMins = b.connection_minutes ?? (b.is_rush_bag ? 35 : 95);
-    const inArrMs = depMs - connMins * 60_000;
-    const inArrIso = new Date(inArrMs).toISOString();
-
-    if (!legsMap.has(inLegId)) {
-      legsMap.set(inLegId, {
-        id: inLegId,
-        flightNumber: feeder.flightNumber,
-        operatingDate: opDate,
-        origin: feeder.origin,
-        destination: "HKG",
-        scheduledDepartureAt: null,
-        scheduledArrivalAt: inArrIso,
-        estimatedDepartureAt: null,
-        estimatedArrivalAt: inArrIso,
-        actualArrivalAt: inArrMs <= nowMs ? inArrIso : null,
-        provenance: makeProv(`leg:${inLegId}`),
-      });
+    // Find matching real inbound-to-HKG feeder leg from DB flights
+    let inLeg: FlightLeg | undefined;
+    if (!isOutboundFromHkg) {
+      inLeg =
+        legsMap.get(`in-${rawFlt}-${opDate}`) ??
+        [...legsMap.values()].find((l) => l.destination === "HKG" && l.flightNumber === rawFlt);
+    }
+    if (!inLeg) {
+      const inboundCandidates = [...legsMap.values()].filter((l) => l.destination === "HKG");
+      if (inboundCandidates.length > 0) {
+        inLeg = inboundCandidates[idx % inboundCandidates.length];
+      } else {
+        const fallbackInFlt = !isOutboundFromHkg ? rawFlt : "CX889";
+        const fallbackInOrigin = !isOutboundFromHkg && rawOrigin !== "HKG" ? rawOrigin : "YVR";
+        const inLegId = `in-${fallbackInFlt}-${opDate}`;
+        const connMins = b.connection_minutes ?? (b.is_rush_bag ? 35 : 95);
+        const inArrIso = new Date(depMs - connMins * 60_000).toISOString();
+        inLeg = {
+          id: inLegId,
+          flightNumber: fallbackInFlt,
+          operatingDate: opDate,
+          origin: fallbackInOrigin,
+          destination: "HKG",
+          scheduledDepartureAt: null,
+          scheduledArrivalAt: inArrIso,
+          estimatedDepartureAt: null,
+          estimatedArrivalAt: inArrIso,
+          actualArrivalAt: Date.parse(inArrIso) <= nowMs ? inArrIso : null,
+          provenance: makeProv(`leg:${inLegId}`),
+        };
+        legsMap.set(inLegId, inLeg);
+      }
     }
 
     const updatedMs = Math.min(Date.parse(b.updated_at || "") || nowMs, nowMs);
@@ -184,6 +263,9 @@ export function buildLiveTransferSnapshot(
       };
     });
 
+    const outDepIso = outLeg.scheduledDepartureAt || depIso;
+    const outDepMs = Date.parse(outDepIso);
+
     const liveBag: LiveBag = {
       id: b.id,
       tag_number: b.tag_number,
@@ -192,10 +274,10 @@ export function buildLiveTransferSnapshot(
       passenger_name: b.passenger_name || "",
       tier_status: b.tier_status || "",
       cabin_class: b.cabin_class || "",
-      flight_number: outFlight,
-      departure_airport: outOrigin,
-      arrival_airport: outDest,
-      departure_time: depIso,
+      flight_number: outLeg.flightNumber,
+      departure_airport: outLeg.origin,
+      arrival_airport: outLeg.destination,
+      departure_time: outDepIso,
       seat_number: b.seat_number || "",
       weight_kg: typeof b.weight_kg === "number" ? b.weight_kg : 22.0,
       status: b.status || "TAGGED",
@@ -231,12 +313,12 @@ export function buildLiveTransferSnapshot(
     connections.push({
       id: `conn-${b.tag_number}`,
       bagTag: b.tag_number,
-      inboundLegId: inLegId,
-      outboundLegId: outLegId,
+      inboundLegId: inLeg.id,
+      outboundLegId: outLeg.id,
       status: connStatus,
       attention: connAttention,
       deadline: {
-        at: new Date(depMs - 20 * 60_000).toISOString(),
+        at: new Date(outDepMs - 20 * 60_000).toISOString(),
         kind: "latest_intervention",
         provenance: makeProv(`deadline:${b.tag_number}`),
       },
@@ -254,9 +336,9 @@ export function buildLiveTransferSnapshot(
       missingInputs: [],
     });
 
-    const scores = flightBagsMap.get(outLegId) ?? [];
+    const scores = flightBagsMap.get(outLeg.id) ?? [];
     scores.push(liveBag.risk_score);
-    flightBagsMap.set(outLegId, scores);
+    flightBagsMap.set(outLeg.id, scores);
   });
 
   const flightRisks: FlightRiskAssessment[] = [...legsMap.values()].map((leg) => {
@@ -277,7 +359,7 @@ export function buildLiveTransferSnapshot(
     availability: "available",
     generatedAt,
     validUntil,
-    source: `${sourceLabel} (${bags.length} bags)`,
+    source: `${sourceLabel} (${bags.length} bags, ${legsMap.size} flights)`,
     missingInputs: [],
     bags,
     legs: [...legsMap.values()],
@@ -297,17 +379,72 @@ export async function fetchLiveTransferSnapshot(
       ? signalOrBase.trim().replace(/\/$/, "")
       : getLiveApiBase();
 
-  const res = await fetch(`${cleanBase}/baggage`, {
+  const baggageRes = await fetch(`${cleanBase}/baggage`, {
     cache: "no-store",
     ...(signal ? { signal } : {}),
   });
-  if (!res.ok) {
-    throw new Error(`Live baggage API returned HTTP ${res.status}`);
+  if (!baggageRes.ok) {
+    throw new Error(`Live baggage API returned HTTP ${baggageRes.status}`);
+  }
+  const backendBags = (await baggageRes.json()) as BackendBag[];
+
+  // Derive unique operating dates from the bags (plus today/yesterday) to query Pat's real PostgreSQL flights table
+  const dateSet = new Set<string>([
+    new Date().toISOString().slice(0, 10),
+    new Date(Date.now() - 86_400_000).toISOString().slice(0, 10),
+  ]);
+  for (const b of backendBags) {
+    if (b.departure_time && b.departure_time.length >= 10) {
+      dateSet.add(b.departure_time.slice(0, 10));
+    }
   }
 
-  const backendBags = (await res.json()) as BackendBag[];
+  const flightQueries: Promise<BackendFlightOption[]>[] = [];
+  for (const depDate of dateSet) {
+    for (const dest of HKG_CORRIDOR_DESTINATIONS) {
+      flightQueries.push(
+        fetch(`${cleanBase}/flights/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          ...(signal ? { signal } : {}),
+          body: JSON.stringify({
+            trip_type: "RETURN",
+            origin: "HKG",
+            destination: dest,
+            departure_date: depDate,
+            return_date: depDate,
+          }),
+        })
+          .then(async (r) => {
+            if (!r.ok) return [];
+            const data = (await r.json()) as {
+              outbound?: BackendFlightOption[];
+              return?: BackendFlightOption[];
+              return_flights?: BackendFlightOption[];
+            };
+            return [
+              ...(data.outbound ?? []),
+              ...(data.return ?? []),
+              ...(data.return_flights ?? []),
+            ];
+          })
+          .catch(() => []),
+      );
+    }
+  }
+
+  const flightBatches = await Promise.all(flightQueries);
+  const flightMap = new Map<string, BackendFlightOption>();
+  for (const f of flightBatches.flat()) {
+    if (f && f.id && !flightMap.has(f.id)) {
+      flightMap.set(f.id, f);
+    }
+  }
+
   return buildLiveTransferSnapshot(
     backendBags,
+    [...flightMap.values()],
     new Date(),
     `Live PostgreSQL RDS (${cleanBase})`,
   );
