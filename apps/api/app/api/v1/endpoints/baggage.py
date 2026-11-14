@@ -5,6 +5,72 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.auth import User
+from app.models.baggage import Baggage, BaggageEvent, Tag
+from app.models.booking import Booking
+from app.models.flight import Flight
+
+
+async def _load_db_bags(db: AsyncSession) -> list[dict[str, Any]]:
+    rows = (await db.execute(select(Baggage, Tag).join(Tag, Baggage.tag_id == Tag.id))).all()
+    if not rows:
+        return []
+    bookings = {b.id: b for b in (await db.scalars(select(Booking))).all()}
+    flights = {f.id: f for f in (await db.scalars(select(Flight))).all()}
+    users = {u.id: u for u in (await db.scalars(select(User))).all()}
+    events_by_tag: dict[Any, list[dict[str, Any]]] = {}
+    for ev in (await db.scalars(select(BaggageEvent).order_by(BaggageEvent.created_at))).all():
+        events_by_tag.setdefault(ev.tag_id, []).append({
+            "id": str(ev.id),
+            "event_type": ev.event_type,
+            "timestamp": ev.created_at.isoformat() if ev.created_at else datetime.now(UTC).isoformat(),
+            "location_code": ev.location_code or "HKG-T1",
+            "station_name": ev.station_name or "HKIA Baggage Operations",
+            "scanner_type": ev.scanner_type or "NFC_TAP",
+            "notes": ev.notes or "",
+        })
+    result: list[dict[str, Any]] = []
+    for bag, tag in rows:
+        tag_num = tag.baggage_barcode or tag.bar_code_payload or tag.tag_code
+        if not tag_num or tag_num in LIVE_BAGS:
+            continue
+        booking = bookings.get(tag.booking_id) if tag.booking_id else None
+        flight = flights.get(booking.flight_id) if booking else None
+        user = users.get(booking.user_id) if booking else None
+        is_rush_bag = bag.status in {"MISROUTED", "MISSING", "RECOVERY_IN_PROGRESS"}
+        result.append({
+            "id": str(bag.id),
+            "tag_number": tag_num,
+            "tag_code": tag.tag_code,
+            "tag_interface": "SMARTTAG_EINK_EXCLUSIVE",
+            "booking_reference": tag.pnr or (booking.pnr if booking else "CX0000"),
+            "passenger_name": bag.passenger_name,
+            "tier_status": user.membership_tier if user else "GREEN",
+            "cabin_class": booking.cabin_class if booking else "ECONOMY",
+            "flight_number": bag.flight_number,
+            "departure_airport": bag.departure_airport,
+            "arrival_airport": bag.arrival_airport,
+            "departure_time": bag.departure_time.isoformat() if bag.departure_time else datetime.now(UTC).isoformat(),
+            "seat_number": bag.seat_number or "12A",
+            "weight_kg": tag.weight_kg or 20.0,
+            "connection_minutes": 40 if is_rush_bag else 95,
+            "status": bag.status,
+            "last_known_location": f"{bag.departure_airport}-T1-BHS",
+            "carousel_assigned": "Carousel 4",
+            "is_rush_bag": is_rush_bag,
+            "risk_score": 84 if is_rush_bag else 22,
+            "risk_level": "HIGH_PRIORITY" if is_rush_bag else "LOW",
+            "recommended_action": "APPROVE RAMP INTERCEPT & OFFER PASSENGER RECOVERY OPTIONS" if is_rush_bag else "STANDARD DIGITAL ITINERARY FLOW",
+            "copilot_approval_status": "PENDING_STAFF_APPROVAL" if is_rush_bag else "AUTO_CLEARED",
+            "passenger_recovery_choice": None,
+            "eink_banner": bag.status.replace("_", " "),
+            "updated_at": bag.updated_at.isoformat() if bag.updated_at else datetime.now(UTC).isoformat(),
+            "events": events_by_tag.get(tag.id, []),
+            "is_tag_synced": tag.sync_state == "READY",
+        })
+    return result
+
 
 from app.core.database import get_db
 from app.services.baggage import find_tag, normalize_status, record_event
@@ -81,8 +147,9 @@ def _compute_recovery_details(bag: dict[str, Any], choice: str, hotel_address: s
 
 
 @router.get("")
-async def list_baggage() -> list[dict[str, Any]]:
-    return list(LIVE_BAGS.values())
+async def list_baggage(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
+    db_bags = await _load_db_bags(db)
+    return list(LIVE_BAGS.values()) + db_bags
 
 
 @router.post("/reset")
