@@ -78,7 +78,7 @@ export function buildLiveTransferSnapshot(rawBags: LiveBag[], nowMs: number = Da
   const outboundScores = new Map<string, number[]>();
 
   const bags: LiveBag[] = rawBags
-    .filter((b) => /^\d{10}$/.test(String(b.tag_number || "")))
+    .filter((b) => String(b.tag_number || "").trim().length > 0)
     .map((b, idx) => {
       const updatedMs = Math.min(Date.parse(b.updated_at || generatedAt) || nowMs, nowMs);
       const events = (Array.isArray(b.events) ? b.events : []).map((e, eIdx) => {

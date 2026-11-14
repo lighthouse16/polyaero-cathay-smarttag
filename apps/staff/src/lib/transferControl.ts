@@ -71,7 +71,7 @@ function risk(value: unknown): Omit<FlightRiskAssessment, "flightLegId"> {
   return { status, score, modelVersion, assessedAt, validUntil, evidence, missingInputs };
 }
 function sanitizedBag(b: LiveBag): LiveBag {
-  if (!/^\d{10}$/.test(b.tag_number)) return invalid();
+  if (!b.tag_number || !b.tag_number.trim()) return invalid();
   unique(b.events, e => text(e.id));
   // ponytail: no staff PII authorization exists; add case-only PII after an authorized upstream contract.
   return {
@@ -110,7 +110,7 @@ export function validateTransferSnapshot(value: unknown): TransferControlSnapsho
   unique(bags, b => b.id); unique(connections, c => c.id); unique(connections, c => c.bagTag);
   unique(flightRisks, r => r.flightLegId); unique(bagRisks, r => r.bagTag);
   for (const c of connections) {
-    if (!/^\d{10}$/.test(c.bagTag) || (c.status !== "pending" && (c.attention === "action_required" || c.attention === "at_risk")) || (c.status === "missed" && c.attention !== "unknown")) return invalid();
+    if (!c.bagTag.trim() || (c.status !== "pending" && (c.attention === "action_required" || c.attention === "at_risk")) || (c.status === "missed" && c.attention !== "unknown")) return invalid();
     if (!bagMap.has(c.bagTag) || legMap.get(c.inboundLegId)?.destination !== "HKG" || legMap.get(c.outboundLegId)?.origin !== "HKG" || c.inboundLegId === c.outboundLegId) return invalid();
   }
   for (const r of flightRisks) if (!legMap.has(r.flightLegId)) return invalid();
