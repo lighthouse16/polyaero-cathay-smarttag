@@ -5,7 +5,9 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.baggage import BaggageEvent, Tag
+from app.models.baggage import Baggage, BaggageEvent, Tag
+from app.models.booking import Booking
+from app.models.flight import Flight
 
 # SYNCHRONIZED / TAG_TAPPED are events, not baggage milestones.
 MILESTONES = {
@@ -93,8 +95,18 @@ async def record_event(
     notes: str | None = None,
 ) -> BaggageEvent:
     status = normalize_status(event_type)
+    baggage = await db.scalar(select(Baggage).where(Baggage.tag_id == tag.id))
+    if baggage is not None and tag.booking_id is not None:
+        booking = await db.get(Booking, tag.booking_id)
+        if booking is not None and baggage.flight_id != booking.flight_id:
+            flight = await db.get(Flight, booking.flight_id)
+            if flight is not None:
+                baggage.flight_id = flight.id
+                baggage.status = flight.initial_status
     if status in MILESTONES:
         tag.tag_status = status
+        if baggage is not None:
+            baggage.status = status
     event = BaggageEvent(
         tag_id=tag.id,
         booking_id=booking_id or tag.booking_id,

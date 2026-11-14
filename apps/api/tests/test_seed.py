@@ -58,10 +58,7 @@ def test_seed_links_and_snapshot_histories(seed_engine):
             user = session.get(User, booking.user_id)
             assert tag.user_id == user.id and tag.pnr == booking.pnr
             assert tag.is_simulated and bag.status == tag.tag_status
-            assert (bag.flight_number, bag.departure_time) == (
-                flight.flight_number,
-                flight.departure_time,
-            )
+            assert bag.flight_id == booking.flight_id == flight.id
             history = session.scalars(
                 select(BaggageEvent)
                 .where(BaggageEvent.tag_id == tag.id)

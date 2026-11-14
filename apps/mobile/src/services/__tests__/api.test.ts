@@ -47,6 +47,37 @@ async function signedIn() {
   return api;
 }
 
+it('authenticates baggage sync and sends confirmation separately from flight defaults', async () => {
+  await signedIn();
+  const bridge = await import('../copilotBridge');
+  fetchMock.mockResolvedValueOnce(
+    reply({ tag_number: 'DB:TAG', tag_code: 'DB-UID' }),
+  );
+  expect(
+    await bridge.syncBookingToCopilot({
+      flightId: 'flight-id',
+      flightNumber: 'CX123',
+      origin: 'HKG',
+      destination: 'NRT',
+      initialStatus: 'TAGGED',
+    }),
+  ).not.toBeNull();
+  const request = fetchMock.mock.calls[0][1];
+  expect(request.headers.get('Authorization')).toBe('Bearer test-access');
+  const body = JSON.parse(request.body);
+  expect(body.flight_id).toBe('flight-id');
+  expect(body.sync_status).toBe('TAGGED');
+  expect(body).not.toHaveProperty('initial_status');
+  expect(body).not.toHaveProperty('weather_severity');
+  expect(bridge.getActivePassengerTag()).toBe('DB:TAG');
+  fetchMock.mockResolvedValueOnce(reply({ tag_number: 'DB:TAG' }));
+  await bridge.fetchLiveCopilotBag();
+  expect(fetchMock.mock.calls[1][0]).toMatch(/\/baggage\/DB%3ATAG$/);
+  expect(fetchMock.mock.calls[1][1].headers.get('Authorization')).toBe(
+    'Bearer test-access',
+  );
+});
+
 describe('mobile API configuration and authentication', () => {
   it('normalizes the URL and shares it with baggage/NFC calls', async () => {
     const config = await import('../apiConfig');

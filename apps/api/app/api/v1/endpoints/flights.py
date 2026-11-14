@@ -21,6 +21,21 @@ from app.schemas.flight import (
 router = APIRouter(tags=["flights"])
 
 
+@router.get("/upcoming", response_model=list[FlightStatusRead])
+async def upcoming_flights(db: AsyncSession = Depends(get_db)) -> list[Flight]:
+    rows = await db.scalars(
+        select(Flight)
+        .where(
+            Flight.departure_time >= datetime.now(UTC),
+            Flight.operational_status.not_in(("CANCELLED", "DEPARTED", "ARRIVED")),
+            Flight.actual_departure_time.is_(None),
+            Flight.actual_arrival_time.is_(None),
+        )
+        .order_by(Flight.departure_time, Flight.id)
+    )
+    return list(rows.all())
+
+
 @router.get("/status", response_model=list[FlightStatusRead])
 async def flight_status(
     flight_number: str = Query(min_length=1, max_length=10),
@@ -75,6 +90,10 @@ def _option(flight: Flight) -> FlightOption:
         destination_code=flight.destination,
         departure_time=flight.departure_time,
         arrival_time=flight.arrival_time,
+        weather_severity=flight.weather_severity,
+        load_factor_pct=flight.load_factor_pct,
+        airport_congestion=flight.airport_congestion,
+        initial_status=flight.initial_status,
         terminal=flight.terminal,
         gate=flight.gate,
         aircraft=flight.aircraft,

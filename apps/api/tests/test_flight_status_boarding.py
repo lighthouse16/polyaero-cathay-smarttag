@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
 from app.models.auth import User
+from app.models.baggage import Baggage, Tag
 from app.models.booking import Booking
 from app.models.flight import Flight
 
@@ -108,6 +109,104 @@ async def test_status_lookup_is_date_specific_and_unknown_until_reported(flight_
     assert missing.status_code == 200 and missing.json() == []
 
 
+async def test_upcoming_flights_are_public_complete_ordered_and_not_departed(
+    flight_client, seed_engine, monkeypatch
+):
+    client, flight, _, _ = flight_client
+    now = flight.departure_time
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr("app.api.v1.endpoints.flights.datetime", Clock)
+    monkeypatch.delitem(app.dependency_overrides, get_current_user)
+    with Session(seed_engine) as session, session.begin():
+        session.add(
+            Flight(
+                id=UUID(int=1),
+                flight_number="CX100",
+                origin="NRT",
+                destination="HKG",
+                departure_time=now,
+                arrival_time=now + timedelta(hours=4),
+            )
+        )
+        for status in ("DELAYED", "BOARDING"):
+            session.add(
+                Flight(
+                    flight_number="CX101",
+                    origin="HKG",
+                    destination="LHR",
+                    departure_time=now + timedelta(hours=2),
+                    arrival_time=now + timedelta(hours=14),
+                    operational_status=status,
+                )
+            )
+        for changes in (
+            {"departure_time": now - timedelta(minutes=1)},
+            {
+                "departure_time": now - timedelta(minutes=1),
+                "operational_status": "DELAYED",
+                "estimated_departure_time": now + timedelta(hours=1),
+            },
+            {"operational_status": "CANCELLED"},
+            {"operational_status": "DEPARTED"},
+            {"operational_status": "ARRIVED"},
+            {"actual_departure_time": now - timedelta(minutes=1)},
+            {"actual_arrival_time": now - timedelta(minutes=1)},
+        ):
+            session.add(
+                Flight(
+                    **{
+                        "flight_number": "CX999",
+                        "origin": "HKG",
+                        "destination": "NRT",
+                        "departure_time": now + timedelta(hours=1),
+                        "arrival_time": now + timedelta(hours=5),
+                        **changes,
+                    }
+                )
+            )
+    response = await client.get("/api/v1/flights/upcoming")
+    assert response.status_code == 200, response.text
+    rows = response.json()
+    assert len(rows) == 6
+    assert all(
+        (
+            row["weather_severity"],
+            row["load_factor_pct"],
+            row["airport_congestion"],
+            row["initial_status"],
+        )
+        == (2, 86.0, 2, "AWAITING_SYNC")
+        for row in rows
+    )
+    assert rows[0]["id"] == str(UUID(int=1))
+    assert all(row["flight_number"] != "CX999" for row in rows)
+    assert {"UNKNOWN", "DELAYED", "BOARDING"} == {row["operational_status"] for row in rows}
+    assert [(row["departure_time"], row["id"]) for row in rows] == sorted(
+        (row["departure_time"], row["id"]) for row in rows
+    )
+
+
+async def test_upcoming_flights_return_an_empty_list_when_all_flights_are_past(
+    flight_client, monkeypatch
+):
+    client, flight, _, _ = flight_client
+    now = flight.departure_time + timedelta(days=2)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr("app.api.v1.endpoints.flights.datetime", Clock)
+    response = await client.get("/api/v1/flights/upcoming")
+    assert response.status_code == 200 and response.json() == []
+
+
 async def test_staff_update_persists_and_updates_pass_gate(flight_client, seed_engine):
     client, flight, booking, _ = flight_client
     result = await client.patch(
@@ -150,6 +249,201 @@ async def test_passenger_cannot_update_flights(flight_client, key):
         headers=headers,
     )
     assert response.status_code == 401
+
+
+async def test_shared_flight_fields_drive_baggage_and_default_does_not_claim_sync(
+    flight_client, seed_engine, monkeypatch
+):
+    client, flight, booking, _ = flight_client
+    with Session(seed_engine) as session, session.begin():
+        stored = session.get(Flight, flight.id)
+        stored.weather_severity = 4
+        stored.load_factor_pct = 94.5
+        stored.airport_congestion = 3
+        stored.initial_status = "CHECKED_IN"
+        session.add(
+            Tag(
+                tag_code="SHARED-FLIGHT-TAG",
+                user_id=booking.user_id,
+                booking_id=booking.id,
+            )
+        )
+    from app.api.v1.endpoints import baggage as baggage_api
+
+    observed = []
+    predict = baggage_api.ACTIVE_RISK_MODEL.predict
+
+    def capture(features):
+        observed.append(features)
+        return predict(features)
+
+    monkeypatch.setattr(baggage_api.ACTIVE_RISK_MODEL, "predict", capture)
+    synced = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "SHARED-FLIGHT-TAG",
+            "connection_minutes": 37,
+        },
+    )
+    assert synced.status_code == 200, synced.text
+    assert synced.json()["status"] == "CHECKED_IN" and not synced.json()["is_tag_synced"]
+    assert synced.json()["flight_id"] == str(booking.flight_id)
+    assert (
+        observed[-1].weather_severity,
+        observed[-1].load_factor_pct,
+        observed[-1].airport_congestion,
+        observed[-1].transfer_minutes,
+    ) == (4, 94.5, 3, 37)
+    with Session(seed_engine) as session:
+        bag = session.get(Baggage, synced.json()["id"])
+        assert bag.flight_id == booking.flight_id and bag.connection_minutes == 37
+
+    confirmed = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "SHARED-FLIGHT-TAG",
+            "sync_status": "TAGGED",
+        },
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["status"] == "TAGGED" and confirmed.json()["is_tag_synced"]
+    changed = await client.patch(
+        f"/api/v1/flights/{flight.id}/status",
+        headers={"X-Flight-Staff-Key": "test-staff-key"},
+        json={
+            "operational_status": "DELAYED",
+            "weather_severity": 5,
+            "load_factor_pct": 99,
+            "airport_congestion": 4,
+            "initial_status": "AWAITING_SYNC",
+            "gate": "29",
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    detail = await client.get("/api/v1/baggage/SHARED-FLIGHT-TAG")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["weather_severity"] == 5 and detail.json()["connection_minutes"] == 37
+    assert (
+        detail.json()["status"] == "TAGGED" and detail.json()["initial_status"] == "AWAITING_SYNC"
+    )
+    assert observed[-1].weather_severity == 5
+    lookup = await client.get(
+        "/api/v1/flights/status",
+        params={
+            "flight_number": flight.flight_number,
+            "departure_date": "2026-11-14",
+        },
+    )
+    assert (
+        next(row for row in lookup.json() if row["id"] == str(flight.id))["load_factor_pct"] == 99
+    )
+    options = await client.post(
+        "/api/v1/flights/search",
+        json={
+            "origin": "HKG",
+            "destination": "NRT",
+            "departure_date": "2026-11-14",
+        },
+    )
+    assert options.status_code == 200 and options.json()["outbound"][0]["weather_severity"] == 5
+
+
+async def test_baggage_rejects_unowned_tags_and_clients_cannot_override_flight_weather(
+    flight_client, seed_engine, monkeypatch
+):
+    client, flight, booking, other = flight_client
+    with Session(seed_engine) as session, session.begin():
+        tag = Tag(tag_code="OTHER-FLIGHT-TAG", user_id=other.id)
+        session.add(tag)
+        session.flush()
+        session.add(
+            Baggage(
+                tag_id=tag.id,
+                flight_id=flight.id,
+                passenger_name="Other member",
+                status="CHECKED_IN",
+            )
+        )
+        session.add(Tag(tag_code="OWN-FLIGHT-TAG", user_id=booking.user_id, booking_id=booking.id))
+    listed = await client.get("/api/v1/baggage")
+    assert listed.status_code == 200 and listed.json() == []
+    denied = await client.get("/api/v1/baggage/OTHER-FLIGHT-TAG")
+    assert denied.status_code == 404
+    unauthorized = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "OTHER-FLIGHT-TAG",
+            "flight_id": str(flight.id),
+        },
+    )
+    assert unauthorized.status_code == 404
+    override = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "OWN-FLIGHT-TAG",
+            "weather_severity": 1,
+        },
+    )
+    assert override.status_code == 422
+    mismatch = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "OWN-FLIGHT-TAG",
+            "arrival_airport": "LHR",
+        },
+    )
+    assert mismatch.status_code == 409
+    monkeypatch.delitem(app.dependency_overrides, get_current_user)
+    assert (await client.get("/api/v1/baggage")).status_code == 401
+
+
+async def test_repeated_departures_require_a_flight_id_for_unbooked_owned_tags(
+    flight_client,
+    seed_engine,
+):
+    client, flight, booking, _ = flight_client
+    with Session(seed_engine) as session, session.begin():
+        session.add(Tag(tag_code="UNBOOKED-FLIGHT-TAG", user_id=booking.user_id))
+    ambiguous = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "UNBOOKED-FLIGHT-TAG",
+            "flight_number": "CX123",
+            "departure_airport": "HKG",
+            "arrival_airport": "NRT",
+        },
+    )
+    assert ambiguous.status_code == 409
+    exact = await client.post(
+        "/api/v1/baggage/sync",
+        json={
+            "tag_code": "UNBOOKED-FLIGHT-TAG",
+            "flight_id": str(flight.id),
+        },
+    )
+    assert exact.status_code == 200, exact.text
+    assert exact.json()["flight_id"] == str(flight.id)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("weather_severity", 6),
+        ("load_factor_pct", 101),
+        ("airport_congestion", 0),
+        ("initial_status", "TAGGED"),
+    ],
+)
+async def test_invalid_flight_environment_and_sync_defaults_are_rejected(
+    flight_client, field, value
+):
+    client, flight, _, _ = flight_client
+    response = await client.patch(
+        f"/api/v1/flights/{flight.id}/status",
+        headers={"X-Flight-Staff-Key": "test-staff-key"},
+        json={"operational_status": "UNKNOWN", field: value},
+    )
+    assert response.status_code == 422
 
 
 async def test_staff_can_clear_optional_fields_without_losing_omitted_fields(flight_client):

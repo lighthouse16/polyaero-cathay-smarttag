@@ -38,6 +38,10 @@ export interface FlightOption {
   destination_code: string;
   departure_time: string;
   arrival_time: string;
+  weather_severity: number;
+  load_factor_pct: number;
+  airport_congestion: number;
+  initial_status: 'AWAITING_SYNC' | 'CHECKED_IN';
   terminal: string | null;
   gate: string | null;
   aircraft: string | null;
@@ -90,6 +94,16 @@ export interface FlightStatus {
   destination: string;
   departure_time: string;
   arrival_time: string;
+  weather_severity: number;
+  load_factor_pct: number;
+  airport_congestion: number;
+  initial_status: 'AWAITING_SYNC' | 'CHECKED_IN';
+  aircraft: string | null;
+  is_connecting: boolean;
+  connecting_carrier: string | null;
+  cabins: Partial<
+    Record<CabinClass, { seats_available: number; price: number }>
+  >;
   operational_status:
     | 'UNKNOWN'
     | 'SCHEDULED'

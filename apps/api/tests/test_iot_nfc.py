@@ -44,9 +44,7 @@ async def member_headers(client: AsyncClient, monkeypatch) -> dict[str, str]:
 
 async def seeded_flight() -> Flight:
     async with async_session_maker() as session:
-        flight = await session.scalar(
-            select(Flight).where(Flight.flight_number == "CX548")
-        )
+        flight = await session.scalar(select(Flight).where(Flight.flight_number == "CX548"))
     assert flight is not None
     return flight
 
@@ -189,9 +187,7 @@ async def test_tap_requires_device_key_when_configured(client: AsyncClient, monk
         lambda: SimpleNamespace(iot_device_key="secret"),
     )
 
-    denied = await client.post(
-        f"/api/v1/tags/{tag_code}/tap", json={"next_status": "LOADED"}
-    )
+    denied = await client.post(f"/api/v1/tags/{tag_code}/tap", json={"next_status": "LOADED"})
     assert denied.status_code == 401
 
     allowed = await client.post(
@@ -212,11 +208,16 @@ async def test_display_falls_back_to_demo_bag(client: AsyncClient):
 
 
 async def test_mobile_baggage_sync_mirrors_into_database(client: AsyncClient, monkeypatch):
+    async def no_hardware_publish(*args):
+        return False
+
+    monkeypatch.setattr("app.api.v1.endpoints.smarttag.publish_display", no_hardware_publish)
     headers = await member_headers(client, monkeypatch)
     _, tag_id, tag_code, _ = await synced_booking(client, headers)
 
     sync = await client.post(
         "/api/v1/baggage/sync",
+        headers=headers,
         json={
             "tag_number": uuid4().hex[:10],
             "tag_code": tag_code,
@@ -266,6 +267,7 @@ async def test_staff_scan_mirrors_into_database(client: AsyncClient, monkeypatch
 
 async def test_normalize_status_aliases():
     from app.services.baggage import normalize_status
+
     assert normalize_status("priority_transfer") == "MISROUTED"
     assert normalize_status("PRIORITY_TRANSFER") == "MISROUTED"
 

@@ -89,6 +89,45 @@ Run `uv run alembic upgrade head` before deploying this version. Existing and
 seeded flights start at `UNKNOWN`, with no staff report timestamp. Status comes
 from our database, **not a live airline feed**.
 
+`flights` is the shared flight catalogue. Alongside route, schedule, cabin
+availability, and operational status, it stores `weather_severity` (1-5),
+`load_factor_pct` (0-100), `airport_congestion` (1-5), and `initial_status`
+(`AWAITING_SYNC` or `CHECKED_IN`). These defaults are 2, 86.0, 2, and
+`AWAITING_SYNC`. Search/status/upcoming responses expose these shared values;
+staff may update them through the existing protected flight-status PATCH.
+
+Bookings already reference `flights.id`. Baggage now has a required `flight_id`
+foreign key instead of duplicate flight number/route/departure columns.
+Connection minutes stay on baggage because each passenger's connection can
+differ. Changing flight conditions affects baggage reads and risk inputs without
+copying updates into each bag. The flight's `initial_status` is only a starting
+baggage default; it never proves NFC sync or replaces an existing bag milestone.
+
+Back up existing data before running `uv run alembic upgrade head`. Migration
+`b6c7d8e9f0a1` links legacy baggage using a matching tag booking, or an exact
+unique number/route/departure match for bags without a linked booking. Missing,
+ambiguous, or conflicting identities stop the migration and roll it back rather
+than guessing. Correct those legacy rows before retrying. Downgrade reconstructs
+the old baggage flight fields from the shared catalogue.
+
+Member `GET /baggage`, `GET /baggage/{identifier}`, and `POST /baggage/sync`
+require bearer authentication and enforce ownership; private responses are
+not cached. Sync requires a registered active owned tag and uses its booking's
+flight, or an explicit `flight_id` for an owned unbooked tag. Legacy
+number/route/departure selectors are accepted only when unambiguous. Pass
+`sync_status: "TAGGED"` or `"SYNCHRONIZED"` only after the client confirms sync;
+the old `initial_status` request name remains an alias for compatibility, not
+the source of flight defaults. Do not send weather/load/congestion overrides
+to baggage sync: they are rejected. No new physical-refresh verification is
+implemented here.
+
+- `GET /api/v1/flights/upcoming` is public and returns all flights whose scheduled
+  departure is now or later (UTC), ordered by departure time and then flight ID.
+  Cancelled/departed/arrived flights and flights with actual departure/arrival
+  timestamps are excluded. Estimated times do not change eligibility: a delayed
+  flight with a past scheduled departure is not included. The response is an
+  unpaginated array of the same flight details as the status endpoint below;
+  no matches returns `[]`.
 - `GET /api/v1/flights/status?flight_number=CX255&departure_date=2026-11-14`
   is public and returns all matching flights on their scheduled UTC departure
   date. No match returns an empty list. Responses include scheduled, estimated,
@@ -183,12 +222,12 @@ are sent. Remove the environment variable afterward. Reruns never reset member
 passwords. Refresh tokens, verification codes, and WebAuthn credentials are
 intentionally left to genuine authentication flows.
 
-**Dashboard boundary:** `/api/v1/baggage` currently lists `LIVE_BAGS` from memory.
-These persistent rows are available to database-backed trips, tags, SmartTag
-preparation, and flight search, but will not appear in that dashboard until its
-read path is connected to PostgreSQL. The API schema does not yet persist the
-dashboard's risk predictions, carousel assignments, or recovery-case details;
-those require a later schema/read-path change, not fabricated seed columns.
+**Dashboard boundary:** authenticated member baggage reads and sync now use
+PostgreSQL and the shared flight catalogue. Legacy staff scan/recovery and
+what-if simulators remain separate prototype paths. Their recovery-case and
+carousel state is not made persistent by this flight-data migration; a staff
+portal integration must respect member ownership rather than using anonymous
+requests to the member baggage API.
 
 Seed integration tests use real PostgreSQL in a fresh randomly named schema per
 test, removed afterward. They never use the application's `DATABASE_URL`.

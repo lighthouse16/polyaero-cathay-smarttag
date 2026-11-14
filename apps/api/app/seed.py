@@ -78,6 +78,10 @@ def build_seed_data(day: date, password: str | None = None) -> SeedData:
                 "destination": destination,
                 "departure_time": departure,
                 "arrival_time": departure + timedelta(minutes=duration),
+                "weather_severity": 2,
+                "load_factor_pct": 86.0,
+                "airport_congestion": 2,
+                "initial_status": "AWAITING_SYNC",
                 "terminal": "1",
                 "gate": str(20 + i),
                 "aircraft": "Airbus A330-300"
@@ -209,10 +213,7 @@ def build_seed_data(day: date, password: str | None = None) -> SeedData:
                 "id": seed_id(f"{day}/baggage/{i}"),
                 "tag_id": tag_id,
                 "passenger_name": f"{user['family_name']}/{user['given_names']}",
-                "flight_number": flight["flight_number"],
-                "departure_airport": flight["origin"],
-                "arrival_airport": flight["destination"],
-                "departure_time": flight["departure_time"],
+                "flight_id": flight["id"],
                 "seat_number": f"{12 + i}A",
                 "status": status,
                 "created_at": timestamps[0],
@@ -279,7 +280,7 @@ def main() -> None:
     for model, rows in build_seed_data(args.date).items():
         print(f"{model.__tablename__}: {len(rows)} planned")
     print("No refresh tokens, verification codes, or passkeys will be seeded.")
-    print("Dashboard /baggage still uses in-memory demo data, not these database rows.")
+    print("Member /baggage reads these database rows; staff demo recovery remains separate.")
     if not args.apply:
         print("Preview only; no database connection. Add --apply to insert.")
         return
