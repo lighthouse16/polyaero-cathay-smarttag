@@ -9,6 +9,7 @@ on:
         default: 'http://10.12.5.250:8000/api/v1'
   push:
     branches:
+      - main
       - feat/iot-nfc-sync
     paths:
       - 'apps/mobile/**'
@@ -73,7 +74,9 @@ jobs:
           npx expo prebuild --platform android --clean
           grep -q 'android.permission.NFC' android/app/src/main/AndroidManifest.xml
           grep -q 'android.hardware.nfc' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.nfc.action.TECH_DISCOVERED' android/app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/xml/nfc_tech_filter.xml
 
       - name: Build Signed Release APK
         working-directory: apps/mobile/android

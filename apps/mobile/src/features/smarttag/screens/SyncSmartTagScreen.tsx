@@ -2,7 +2,7 @@
  * Screen 03 — Sync SmartTag (Matches references/03_sync_smarttag.png)
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -36,6 +36,7 @@ import {
 } from '../components/CathaySmartTagPrimitives';
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
+import { clearLastNfcTap, useDiscoveredNfcTap } from '../../../services/nfc/nfcTapBridge';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 import { syncBookingToCopilot, postSmartTagTap } from '../../../services/copilotBridge';
 
@@ -61,6 +62,8 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
+  const discoveredTap = useDiscoveredNfcTap();
+  const handledTapSeq = useRef<number | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
   useEffect(() => () => {
     if (session.current) {
@@ -79,29 +82,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
   };
 
-  if (!itinerary || !activeBag) {
-    return (
-      <View style={styles.root}>
-        <CathayScreenHeader
-          title="Cathay SmartTag"
-          backIcon="chevron-back"
-          onBack={() => smartTagController.goBack()}
-          onLongPressTitle={onOpenDevMenu}
-        />
-        <View style={styles.emptyWrap}>
-          <InlineNotice
-            tone="warning"
-            title="Baggage details not prepared"
-            message="Complete Prepare SmartTag first so a baggage identity can be assigned."
-            actionLabel="Go to Prepare SmartTag"
-            onAction={() => smartTagController.navigateTo('prepare')}
-          />
-        </View>
-      </View>
-    );
-  }
-
-
   const isBusy =
     machineState === 'CHECKING_AVAILABILITY' ||
     machineState === 'READY_TO_SCAN' ||
@@ -110,8 +90,8 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'WRITING' ||
     machineState === 'VERIFYING';
 
-  const handleStartSync = async (forceDemo = false) => {
-    if (isBusy || session.current) return;
+  const handleStartSync = useCallback(async (forceDemo = false) => {
+    if (!itinerary || !activeBag || isBusy || session.current) return;
     if (activeBag.setupState === 'UNREGISTERED') {
       smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
       return;
@@ -142,7 +122,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
       service: effectiveService,
       payload,
-      expectedTagUid: bag.smartTag.tagUid,
+      expectedTagUid: physicalService ? '' : bag.smartTag.tagUid,
       stepDelayMs: physicalService ? 0 : 140,
       onStep: (step) => {
         if (operation.cancelled) {
@@ -160,6 +140,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
+      clearLastNfcTap();
       // 1. Sync booking to Copilot first so live backend bag record exists
       await syncBookingToCopilot({
         tagNumber: bag.baggage.tagNumber,
@@ -193,7 +174,38 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     } else if (outcome.failure) {
       setFailure(outcome.failure);
     }
-  };
+  }, [activeBag, isBusy, itinerary]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' || !discoveredTap) return;
+    if (handledTapSeq.current === discoveredTap.tapSeq) return;
+    if (!itinerary || !activeBag || activeBag.setupState === 'UNREGISTERED') return;
+    if (isBusy || session.current) return;
+    handledTapSeq.current = discoveredTap.tapSeq;
+    void handleStartSync(false);
+  }, [discoveredTap, itinerary, activeBag, isBusy, handleStartSync]);
+
+  if (!itinerary || !activeBag) {
+    return (
+      <View style={styles.root}>
+        <CathayScreenHeader
+          title="Cathay SmartTag"
+          backIcon="chevron-back"
+          onBack={() => smartTagController.goBack()}
+          onLongPressTitle={onOpenDevMenu}
+        />
+        <View style={styles.emptyWrap}>
+          <InlineNotice
+            tone="warning"
+            title="Baggage details not prepared"
+            message="Complete Prepare SmartTag first so a baggage identity can be assigned."
+            actionLabel="Go to Prepare SmartTag"
+            onAction={() => smartTagController.navigateTo('prepare')}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -239,6 +251,15 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         </View>
 
         {/* Status Message or Failure Display */}
+        {discoveredTap && (
+          <View style={styles.busyBox} testID="nfc-intent-detected-banner">
+            <Text style={styles.busyText}>
+              NFC tag detected ({discoveredTap.uid})
+              {discoveredTap.ndefText ? ` · ${discoveredTap.ndefText}` : ''}
+            </Text>
+          </View>
+        )}
+
         {isBusy && (
           <View style={styles.busyBox}>
             <Text style={styles.busyText}>{statusMessage}</Text>

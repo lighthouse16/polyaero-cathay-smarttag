@@ -34,6 +34,11 @@ import {
 import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { smartTagController, smartTagRepository } from '../smarttag/store';
 import { syncBookingToCopilot, setActivePassengerIdentity } from '../../services/copilotBridge';
+import {
+  DiscoveredNfcTap,
+  startNfcTapListener,
+  subscribeNfcTaps,
+} from '../../services/nfc/nfcTapBridge';
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -203,6 +208,41 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
       return () => window.removeEventListener('popstate', handleUrlChange);
     }
   }, [initialTabOverride]);
+
+  // Launch / Background NFC tag intent listener (native only)
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const handleTap = (tap: DiscoveredNfcTap | null) => {
+      if (!tap) return;
+      const snap = smartTagRepository.getSnapshot();
+      const itin =
+        (snap.activeItineraryId
+          ? snap.itineraries.find((i) => i.id === snap.activeItineraryId)
+          : snap.itineraries[0]) ?? smartTagRepository.addDemoItinerary();
+      const bags = smartTagRepository.getSnapshot().bagSetupsByItinerary[itin.id] ?? [];
+      let bag =
+        (snap.activeBagSetupId ? bags.find((b) => b.id === snap.activeBagSetupId) : bags[0]) ??
+        bags[0];
+      if (!bag || bag.setupState === 'UNREGISTERED') {
+        const prepared = smartTagRepository.prepareBagsForItinerary({
+          itineraryId: itin.id,
+          bagCount: Math.max(bags.length, 1),
+          declarations: DEFAULT_DECLARATIONS,
+        });
+        bag = prepared.bags[0];
+      }
+      setOnboardingScreen(null);
+      setActiveTab('trips');
+      smartTagController.navigateTo('sync', {
+        itineraryId: itin.id,
+        bagSetupId: bag?.id,
+      });
+    };
+
+    const unsubscribe = subscribeNfcTaps(handleTap);
+    void startNfcTapListener();
+    return unsubscribe;
+  }, []);
 
   // Floating Dock Liquid Droplet Slide Animation (Native Driver - 60fps/APK Safe)
   const initialItemWidth = Math.max((Dimensions.get('window').width - 28 - 12) / TAB_ITEMS.length, 50);

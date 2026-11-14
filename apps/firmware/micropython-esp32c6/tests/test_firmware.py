@@ -4,6 +4,7 @@ Unit tests for MicroPython firmware modules.
 Run on host: python -m pytest tests/ -v
 """
 
+import errno
 import sys
 import json
 import importlib.util
