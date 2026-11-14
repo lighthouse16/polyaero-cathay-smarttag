@@ -7,6 +7,34 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const CLOUDRUN_EVENT_ALIASES: Record<string, string> = {
+  TRANSFER_SCANNED: "TAG_TAPPED",
+  TRANSFER_SCAN: "TAG_TAPPED",
+  PRIORITY_TRANSFER: "MISROUTED",
+  CLAIMED: "COLLECTED",
+};
+
+const VALID_CLOUDRUN_EVENTS = new Set([
+  "CHECKED_IN",
+  "TAGGED",
+  "LOADED",
+  "IN_TRANSIT",
+  "ARRIVED",
+  "ON_CAROUSEL",
+  "COLLECTED",
+  "MISROUTED",
+  "MISSING",
+  "RECOVERY_IN_PROGRESS",
+  "SYNCHRONIZED",
+  "TAG_TAPPED",
+]);
+
+function normalizeActionEventType(raw: unknown): string {
+  const upper = String(raw || "TAG_TAPPED").trim().toUpperCase();
+  const mapped = CLOUDRUN_EVENT_ALIASES[upper] ?? upper;
+  return VALID_CLOUDRUN_EVENTS.has(mapped) ? mapped : "TAG_TAPPED";
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ tag: string }> },
@@ -30,7 +58,7 @@ export async function POST(
     const apiBase = getLiveApiBase();
 
     if (action === "scan") {
-      const eventType = String(body.event_type || "TRANSFER_SCANNED").trim();
+      const eventType = normalizeActionEventType(body.event_type);
       const locationCode = String(body.location_code || "HKG-T1-TRANSFER").trim();
       const stationName = String(body.station_name || "HKIA T1 Transfer Hub").trim();
       const notes = body.notes ? String(body.notes) : undefined;

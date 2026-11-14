@@ -169,6 +169,25 @@ describe("persistent baggage integration", () => {
     }
   });
 
+  it("caps synthetic multi-day connection_minutes on inbound feeder legs so arrivals stay in current shift", () => {
+    const fixedNow = new Date("2026-11-15T06:00:00Z");
+    const multiDayGapBag: BackendBag = {
+      ...bag,
+      id: "gap-bag",
+      tag_number: "0169000099",
+      flight_number: "CX251",
+      arrival_airport: "LHR",
+      departure_time: "2026-11-15T08:00:00Z",
+      connection_minutes: 6793,
+      status: "MISROUTED",
+    };
+    const snapshot = buildLiveTransferSnapshot([multiDayGapBag], fixedNow);
+    const inboundLeg = snapshot.legs.find((l) => l.id.startsWith("in-"));
+    expect(inboundLeg?.scheduledArrivalAt).toBeTruthy();
+    const arrMs = Date.parse(inboundLeg!.scheduledArrivalAt!);
+    expect(arrMs).toBeGreaterThan(fixedNow.getTime() - 4 * 3600_000);
+  });
+
   it("produces multi-day qualified funnel, trends, response buckets, deltas, and business impact for realistic-v1 cohorts", async () => {
     const realisticCohort: BackendBag[] = Array.from({ length: 40 }, (_, i) => ({
       ...bag,

@@ -155,12 +155,14 @@ export function buildLiveTransferSnapshot(
       ? { flightNumber: rawFlight, origin: rawOrigin }
       : FEEDER_POOL[idx % FEEDER_POOL.length];
     const inLegId = `in-${feeder.flightNumber}-${opDate}`;
-    const connMins =
+    const rawConnMins =
       typeof b.connection_minutes === "number" && b.connection_minutes >= 0
         ? b.connection_minutes
         : b.is_rush_bag
           ? 35
           : 95;
+    // Cap synthetic multi-day template gaps (>6h) to a realistic same-shift transfer buffer (38–102m)
+    const connMins = rawConnMins <= 360 ? rawConnMins : (idx % 5) * 16 + 38;
     const inArrMs = depMs - connMins * 60_000;
     const inArrIso = new Date(inArrMs).toISOString();
 

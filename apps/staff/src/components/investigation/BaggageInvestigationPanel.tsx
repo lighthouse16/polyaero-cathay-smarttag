@@ -452,12 +452,21 @@ export function BaggageInvestigationPanel({
                       setActionBusy("scan");
                       setActionNotice(null);
                       try {
+                        const statusUpper = String(bag.status || "").toUpperCase();
+                        const scanEventType =
+                          statusUpper === "MISROUTED" || statusUpper === "MISSING"
+                            ? "RECOVERY_IN_PROGRESS"
+                            : statusUpper === "AWAITING_SYNC" ||
+                                statusUpper === "CHECKED_IN" ||
+                                statusUpper === "UNLINKED"
+                              ? "TAGGED"
+                              : "TAG_TAPPED";
                         const res = await fetch(`/api/v1/baggage/${encodeURIComponent(bag.tag_number)}/actions`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             action: "scan",
-                            event_type: "TRANSFER_SCANNED",
+                            event_type: scanEventType,
                             location_code: "HKG-T1-TRANSFER",
                             station_name: "HKIA T1 Transfer Hub",
                             notes: "Transfer scan recorded from Staff Portal",
