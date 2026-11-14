@@ -220,4 +220,45 @@ describe("persistent baggage integration", () => {
     expect(report.kpis.every((k) => k.comparison !== null)).toBe(true);
     expect(report.businessImpact.every((b) => b.value !== null && b.value > 0)).toBe(true);
   });
+
+  it("populates transferSuccess and differentiates flight composite risk scores across departure banks", () => {
+    const fixedNow = new Date("2026-11-15T06:00:00Z");
+    const cohort: BackendBag[] = Array.from({ length: 100 }, (_, i) => {
+      const flightIdx = i % 5;
+      const bagWithinFlight = Math.floor(i / 5);
+      const isCompletedBag = flightIdx === 4 && bagWithinFlight % 2 === 0;
+      const isCrit = bagWithinFlight < 4;
+      const isMed = bagWithinFlight >= 4 && bagWithinFlight < 8;
+      return {
+        ...bag,
+        id: `diff-${i}`,
+        dataset: "realistic-v1",
+        tag_number: `016811${String(i).padStart(4, "0")}`,
+        tag_code: `REALISTIC-20261114-${i}`,
+        flight_number: ["CX251", "CX701", "CX711", "CX548", "CX888"][flightIdx],
+        arrival_airport: ["LHR", "BKK", "SIN", "NRT", "YVR"][flightIdx],
+        departure_time: "2026-11-15T06:10:00Z", // stale -> anchored per flight wave
+        status: isCompletedBag ? "LOADED" : isCrit ? "MISROUTED" : isMed ? "RECOVERY_IN_PROGRESS" : "TAGGED",
+        risk_score: bagWithinFlight === 0 ? 96 : isCrit ? 88 : isMed ? 54 : 18,
+        is_rush_bag: isCrit,
+      };
+    });
+
+    const snapshot = buildLiveTransferSnapshot(cohort, fixedNow);
+    expect(snapshot.transferSuccess).not.toBeNull();
+    expect(snapshot.transferSuccess!.eligible).toBeGreaterThan(0);
+    expect(snapshot.transferSuccess!.successful).toBeGreaterThan(0);
+
+    const outRisks = snapshot.flightRisks
+      .filter((r) => r.flightLegId.startsWith("out-") && r.score !== null)
+      .map((r) => r.score!);
+    expect(outRisks).toHaveLength(5);
+    expect(new Set(outRisks).size).toBeGreaterThan(3);
+    expect(Math.max(...outRisks)).toBeLessThan(96);
+
+    const loadedBagRisk = snapshot.bagRisks.find(
+      (r) => r.bagTag === "0168110004",
+    );
+    expect(loadedBagRisk?.score).toBeLessThanOrEqual(15);
+  });
 });
