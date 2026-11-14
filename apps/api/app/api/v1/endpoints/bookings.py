@@ -11,6 +11,7 @@ from app.models.baggage import Tag
 from app.models.booking import Booking
 from app.models.flight import Flight
 from app.schemas.booking import BookingCreate, BookingRead, LinkTagRequest
+from app.services.baggage import record_event
 
 router = APIRouter(tags=["bookings"])
 
@@ -71,6 +72,15 @@ async def link_tag(
     tag.tag_status = "CHECKED_IN"
     tag.last_synced_at = datetime.now(UTC)
     booking.checkin_status = True
+    await record_event(
+        db,
+        tag,
+        "CHECKED_IN",
+        location_code="MOBILE-APP",
+        station_name="Cathay App",
+        scanner_type="APP",
+        notes="SmartTag linked to booking",
+    )
     await db.commit()
     await db.refresh(booking)
     return booking

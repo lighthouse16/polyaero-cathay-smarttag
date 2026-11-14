@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     webauthn_rp_name: str = "PolyAero Cathay SmartTag"
     webauthn_origin: str = "http://localhost:8081"
 
+    # IoT bridge (ESP32 PN532 reader)
+    iot_device_key: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

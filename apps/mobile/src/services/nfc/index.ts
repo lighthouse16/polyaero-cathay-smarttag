@@ -2,29 +2,47 @@
  * PolyAero Cathay SmartTag - NFC Mobile Integration Boundary
  *
  * ARCHITECTURAL NOTICE:
- * 1. Physical E-ink tags (such as 2.9" 296x128 NFC-powered displays) use vendor-specific
- *    ISO 14443-A frame protocols / custom APDU commands for energy harvesting and display refresh.
- *    Arbitrary E-ink displays CANNOT be updated via generic NDEF writes alone.
- * 2. Real native NFC reading/writing requires an Expo Development Client (`npx expo run:android` / `npx expo run:ios`)
- *    configured with `react-native-nfc-manager` and vendor display protocol commands.
- * 3. `getPhysicalHardwareService()` returns `null` when no native vendor E-ink driver is installed,
- *    so "Start NFC sync" honestly reports `UNSUPPORTED` rather than fabricating hardware success.
+ * 1. Physical sync supports the ESP32-C6 MicroPython PN532 bridge's PA1 protocol,
+ *    not arbitrary passive E-ink tags or the Arduino bridge.
+ * 2. Native NFC requires an Expo Development Client and updated bridge firmware.
+ * 3. `getPhysicalHardwareService()` returns a NativeNfcService when running in a Dev Client
+ *    with the native module installed. Web and missing modules return `null`;
+ *    the service checks device availability before scanning.
  * 4. `demoNfcService` (`MockNfcService`) is used ONLY when the user explicitly selects
  *    "Use demo simulation".
  */
 
 import { INfcService, MockNfcService } from '@polyaero/shared';
+import { Platform } from 'react-native';
 
 export class MobileNfcManager {
   private static demoInstance: MockNfcService | null = null;
   private static hardwareInstance: INfcService | null = null;
 
   /**
-   * Returns a verified native E-ink hardware service only when a compatible native
-   * module is installed and registered. Returns `null` in Expo Go / Web / simulator.
+   * Returns the MicroPython bridge service when running in a Dev Client
+   * with react-native-nfc-manager installed. Web and missing modules return `null`.
    */
   public static getPhysicalHardwareService(): INfcService | null {
-    return MobileNfcManager.hardwareInstance;
+    if (MobileNfcManager.hardwareInstance) {
+      return MobileNfcManager.hardwareInstance;
+    }
+
+    // Only initialize native service on physical platforms (not web)
+    if (Platform.OS !== 'web') {
+      try {
+        /* eslint-disable @typescript-eslint/no-require-imports -- Keep the native module out of web startup. */
+        const nativeModule =
+          require('./NativeNfcService') as typeof import('./NativeNfcService');
+        /* eslint-enable @typescript-eslint/no-require-imports */
+        MobileNfcManager.hardwareInstance = nativeModule.nativeNfcService;
+        return MobileNfcManager.hardwareInstance;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -41,7 +59,11 @@ export class MobileNfcManager {
    * Backwards-compatible accessor for existing tests/Consumers.
    */
   public static getInstance(): INfcService {
-    return MobileNfcManager.getDemoSimulationService();
+    // Prefer native service on physical devices, fallback to demo
+    return (
+      MobileNfcManager.getPhysicalHardwareService() ??
+      MobileNfcManager.getDemoSimulationService()
+    );
   }
 }
 

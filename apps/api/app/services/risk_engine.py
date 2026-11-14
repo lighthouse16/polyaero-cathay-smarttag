@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 import joblib
 import pandas as pd
 from pydantic import BaseModel

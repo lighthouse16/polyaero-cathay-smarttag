@@ -37,5 +37,14 @@ class TagRead(TagBase):
     nfc_payload_hash: str | None
     bar_code_payload: str | None
     is_simulated: bool
+    weight_kg: float | None
     created_at: datetime
     updated_at: datetime
+
+
+class HardwareTapRequest(BaseModel):
+    reader_id: str = Field("ESP32-PN532-01", max_length=50)
+    station_name: str = Field("HKIA Self Bag Drop / Ramp Reader", max_length=100)
+    location_code: str | None = Field(None, max_length=50)
+    next_status: str | None = Field(None, max_length=30)
+    ndef_payload: str | None = Field(None, max_length=1024)

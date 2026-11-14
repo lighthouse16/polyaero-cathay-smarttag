@@ -89,7 +89,8 @@ When reference screenshots of the official Cathay Pacific application are provid
 |:---|:---|:---|
 | **Cathay App Shell** | Static typed mock data (`@polyaero/shared`) | Remains isolated mock data (no private Cathay API access) |
 | **SmartTag Mobile Linking** | `MockNfcService` with error & cancellation tests | Native NFC integration via Expo Dev Client |
-| **Baggage Milestone Events** | Shared in-memory fixtures | Supabase PostgreSQL + Realtime WebSockets |
+| **Baggage Milestone Events** | Append-only `baggage_events` in PostgreSQL, written by app sync, staff scans, and IoT taps | Supabase PostgreSQL + Realtime WebSockets |
+| **IoT E-Paper Bridge** | ESP32-S3 + PN532 target mode + 4.2" E-Paper polling the API | Live NFC → API → E-ink loop (see [`apps/firmware/esp32-display`](apps/firmware/esp32-display)) |
 | **Ground Staff Portal** | Interactive React state with shared fixtures | Live Supabase queries & status mutations |
 
 ---
@@ -99,6 +100,7 @@ When reference screenshots of the official Cathay Pacific application are provid
 - **Passive RF E-ink**: The hardware prototype uses passive RF energy harvesting without an internal battery. In Phase 0, NFC operations are simulated via `MockNfcService`.
 - **Expo Go vs Dev Client**: Standard Expo Go does not bundle native NFC libraries (`react-native-nfc-manager`). Testing on physical E-ink tags will require an Expo Development Build (`eas build`).
 - **Barcode Readability**: Standard IATA 10-digit license plate numbers use Interleaved 2 of 5. Readability on reflective E-ink under airport lighting requires physical hardware calibration.
+- **IoT Bridge**: The ESP32 runs PN532 in target mode, so the phone writes NDEF into the bridge. The API gates taps with an optional shared `IOT_DEVICE_KEY`; the NFC UID itself is spoofable.
 
 ---
 
