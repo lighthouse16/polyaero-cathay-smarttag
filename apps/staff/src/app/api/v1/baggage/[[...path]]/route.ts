@@ -118,7 +118,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Bag not confirmed at the transfer make-up area within 35 min.",
       predicted_arrival_time: "2026-11-12T16:30:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Dispatch for retrieval",
       copilot_approval_status: "PENDING_STAFF_APPROVAL",
       passenger_recovery_choice: null,
@@ -186,7 +186,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Tight 48-minute transfer window to CX703; awaiting final container seal.",
       predicted_arrival_time: "2026-11-12T15:40:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Dispatch for retrieval",
       copilot_approval_status: "PENDING_STAFF_APPROVAL",
       passenger_recovery_choice: null,
@@ -236,7 +236,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Bag accepted on transfer belt 7 with 42-minute connection buffer.",
       predicted_arrival_time: "2026-11-12T16:05:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -286,7 +286,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Checked in and routed toward Midfield Concourse transfer belt.",
       predicted_arrival_time: "2026-11-12T16:15:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -336,7 +336,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Bag accepted on transfer belt 4; normal progression expected.",
       predicted_arrival_time: "2026-11-12T16:25:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -386,7 +386,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Bag accepted at transfer sortation belt 9.",
       predicted_arrival_time: "2026-11-12T16:40:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -436,7 +436,7 @@ function createInitialBags(): Record<string, LiveBag> {
       passenger_risk_summary:
         "Checked in for CX418; transfer buffer within normal window.",
       predicted_arrival_time: "2026-11-12T16:50:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -755,7 +755,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
 
   if (score >= 65) {
     return {
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
       risk_level: "HIGH_PRIORITY",
       priority_sequence: 1,
@@ -768,7 +768,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
   }
   if (score >= 35) {
     return {
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
       risk_level: "MEDIUM",
       priority_sequence: 2,
@@ -780,7 +780,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
     };
   }
   return {
-    model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+    model_version: "cathay-bag-risk-v1.0-interface",
     risk_score: score,
     risk_level: "LOW",
     priority_sequence: 3,
