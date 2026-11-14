@@ -171,3 +171,26 @@ async def test_unattached_baggage_is_listed_without_inventing_tag_data(client, s
         f"/api/v1/baggage/{bag_id}/scan", json={"event_type": "LOADED"}
     )
     assert scan.status_code == 409
+
+
+async def test_dashboard_does_not_inherit_sync_from_another_booking(client, seed_engine):
+    from app.models.booking import Booking
+
+    identifier = "SEED-20261114-00"
+    with Session(seed_engine) as session, session.begin():
+        tag = session.scalar(select(Tag).where(Tag.tag_code == identifier))
+        current = session.get(Booking, tag.booking_id)
+        previous = Booking(user_id=current.user_id, flight_id=current.flight_id, pnr="OLDTAP")
+        session.add(previous)
+        session.flush()
+        session.execute(delete(BaggageEvent).where(BaggageEvent.tag_id == tag.id))
+        tag.sync_state = "PENDING"
+        session.add(BaggageEvent(
+            tag_id=tag.id, booking_id=previous.id, event_type="SYNCHRONIZED",
+            location_code="PREVIOUS-BOOKING", scanner_type="APP",
+        ))
+    detail = await client.get(f"/api/v1/baggage/dashboard/{identifier}")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["is_tag_synced"] is False
+    assert detail.json()["events"] == []
+    assert detail.json()["last_known_location"] is None

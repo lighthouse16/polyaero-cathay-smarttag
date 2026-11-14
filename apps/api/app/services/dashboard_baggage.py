@@ -109,10 +109,17 @@ async def load_baggage(
                 "handled_by_staff_id": event.reader_id,
                 "scanner_type": event.scanner_type,
                 "notes": event.notes,
+                "_booking_id": event.booking_id,
             })
     result = []
     for bag, tag, booking, user, flight in rows:
-        events = events_by_tag.get(tag.id, []) if tag else []
+        history = events_by_tag.get(tag.id, []) if tag else []
+        # A reused tag must not report a previous booking's scans or sync confirmation.
+        history = [event for event in history if event["_booking_id"] == tag.booking_id] if tag else []
+        synced = bool(tag and (tag.sync_state == "READY" or any(
+            event["event_type"] == "SYNCHRONIZED" for event in history
+        )))
+        events = [{key: value for key, value in event.items() if key != "_booking_id"} for event in history]
         location = next(
             (event["location_code"] for event in reversed(events) if event["location_code"]),
             None,
@@ -157,6 +164,6 @@ async def load_baggage(
             "eink_banner": state.get("eink_banner") or banner_for(status),
             "updated_at": bag.updated_at.isoformat(),
             "events": events,
-            "is_tag_synced": tag.sync_state == "READY" if tag else False,
+            "is_tag_synced": synced,
         })
     return result

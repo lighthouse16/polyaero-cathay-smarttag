@@ -16,7 +16,6 @@ from app.models.flight import Flight
 from app.services.baggage import banner_for, find_tag, normalize_status, record_event
 from app.services.dashboard_baggage import (
     apply_assessment,
-    ensure_baggage,
     find_baggage,
     load_baggage,
 )
@@ -126,6 +125,7 @@ async def _database_bags(
         result.append(
             {
                 "id": str(bag.id),
+                "tag_id": str(tag.id) if tag else None,
                 "tag_number": number,
                 "tag_code": tag.tag_code if tag else None,
                 "flight_id": str(flight.id),
@@ -350,7 +350,7 @@ async def sync_smarttag_from_mobile(
     if booking and booking.user_id:
         user = await db.get(User, booking.user_id)
         if user:
-            bag.passenger_name = " ".join(filter(None, (user.family_name, user.given_names)))
+            bag.passenger_name = f"{user.family_name or ''}/{user.given_names or ''}"
     tag.weight_kg = payload.weight_kg
     if "connection_minutes" in payload.model_fields_set:
         bag.connection_minutes = payload.connection_minutes

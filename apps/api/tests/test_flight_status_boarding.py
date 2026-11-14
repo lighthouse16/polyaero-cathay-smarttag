@@ -264,6 +264,7 @@ async def test_shared_flight_fields_drive_baggage_and_default_does_not_claim_syn
         session.add(
             Tag(
                 tag_code="SHARED-FLIGHT-TAG",
+                pnr=booking.pnr,
                 user_id=booking.user_id,
                 booking_id=booking.id,
             )
@@ -307,6 +308,16 @@ async def test_shared_flight_fields_drive_baggage_and_default_does_not_claim_syn
     )
     assert confirmed.status_code == 200, confirmed.text
     assert confirmed.json()["status"] == "TAGGED" and confirmed.json()["is_tag_synced"]
+    prepared = await client.get(f"/api/v1/smarttag/prepare/{booking.id}")
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["tag_id"] == confirmed.json()["tag_id"]
+    dashboard = await client.get("/api/v1/baggage/dashboard/SHARED-FLIGHT-TAG")
+    assert dashboard.status_code == 200, dashboard.text
+    assert dashboard.json()["id"] == confirmed.json()["id"]
+    assert dashboard.json()["status"] == confirmed.json()["status"]
+    assert dashboard.json()["is_tag_synced"] is True
+    assert dashboard.json()["events"][-1]["event_type"] == "SYNCHRONIZED"
+    assert dashboard.json()["events"][-1]["id"] == confirmed.json()["events"][-1]["id"]
     changed = await client.patch(
         f"/api/v1/flights/{flight.id}/status",
         headers={"X-Flight-Staff-Key": "test-staff-key"},
