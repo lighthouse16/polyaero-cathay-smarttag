@@ -19,7 +19,6 @@ from app.services.baggage import (
     normalize_status,
     record_event,
 )
-from app.services.demo_state import LIVE_BAGS
 from app.services.smarttag import build_display_payload
 
 router = APIRouter()
@@ -30,36 +29,6 @@ async def require_device_key(x_device_key: str | None = Header(None)) -> None:
     expected = get_settings().iot_device_key
     if expected and x_device_key != expected:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device key")
-
-
-def _find_demo_bag(identifier: str) -> dict[str, Any] | None:
-    normalized = identifier.strip().upper()
-    for bag in LIVE_BAGS.values():
-        if bag["tag_code"].upper() == normalized or bag["tag_number"] == normalized:
-            return bag
-    return None
-
-
-def _demo_display(bag: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "tag": bag["tag_code"],
-        "tag_code": bag["tag_code"],
-        "bag_number": bag["tag_number"],
-        "pnr": bag["booking_reference"],
-        "flight": bag["flight_number"],
-        "origin": bag["departure_airport"],
-        "destination": bag["arrival_airport"],
-        "route": f"{bag['departure_airport']}->{bag['arrival_airport']}",
-        "passenger": bag["passenger_name"],
-        "cabin": bag["cabin_class"],
-        "weight_kg": bag["weight_kg"],
-        "barcode": bag["tag_number"],
-        "status": bag["status"],
-        "banner": bag["eink_banner"],
-        "is_rush": bag["is_rush_bag"],
-        "sync_state": "READY",
-        "updated_at": bag["updated_at"],
-    }
 
 
 def _tag_only_display(tag: Tag) -> dict[str, Any]:
@@ -102,13 +71,9 @@ async def get_eink_display_payload(
 ) -> dict[str, Any]:
     """Payload polled by the ESP32-S3 to render the E-Paper screen."""
     tag = await find_tag(db, identifier)
-    if tag is not None:
-        return await _db_display(db, tag)
-
-    bag = _find_demo_bag(identifier)
-    if bag is None:
+    if tag is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tag not registered")
-    return _demo_display(bag)
+    return await _db_display(db, tag)
 
 
 @router.post("/{identifier}/tap", dependencies=[Depends(require_device_key)])
@@ -119,39 +84,10 @@ async def hardware_nfc_tap(
 ) -> dict[str, Any]:
     """Receive the NDEF payload the phone wrote and advance baggage progress."""
     tag = await find_tag(db, identifier)
-
     if tag is None:
-        bag = _find_demo_bag(identifier)
-        if bag is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Tag not registered"
-            )
-        now = datetime.now(UTC).isoformat()
-        if tap.next_status:
-            raw = tap.next_status.upper()
-            try:
-                normalized = normalize_status(raw)
-            except ValueError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
-                ) from exc
-            bag["status"] = normalized
-            bag["eink_banner"] = banner_for(normalized)
-            bag["is_rush_bag"] = is_rush(normalized)
-        bag["updated_at"] = now
-        bag["events"].insert(
-            0,
-            {
-                "id": f"evt_hw_{int(datetime.now(UTC).timestamp())}",
-                "event_type": bag["status"],
-                "timestamp": now,
-                "location_code": tap.location_code or tap.reader_id,
-                "station_name": tap.station_name,
-                "scanner_type": "NFC_TAP",
-                "notes": f"Physical PN532 NFC tap verified by {tap.reader_id}",
-            },
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tag not registered"
         )
-        return {"acknowledged": True, "display": _demo_display(bag)}
 
     event_type = "TAG_TAPPED"
     notes: str | None = None
