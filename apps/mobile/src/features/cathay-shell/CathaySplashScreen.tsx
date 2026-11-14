@@ -45,11 +45,12 @@ const styles = StyleSheet.create({
   brandRow: {
     width: '74%',
     maxWidth: 290,
+    aspectRatio: 6.13, // ponytail: static 705x115 ratio, read Image.resolveAssetSource if asset swaps dynamically
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandImage: {
     width: '100%',
-    aspectRatio: 6.13,
+    height: '100%',
   },
 });

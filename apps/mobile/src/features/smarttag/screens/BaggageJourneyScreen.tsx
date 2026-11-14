@@ -16,6 +16,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   CATHAY_JADE,
+  CATHAY_CRIMSON,
+  CATHAY_AMBER_WARM,
+  CATHAY_WARM_CREAM,
+  CATHAY_WARM_BORDER,
   CATHAY_FONT_FAMILY,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
@@ -311,7 +315,7 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
               <Ionicons
                 name={isHighRisk ? 'shield-half' : 'shield-checkmark'}
                 size={18}
-                color={isHighRisk ? '#B45309' : CATHAY_JADE}
+                color={isHighRisk ? CATHAY_AMBER_WARM : CATHAY_JADE}
               />
               <Text style={styles.riskTitle}>Flight &amp; Bag Risk Prediction</Text>
             </View>
@@ -745,8 +749,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   riskCardHigh: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#F59E0B',
+    backgroundColor: CATHAY_WARM_CREAM,
+    borderColor: CATHAY_WARM_BORDER,
   },
   riskHeaderRow: {
     flexDirection: 'row',
@@ -766,7 +770,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   riskScoreBadgeHigh: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F4EFE4',
   },
   riskScoreText: {
     fontSize: 11,
@@ -774,7 +778,7 @@ const styles = StyleSheet.create({
     color: CATHAY_JADE,
   },
   riskScoreTextHigh: {
-    color: '#B45309',
+    color: CATHAY_AMBER_WARM,
   },
   riskSummary: {
     fontSize: 12.5,
@@ -808,9 +812,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   missingCard: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#F59E0B',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#ECEEEF',
     borderWidth: 1,
+    borderLeftWidth: 3.5,
+    borderLeftColor: CATHAY_CRIMSON,
     borderRadius: 14,
     padding: 16,
     marginBottom: 14,
@@ -818,11 +824,11 @@ const styles = StyleSheet.create({
   missingTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#92400E',
+    color: CATHAY_TEXT_PRIMARY,
   },
   missingSub: {
     fontSize: 12.5,
-    color: '#78350F',
+    color: CATHAY_TEXT_SECONDARY,
     marginTop: 4,
     marginBottom: 12,
     lineHeight: 18,
@@ -977,12 +983,12 @@ const styles = StyleSheet.create({
     borderColor: CATHAY_JADE,
   },
   circleDelayed: {
-    backgroundColor: '#D97706',
-    borderColor: '#D97706',
+    backgroundColor: CATHAY_AMBER_WARM,
+    borderColor: CATHAY_AMBER_WARM,
   },
   circleException: {
-    backgroundColor: '#B91C1C',
-    borderColor: '#B91C1C',
+    backgroundColor: CATHAY_CRIMSON,
+    borderColor: CATHAY_CRIMSON,
   },
   circleCurrentInner: {
     backgroundColor: CATHAY_JADE,

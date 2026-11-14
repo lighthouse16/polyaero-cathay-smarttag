@@ -24,6 +24,8 @@ import {
 } from '@polyaero/shared';
 import {
   CATHAY_JADE,
+  CATHAY_CRIMSON,
+  CATHAY_AMBER_WARM,
   CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
@@ -252,6 +254,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         {/* Status Message or Failure Display */}
         {discoveredTap && (
           <View style={styles.busyBox} testID="nfc-intent-detected-banner">
+            <Ionicons name="radio-outline" size={18} color={CATHAY_JADE} />
             <Text style={styles.busyText}>
               NFC tag detected ({discoveredTap.uid})
               {discoveredTap.ndefText ? ` · ${discoveredTap.ndefText}` : ''}
@@ -261,14 +264,43 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
         {isBusy && (
           <View style={styles.busyBox}>
+            <Ionicons name="sync-outline" size={18} color={CATHAY_JADE} />
             <Text style={styles.busyText}>{statusMessage}</Text>
           </View>
         )}
 
         {failure && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>{failure.title}</Text>
-            <Text style={styles.errorText}>{failure.message}</Text>
+          <View
+            style={[
+              styles.errorBox,
+              failure.code === 'NFC_TIMEOUT' || failure.code === 'NFC_CANCELLED'
+                ? styles.errorBoxWarning
+                : styles.errorBoxCritical,
+            ]}
+          >
+            <View style={styles.errorHeaderRow}>
+              <Ionicons
+                name={
+                  failure.code === 'NFC_TIMEOUT' || failure.code === 'NFC_CANCELLED'
+                    ? 'time-outline'
+                    : 'alert-circle-outline'
+                }
+                size={19}
+                color={
+                  failure.code === 'NFC_TIMEOUT' || failure.code === 'NFC_CANCELLED'
+                    ? CATHAY_AMBER_WARM
+                    : CATHAY_CRIMSON
+                }
+                style={{ marginTop: 1 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.errorTitle}>{failure.title}</Text>
+                <Text style={styles.errorText}>{failure.message}</Text>
+                {failure.recoveryHint ? (
+                  <Text style={styles.errorHintText}>{failure.recoveryHint}</Text>
+                ) : null}
+              </View>
+            </View>
           </View>
         )}
 
@@ -379,37 +411,68 @@ const styles = StyleSheet.create({
   },
 
   busyBox: {
-    backgroundColor: '#E6F4F1',
-    borderRadius: 8,
-    padding: 12,
-    width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#EAF3F2',
+    borderWidth: 1,
+    borderColor: '#D0E6E4',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
     marginBottom: 16,
   },
   busyText: {
+    flex: 1,
     color: CATHAY_JADE,
     fontSize: 13.5,
     fontWeight: '600',
   },
 
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#ECEEEF',
+    borderLeftWidth: 3.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     width: '100%',
     marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  errorBoxWarning: {
+    borderLeftColor: CATHAY_AMBER_WARM,
+  },
+  errorBoxCritical: {
+    borderLeftColor: CATHAY_CRIMSON,
+  },
+  errorHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
   },
   errorTitle: {
-    color: '#B91C1C',
-    fontSize: 13.5,
+    color: CATHAY_TEXT_PRIMARY,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   errorText: {
-    color: '#B91C1C',
+    color: CATHAY_TEXT_SECONDARY,
+    fontSize: 13,
+    lineHeight: 18.5,
+  },
+  errorHintText: {
+    color: CATHAY_TEXT_MUTED,
     fontSize: 12.5,
+    lineHeight: 17.5,
+    marginTop: 6,
   },
 
   actionsWrap: {

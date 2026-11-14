@@ -221,7 +221,9 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
 
               {attemptsLeft !== null && (
                 <View style={styles.errorBanner}>
-                  <Ionicons name="warning" size={18} color="#DC2626" />
+                  <View style={styles.errorExclamationBox}>
+                    <Text style={styles.errorExclamationMark}>!</Text>
+                  </View>
                   <Text style={styles.errorBannerText}>
                     The password you entered is incorrect. You have {attemptsLeft} attempts left before your account will be locked. Please try again or{' '}
                     <Text style={styles.errorLink} onPress={() => setViewState('reset_phone')}>
@@ -554,21 +556,39 @@ const styles = StyleSheet.create({
   },
   errorBanner: {
     flexDirection: 'row',
-    backgroundColor: '#FEF2F2',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#87323A',
+    borderRadius: 6,
     padding: 12,
     marginBottom: 20,
     gap: 10,
   },
+  errorExclamationBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: '#87323A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  errorExclamationMark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   errorBannerText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#DC2626',
+    color: '#1C2024',
     flex: 1,
   },
   errorLink: {
+    color: '#006564',
     textDecorationLine: 'underline',
     fontWeight: '600',
   },

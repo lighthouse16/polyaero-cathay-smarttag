@@ -157,7 +157,9 @@ export const CathaySignUpModal: React.FC<CathaySignUpModalProps> = ({
 
               {phoneError && (
                 <View style={styles.errorBox}>
-                  <Ionicons name="warning" size={16} color="#DC2626" />
+                  <View style={styles.errorExclamationBox}>
+                    <Text style={styles.errorExclamationMark}>!</Text>
+                  </View>
                   <Text style={styles.errorText}>{phoneError}</Text>
                 </View>
               )}
@@ -566,17 +568,32 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
+    borderColor: '#E2E8F0',
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#87323A',
+    borderRadius: 6,
     padding: 12,
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
+  },
+  errorExclamationBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: '#87323A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorExclamationMark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   errorText: {
     fontSize: 13,
-    color: '#DC2626',
+    color: '#1C2024',
     flex: 1,
   },
   linkRow: {

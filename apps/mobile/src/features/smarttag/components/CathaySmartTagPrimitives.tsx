@@ -60,6 +60,8 @@ export const CATHAY_MINT_SURFACE = '#EAF3F2';
 export const CATHAY_MINT_BADGE = '#DCECE8';
 export const CATHAY_WARM_CREAM = '#FAF5EA';
 export const CATHAY_WARM_BORDER = '#EDE4D3';
+export const CATHAY_CRIMSON = '#87323A';
+export const CATHAY_AMBER_WARM = '#785D2A';
 export const CATHAY_BG = '#F6F7F7';
 export const CATHAY_TEXT_PRIMARY = '#1C2024';
 export const CATHAY_TEXT_SECONDARY = '#52565A';
@@ -267,15 +269,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       : tone === 'amber'
         ? '#F4EFE4'
         : tone === 'red'
-          ? '#FDE8E8'
+          ? '#F1EFEB'
           : '#EFEFEF';
   const fg =
     tone === 'jade'
       ? CATHAY_JADE
       : tone === 'amber'
-        ? '#785D2A'
+        ? CATHAY_AMBER_WARM
         : tone === 'red'
-          ? '#9B1C1C'
+          ? CATHAY_CRIMSON
           : '#3B4148';
 
   return (
@@ -693,22 +695,24 @@ export const SmartTagProgressIndicator: React.FC<{
     state === 'WRITING' ||
     state === 'VERIFYING';
 
-  const toneBg =
-    state === 'SUCCESS'
-      ? CATHAY_MINT_SURFACE
-      : state === 'FAILED' || state === 'UNSUPPORTED'
-        ? '#FEF2F2'
-        : CATHAY_MINT_SURFACE;
+  const isError = state === 'FAILED' || state === 'UNSUPPORTED';
 
+  const toneBg = isError ? '#FFFFFF' : CATHAY_MINT_SURFACE;
   const toneColor =
     state === 'SUCCESS'
       ? CATHAY_JADE
-      : state === 'FAILED' || state === 'UNSUPPORTED'
-        ? '#991B1B'
+      : isError
+        ? CATHAY_CRIMSON
         : CATHAY_TEXT_PRIMARY;
 
   return (
-    <View style={[styles.progressStrip, { backgroundColor: toneBg }]}>
+    <View
+      style={[
+        styles.progressStrip,
+        { backgroundColor: toneBg },
+        isError && { borderColor: CATHAY_BORDER, borderLeftWidth: 3, borderLeftColor: CATHAY_CRIMSON },
+      ]}
+    >
       <View style={styles.progressLeft}>
         {isBusy ? (
           <ActivityIndicator size="small" color={CATHAY_JADE} />
@@ -726,7 +730,9 @@ export const SmartTagProgressIndicator: React.FC<{
           />
         )}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.progressText, { color: toneColor }]}>{message}</Text>
+          <Text style={[styles.progressText, { color: isError ? CATHAY_TEXT_PRIMARY : toneColor }]}>
+            {message}
+          </Text>
         </View>
       </View>
       {isBusy && onCancel && (
@@ -794,7 +800,7 @@ export const BaggageJourneyTimeline: React.FC<{
               <Text
                 style={[
                   styles.timelineSubtitle,
-                  isException && { color: '#B91C1C', fontWeight: '500' },
+                  isException && { color: CATHAY_CRIMSON, fontWeight: '500' },
                 ]}
               >
                 {item.subtitle}
@@ -828,38 +834,31 @@ export const InlineNotice: React.FC<{
   secondaryActionLabel,
   onSecondaryAction,
 }) => {
-  const bg =
-    tone === 'danger'
-      ? '#FEF2F2'
-      : tone === 'warning' || tone === 'demo'
-        ? CATHAY_WARM_CREAM
-        : CATHAY_MINT_SURFACE;
-  const border =
-    tone === 'danger'
-      ? '#FECACA'
-      : tone === 'warning' || tone === 'demo'
-        ? CATHAY_WARM_BORDER
-        : '#D0E6E4';
-  const iconColor =
-    tone === 'danger'
-      ? '#B91C1C'
-      : tone === 'warning' || tone === 'demo'
-        ? '#785D2A'
-        : CATHAY_JADE;
+  const isDanger = tone === 'danger';
+  const isWarning = tone === 'warning' || tone === 'demo';
+  const bg = isDanger ? '#FFFFFF' : isWarning ? CATHAY_WARM_CREAM : CATHAY_MINT_SURFACE;
+  const border = isDanger ? CATHAY_BORDER : isWarning ? CATHAY_WARM_BORDER : '#D0E6E4';
+  const accentColor = isDanger ? CATHAY_CRIMSON : isWarning ? CATHAY_AMBER_WARM : CATHAY_JADE;
 
   return (
-    <View style={[styles.noticeBox, { backgroundColor: bg, borderColor: border }]}>
+    <View
+      style={[
+        styles.noticeBox,
+        { backgroundColor: bg, borderColor: border },
+        isDanger && { borderLeftWidth: 3, borderLeftColor: CATHAY_CRIMSON },
+      ]}
+    >
       <View style={styles.noticeTopRow}>
         <Ionicons
           name={
-            tone === 'danger'
+            isDanger
               ? 'alert-circle-outline'
-              : tone === 'warning'
+              : isWarning
                 ? 'warning-outline'
                 : 'information-circle-outline'
           }
           size={18}
-          color={iconColor}
+          color={accentColor}
           style={{ marginTop: 1 }}
         />
         <View style={{ flex: 1 }}>
@@ -1274,7 +1273,7 @@ const styles = StyleSheet.create({
   cancelScanLinkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#991B1B',
+    color: CATHAY_CRIMSON,
   },
 
   timelineContainer: {
@@ -1302,7 +1301,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#B91C1C',
+    backgroundColor: CATHAY_CRIMSON,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,

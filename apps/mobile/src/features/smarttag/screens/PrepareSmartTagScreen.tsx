@@ -234,8 +234,8 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
         )}
 
         {feedbackError && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{feedbackError}</Text>
+          <View style={styles.errorWrap}>
+            <InlineNotice tone="danger" message={feedbackError} />
           </View>
         )}
 
@@ -405,17 +405,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 12,
+  errorWrap: {
     marginBottom: 16,
-  },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 13,
   },
 
   continueBtn: {
