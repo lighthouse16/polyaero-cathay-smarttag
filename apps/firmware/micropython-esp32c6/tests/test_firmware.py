@@ -6,6 +6,7 @@ Run on host: python -m pytest tests/ -v
 
 import sys
 import json
+import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -295,6 +296,44 @@ def test_ndef_application_select_and_live_readback():
     write_bridge(target, message)
     target._process_apdu(bytearray([0, 0xB0, 0, 0, 48]))
     assert nfc.responses[-1] == message[:48] + b'\x90\x00'
+
+
+def test_startup_full_refresh_precedes_partial_refresh_for_nfc_write(monkeypatch):
+    monkeypatch.setattr(sys.modules["machine"], "reset", lambda: None, raising=False)
+    spec = importlib.util.spec_from_file_location(
+        "smarttag_firmware_main", Path(__file__).parent.parent / "main.py")
+    firmware = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(firmware)
+
+    updates = []
+    panel = SimpleNamespace(
+        buffer_1Gray=bytearray(15000),
+        init=lambda: updates.append("init"),
+        EPD_4IN2_V2_Display=lambda _: updates.append("full"),
+        EPD_4IN2_V2_PartialDisplay=lambda _: updates.append("partial"),
+    )
+    targets = []
+
+    class SingleTapTarget(NfcTarget):
+        def listen(self, session_ms):
+            write_bridge(self, bridge_record())
+            raise KeyboardInterrupt
+
+    def create_target(nfc, uid, refresh):
+        target = SingleTapTarget(nfc, uid, refresh)
+        targets.append(target)
+        return target
+
+    monkeypatch.setattr(firmware, "PN532_UART", lambda *args, **kwargs: FakeNfc())
+    monkeypatch.setattr(firmware, "EPD_4in2", lambda: panel)
+    monkeypatch.setattr(firmware, "PortraitCanvas", lambda _: MockCanvas())
+    monkeypatch.setattr(firmware, "NfcTarget", create_target)
+
+    with pytest.raises(KeyboardInterrupt):
+        firmware.main()
+
+    assert updates == ["init", "full", "partial"]
+    assert targets[0].refresh_receipt == "current-write"
 
 
 @pytest.mark.parametrize("busy_values", [[1], [0]])
