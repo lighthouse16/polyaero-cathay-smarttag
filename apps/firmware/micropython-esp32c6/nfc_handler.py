@@ -3,6 +3,8 @@
 # NDEF payload parsing for IATA pipe-delimited format
 
 import ujson as json
+import errno
+from config import NFC_APDU_TIMEOUT_MS
 
 CC_FILE = bytearray([
     0x00, 0x0F, 0x20, 0x00, 0x3B, 0x00, 0x34,
@@ -11,14 +13,14 @@ CC_FILE = bytearray([
 
 # PN532 TgInitAsTarget parameters for Type-4A (ISO 14443-4)
 TARGET_PARAMS = bytearray([
-    0x00,  # Mode
+    0x05,  # Passive ISO 14443-4 PICC only.
     0x04, 0x00, 0x12, 0x34, 0x56,  # SENS_RES + NFCID1 (0x123456)
     0x20,  # SEL_RES
     0x01, 0xFE, 0x05, 0x01, 0x86,  # FeliCa params (dummy)
     0x04, 0x02, 0x02, 0x03, 0x00, 0x4B, 0x02, 0x4F, 0x49, 0x8A,  # NFCID2
     0x00, 0xFF, 0xFF,  # FeliCa pad
-    0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,  # Historical
-    0x00, 0x00  # Length of general bytes
+    0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,  # NFCID3t
+    0x00, 0x00  # Lengths of general and historical bytes.
 ])
 
 AID_NFC_FORUM = bytearray(b'\xD2\x76\x00\x00\x85\x01\x01')
@@ -49,7 +51,9 @@ class NfcTarget:
 
     def configure(self):
         """Enable automatic ISO 14443-4 target responses before listening."""
-        self.nfc.call_function(0x12, response_length=1, params=bytearray([0x34]), timeout=200)
+        response = self.nfc.call_function(0x12, response_length=1, params=bytearray([0x34]))
+        if response != bytearray():
+            raise OSError(errno.EIO, "PN532 SetParameters failed")
 
     def reset(self):
         self._init_ndef()
@@ -60,6 +64,7 @@ class NfcTarget:
         Listen for phone NFC write session.
         Returns NDEF file buffer if write completed, else None.
         """
+        self._init_ndef()
         try:
             # Start target mode
             init_res = self.nfc.call_function(0x8C, response_length=64, params=TARGET_PARAMS, timeout=session_ms)
@@ -71,12 +76,12 @@ class NfcTarget:
             # Process first command if present
             if len(init_res) > 1:
                 first_cmd = init_res[1:]
-                if len(first_cmd) >= 2 and first_cmd[0] in (0x00, 0x90):
+                if len(first_cmd) >= 4:
                     self._process_apdu(first_cmd)
 
             # Continue receiving APDUs via TgGetData (0x86)
             for _ in range(96):
-                req = self.nfc.call_function(0x86, response_length=128, timeout=600)
+                req = self.nfc.call_function(0x86, response_length=128, timeout=NFC_APDU_TIMEOUT_MS)
                 if not req:
                     break
                 status = req[0]
@@ -93,7 +98,9 @@ class NfcTarget:
 
         except Exception as e:
             print(f"    -> Communication error: {e}")
-            self.nfc.reset()
+        finally:
+            # A host timeout does not cancel TgInitAsTarget/TgGetData on the chip.
+            self.nfc.initialize()
             self.configure()
 
         return None
@@ -211,10 +218,12 @@ class NfcTarget:
         self._respond(0x90, 0x00)
 
     def _respond(self, sw1: int, sw2: int):
-        self.nfc.call_function(0x8E, response_length=1, params=bytearray([sw1, sw2]), timeout=300)
+        self._respond_raw(bytearray([sw1, sw2]))
 
     def _respond_raw(self, data: bytearray):
-        self.nfc.call_function(0x8E, response_length=1, params=data, timeout=300)
+        response = self.nfc.call_function(0x8E, response_length=1, params=data)
+        if response != bytearray([0]):
+            raise OSError(errno.EIO, "PN532 TgSetData failed: {}".format(response))
 
 
 # =========================================================

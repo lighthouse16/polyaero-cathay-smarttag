@@ -104,6 +104,25 @@ An NDEF write acknowledgement alone does not confirm display refresh.
 Verification confirms controller completion and payload readback, not optical
 barcode readability or the physical appearance of every pixel.
 
+### Android reader implementation
+
+The app follows the same standard Android reader path used by
+[NFCGate](https://github.com/nfcgate/nfcgate/blob/35f73eef091433800e75642b0517fd6a8f3c84eb/app/src/main/java/de/tu_darmstadt/seemoo/nfcgate/nfc/NfcManager.java):
+enable foreground reader mode, connect to ISO-DEP, exchange raw commands, and
+close the connection on completion or cancellation. The existing
+`react-native-nfc-manager` library performs these native Android calls.
+No NFCGate app, root access, Xposed module, relay server, or new dependency is required.
+
+The reader skips Android's automatic NDEF probing and uses NFCGate's default
+750 ms presence-check interval. Only NFC-A is polled because this PN532 bridge
+emulates a Type-4A tag. Android transceive timeout remains 10 seconds, rather than
+NFCGate's 5 seconds, to accommodate the bounded e-paper refresh. Errors identify
+the failed operation and response status instead of always blaming RF coupling.
+The PA1 identity, refresh receipt and exact readback checks are unchanged.
+
+Rebuild and reinstall the standalone APK to include these JavaScript changes.
+Changing phone reader mode cannot fix an e-paper BUSY timeout before NFC starts.
+
 The driver targets the **monochrome Waveshare 4.2-inch V2** controller: RAM writes
 use `24`, refresh activation uses `22`/`20`, and partial update mode is `FF`.
 It is not compatible with older or three-colour panels.
@@ -228,6 +247,22 @@ the firmware's refresh receipt plus NDEF readback.
 
 ## Troubleshooting
 
+Startup now resets/wakes the PN532, validates `GetFirmwareVersion` and normal SAM
+mode, and checks target configuration before reporting readiness. Idle activation
+timeouts and disconnected sessions reset/reconfigure the PN532 before the next
+tap; partial NDEF writes and old refresh receipts do not carry into a new session.
+
+Display failures include the stage (`hardware reset`, `software reset`,
+`RAM window setup`, `full refresh`, or `partial refresh`), BUSY GPIO and timeout.
+The 5-second BUSY limit and active-high V2 interpretation have not been relaxed.
+A failed startup prints the full MicroPython traceback and stops at the REPL
+instead of rebooting indefinitely.
+
+The original working display driver and the physical panel revision have not
+been verified. If BUSY still times out, compare that driver's GPIOs, controller
+and BUSY behavior with `config.py` and the V2 driver. Do not remove the check or
+treat a successful UART probe as proof that the display works.
+
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | PN532 not responding | Wrong DIP switches | Verify UART jumpers L-L, UART ON, SPI/I2C OFF |
@@ -251,6 +286,11 @@ python deploy.py --reset
 ```
 Watch serial output: `>>> SYSTEM READY. Tap phone to PN532 <<<`
 
+Before that message, expect `[PN532] Firmware <major>.<minor> verified over UART`,
+the configured display pins, and `[EPD] Initial full refresh`.
+If startup stops, retain the traceback and the stage/GPIO in the timeout message.
+Do not continue phone tests until startup completes successfully.
+
 ### 3. Write NDEF from Phone
 
 **Option A: Web NFC (Android Chrome)**
@@ -263,6 +303,12 @@ Watch serial output: `>>> SYSTEM READY. Tap phone to PN532 <<<`
 - Tap "Start NFC sync"
 - Hold phone to PN532 antenna
 - App writes NDEF, then calls API to update DB
+
+Expected device output includes `[+] PHONE CONNECTED!`, `[EPD] Rendering baggage
+label`, and `[EPD] Baggage refresh completed`. The app confirms only after receipt
+and readback match. Remove the phone, then repeat with different baggage data to
+check that the screen changes again. A failed refresh must not produce verified
+success in the app.
 
 **Option C: NFC Tools App (Manual Test)**
 - Install "NFC Tools" (Android/iOS)

@@ -60,17 +60,28 @@ export class NativeNfcService implements INfcService {
   private async exchange(
     session: Session,
     command: number[],
+    operation: string,
   ): Promise<number[]> {
     if (session.cancelled) throw new NfcCancelledError();
     const response = await NfcManager.isoDepHandler.transceive(command);
     if (session.cancelled) throw new NfcCancelledError();
-    if (
-      response.length < 2 ||
-      response[response.length - 2] !== 0x90 ||
-      response[response.length - 1] !== 0x00
-    ) {
+    if (response.length < 2) {
       throw new NfcWriteError(
-        'The SmartTag bridge rejected the command or could not refresh its display.',
+        `${operation}: the bridge returned an incomplete NFC response.`,
+      );
+    }
+    const status = response
+      .slice(-2)
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
+    if (status !== '9000') {
+      throw new NfcWriteError(
+        `${operation}: SmartTag returned ${status}. ${
+          status === '6581'
+            ? 'The display refresh was not confirmed.'
+            : 'The bridge rejected the command; check the firmware and app protocol match.'
+        }`,
       );
     }
     return response.slice(0, -2);
@@ -134,12 +145,22 @@ export class NativeNfcService implements INfcService {
           readerModeFlags:
             NfcAdapter.FLAG_READER_NFC_A |
             NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+          // Match NFCGate's default Android presence-check interval.
+          readerModeDelay: 750,
         });
         if (session.cancelled) throw new NfcCancelledError();
         if (Platform.OS === 'android') await NfcManager.setTimeout(10000);
-        await this.exchange(session, SELECT_APPLICATION);
+        await this.exchange(
+          session,
+          SELECT_APPLICATION,
+          'Selecting SmartTag application',
+        );
         const identity = String.fromCharCode(
-          ...(await this.exchange(session, [0x80, 0x10, 0x00, 0x00, 0x00])),
+          ...(await this.exchange(
+            session,
+            [0x80, 0x10, 0x00, 0x00, 0x00],
+            'Reading SmartTag identity',
+          )),
         );
         if (!/^PA1\|(?:[0-9A-F]{2}:){6}[0-9A-F]{2}$/.test(identity)) {
           throw new NfcWriteError(
@@ -174,7 +195,11 @@ export class NativeNfcService implements INfcService {
 
     return this.operate(async (session) => {
       const identity = String.fromCharCode(
-        ...(await this.exchange(session, [0x80, 0x10, 0x00, 0x00, 0x00])),
+        ...(await this.exchange(
+          session,
+          [0x80, 0x10, 0x00, 0x00, 0x00],
+          'Checking SmartTag identity',
+        )),
       ).slice(4);
       if (identity !== payload.tagUid.toUpperCase())
         throw new NfcWrongTagError(payload.tagUid, identity);
@@ -194,16 +219,13 @@ export class NativeNfcService implements INfcService {
       if (!message || message.length > 510)
         throw new NfcWriteError('Baggage payload exceeds the bridge capacity.');
 
-      await this.exchange(session, SELECT_NDEF);
+      await this.exchange(session, SELECT_NDEF, 'Selecting baggage data file');
       const write = (offset: number, bytes: number[]) =>
-        this.exchange(session, [
-          0x00,
-          0xd6,
-          offset >> 8,
-          offset & 0xff,
-          bytes.length,
-          ...bytes,
-        ]);
+        this.exchange(
+          session,
+          [0x00, 0xd6, offset >> 8, offset & 0xff, bytes.length, ...bytes],
+          'Writing baggage data',
+        );
       await write(0, [0, 0]);
       for (let offset = 0; offset < message.length; offset += 48) {
         await write(offset + 2, message.slice(offset, offset + 48));
@@ -212,7 +234,11 @@ export class NativeNfcService implements INfcService {
 
       // Firmware emits this receipt only after rendering and waiting for the panel BUSY pin.
       const receipt = String.fromCharCode(
-        ...(await this.exchange(session, [0x80, 0x11, 0x00, 0x00, 0x00])),
+        ...(await this.exchange(
+          session,
+          [0x80, 0x11, 0x00, 0x00, 0x00],
+          'Confirming display refresh',
+        )),
       );
       if (receipt !== `PA1|${syncId}`)
         throw new NfcWriteError(
@@ -221,13 +247,17 @@ export class NativeNfcService implements INfcService {
       const readback: number[] = [];
       for (let offset = 0; offset < message.length + 2; offset += 48) {
         readback.push(
-          ...(await this.exchange(session, [
-            0x00,
-            0xb0,
-            offset >> 8,
-            offset & 0xff,
-            Math.min(48, message.length + 2 - offset),
-          ])),
+          ...(await this.exchange(
+            session,
+            [
+              0x00,
+              0xb0,
+              offset >> 8,
+              offset & 0xff,
+              Math.min(48, message.length + 2 - offset),
+            ],
+            'Verifying baggage readback',
+          )),
         );
       }
       const expected = [message.length >> 8, message.length & 0xff, ...message];

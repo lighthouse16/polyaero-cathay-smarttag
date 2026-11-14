@@ -172,6 +172,31 @@ clients. The generated device key must only be provisioned to trusted hardware.
 Changing the API URL does not resolve the client's existing demo-data or NFC
 acknowledgement issues.
 
+### Resume with an already pushed image and existing permissions
+
+If the network, NAT, runtime service account, and `api:demo` image already
+exist, `deploy_cloudrun_demo.py` can run migrations and deploy without Cloud
+Build, Secret Manager, or IAM changes:
+
+```bash
+python3 deploy_cloudrun_demo.py --project YOUR_PROJECT_ID
+```
+
+Upload this helper to Cloud Shell if it is not present in your checkout. It
+uses only Python's standard library and the authenticated `gcloud` command.
+Enter database credentials at its prompts; the password is hidden. It writes
+a temporary environment file outside the repository and removes it on success
+or ordinary failure. An interrupted or forcibly killed process can leave a
+temporary file behind. Do not run with a debugger or print the environment.
+
+This is a demo-only fallback: database credentials are stored in Cloud Run
+environment variables and visible to users who can inspect the configuration.
+It still requires permission to deploy using the existing runtime service
+account and pull the image. No IAM restriction is bypassed. New services are
+private; existing service access policies are unchanged. Public mobile access
+is a separate permission/configuration step. Rerunning generates new signing
+and device keys, invalidating existing tokens and device configuration.
+
 ### Cleanup after the demo
 
 Cloud NAT, reserved IPs, stored images, secrets, and build storage can incur

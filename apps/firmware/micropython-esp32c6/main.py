@@ -3,9 +3,9 @@
 # Standalone: NFC tap → parse → render e-paper (no WiFi, no API)
 
 import gc
+import sys
 import time
-import ujson as json
-from machine import Pin, UART, reset
+from machine import Pin, UART
 
 # Local modules
 from pn532_uart import PN532_UART
@@ -27,17 +27,23 @@ def main():
     # Initialize hardware
     print("Initializing PN532...")
     uart = UART(1, baudrate=PN532_BAUD, tx=Pin(PN532_TX), rx=Pin(PN532_RX), timeout=25, timeout_char=5)
-    rst_pin = Pin(PN532_RST, Pin.OUT)
+    rst_pin = Pin(PN532_RST, Pin.OUT, value=1)
     nfc = PN532_UART(uart, reset=rst_pin, debug=False)
+    version = nfc.initialize()
+    print("[PN532] Firmware {}.{} verified over UART".format(version[1], version[2]))
 
     print("Initializing 4.2\" e-Paper (Portrait 300x400)...")
+    print("[EPD] V2 monochrome; CS={}, DC={}, RST={}, BUSY={}, SCK={}, MOSI={}".format(
+        EPD_CS, EPD_DC, EPD_RST, EPD_BUSY, EPD_SCK, EPD_MOSI))
     epd = EPD_4in2()
     epd.init()
     canvas = PortraitCanvas(epd)
 
     def refresh_display(parsed):
+        print("[EPD] Rendering baggage label")
         render_iata_baggage_tag(canvas, parsed)
         epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
+        print("[EPD] Baggage refresh completed")
 
     nfc_target = NfcTarget(nfc, SMARTTAG_UID, refresh_display)
     nfc_target.configure()
@@ -46,6 +52,7 @@ def main():
     canvas.clear()
     canvas.text("READY FOR TAP", 60, 180, canvas.black, scale=2, bold=True)
     canvas.text("Tap phone to write tag", 40, 220, canvas.black, scale=1)
+    print("[EPD] Initial full refresh")
     epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
 
     print("\n>>> SYSTEM READY. Tap phone to PN532 <<<")
@@ -54,22 +61,20 @@ def main():
         gc.collect()
 
         # Listen for phone NFC write (blocking, ~5s session)
-        baggage_data = nfc_target.listen(session_ms=NFC_SESSION_MS)
-
-        if baggage_data:
-            # Brief pause before next session
-            time.sleep(2)
-            nfc_target.reset()
-
+        nfc_target.listen(session_ms=NFC_SESSION_MS)
         time.sleep_ms(20)
 
 
-if __name__ == "__main__":
+def run():
     try:
         main()
     except KeyboardInterrupt:
         print("Stopped")
     except Exception as e:
         print(f"Fatal error: {e}")
-        time.sleep(5)
-        reset()
+        sys.print_exception(e)
+        print("Stopped; fix the reported error, then reset or run main.main().")
+
+
+if __name__ == "__main__":
+    run()
