@@ -141,16 +141,14 @@ export async function choosePassengerRecovery(
 ): Promise<LiveCopilotBag | null> {
   const target = (tagNumber || activePassengerTagNumber).replace(/\s+/g, '');
   try {
-    const res = await fetch(`${COPILOT_API_BASE}/baggage/${target}/passenger/choice`, {
+    return await apiRequest<LiveCopilotBag>(`/baggage/${target}/passenger/choice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         choice,
         hotel_address: hotelAddress || null,
       }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
+    }, true);
   } catch {
     return null;
   }

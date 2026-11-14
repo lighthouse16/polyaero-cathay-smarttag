@@ -222,28 +222,21 @@ are sent. Remove the environment variable afterward. Reruns never reset member
 passwords. Refresh tokens, verification codes, and WebAuthn credentials are
 intentionally left to genuine authentication flows.
 
-<<<<<<< HEAD
-**Dashboard boundary:** authenticated member baggage reads and sync now use
-PostgreSQL and the shared flight catalogue. Legacy staff scan/recovery and
-what-if simulators remain separate prototype paths. Their recovery-case and
-carousel state is not made persistent by this flight-data migration; a staff
-portal integration must respect member ownership rather than using anonymous
-requests to the member baggage API.
-=======
-**Dashboard:** `/api/v1/baggage` lists PostgreSQL baggage rows, including all ten
-seeded bags; the two spare tags are inventory, not baggage. It no longer appends
-the two hardcoded demo bags. Detail accepts a baggage UUID, tag code, tag UUID or
-barcode. Scan, sync, risk and passenger recovery updates persist in PostgreSQL.
-Shared NFC/app events also update the baggage status, so tag display and the
-dashboard stay consistent. Unregistered tags return 404 instead of demo data.
+**Dashboard/member boundary:** `/api/v1/baggage` and its detail route require
+member authentication and return only baggage owned through the member's booking
+or tag. The staff dashboard's separate `/api/v1/baggage/dashboard` routes provide
+the persisted all-baggage view consumed by the staff application; deployments
+must restrict those dashboard and staff-operation routes to trusted staff access.
+Member responses use `Cache-Control: no-store`.
 
-Risk assessments, predicted carousel assignments and recovery details are stored
-in `baggage.operational_data`. Unassessed seed bags have no risk score or carousel
-assignment; these are not fabricated from status. Run `alembic upgrade head`
-before deploying this API version. The additive migration preserves existing
-seed rows; no reseeding is required. `/baggage/reset` returns 409 rather than
-deleting persistent records. Empty databases return an empty list.
->>>>>>> origin/main
+The staff dashboard includes PostgreSQL baggage rows, including all ten seeded
+bags; spare tags are inventory, not baggage. Scan, risk and passenger recovery
+updates persist in PostgreSQL, and shared NFC/app events update the baggage
+status. Risk assessments, predicted carousel assignments and recovery details
+are stored in `baggage.operational_data`. Unassessed seed bags have no risk score
+or carousel assignment. Run `alembic upgrade head` before deploying this API
+version. The additive migration preserves existing seed rows; no reseeding is
+required. `/baggage/reset` returns 409 rather than deleting persistent records.
 
 Seed integration tests use real PostgreSQL in a fresh randomly named schema per
 test, removed afterward. They never use the application's `DATABASE_URL`.
@@ -321,8 +314,10 @@ apps/api/
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | /health | Health check |
-| GET | /api/v1/baggage | List PostgreSQL baggage |
+| GET | /api/v1/baggage | List the authenticated member's PostgreSQL baggage |
 | GET | /api/v1/baggage/{identifier} | Get baggage by UUID, tag code or barcode |
+| GET | /api/v1/baggage/dashboard | Staff dashboard baggage listing |
+| GET | /api/v1/baggage/dashboard/{identifier} | Staff dashboard baggage detail |
 | POST | /api/v1/baggage/sync | Sync a registered tag with a booked itinerary |
 | POST | /api/v1/baggage/{identifier}/scan | Persist a milestone and event |
 | POST | /api/v1/baggage/{identifier}/risk/apply | Persist a model risk assessment |
@@ -347,12 +342,11 @@ apps/api/
 ### baggage
 - `id` (UUID, PK)
 - `passenger_name` (String)
-- `flight_number` (String, indexed)
-- `departure_airport` (String, 3 chars)
-- `arrival_airport` (String, 3 chars)
-- `departure_time` (DateTime)
+- `flight_id` (UUID, FK to flights, indexed)
 - `seat_number` (String, nullable)
-- `status` (String, default: 'checked_in')
+- `status` (String)
+- `connection_minutes` (Integer, non-negative)
+- `operational_data` (JSONB)
 - `tag_id` (UUID, FK to tags, nullable, indexed)
 - `created_at`, `updated_at` (DateTime)
 

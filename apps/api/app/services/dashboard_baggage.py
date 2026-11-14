@@ -28,11 +28,10 @@ async def ensure_baggage(db: AsyncSession, tag: Tag) -> Baggage | None:
     bag = Baggage(
         tag_id=tag.id,
         passenger_name=f"{user.family_name or ''}/{user.given_names or ''}" if user else "",
-        flight_number=flight.flight_number,
-        departure_airport=flight.origin,
-        arrival_airport=flight.destination,
-        departure_time=flight.departure_time,
-        status=tag.tag_status,
+        flight_id=flight.id,
+        status=tag.tag_status
+        if tag.tag_status not in {"UNLINKED", "AWAITING_SYNC"}
+        else flight.initial_status,
     )
     db.add(bag)
     await db.flush()
@@ -62,6 +61,7 @@ async def find_baggage(
 
 
 def apply_assessment(bag: Baggage, assessment: Any, transfer_minutes: int) -> None:
+    bag.connection_minutes = transfer_minutes
     bag.operational_data = {
         **(bag.operational_data or {}),
         "risk_score": assessment.risk_score,
@@ -81,16 +81,17 @@ async def load_baggage(
     db: AsyncSession, bag_id: UUID | None = None
 ) -> list[dict[str, Any]]:
     statement = (
-        select(Baggage, Tag, Booking, User)
+        select(Baggage, Tag, Booking, User, Flight)
         .outerjoin(Tag, Baggage.tag_id == Tag.id)
         .outerjoin(Booking, Tag.booking_id == Booking.id)
         .outerjoin(User, User.id == func.coalesce(Booking.user_id, Tag.user_id))
+        .join(Flight, Baggage.flight_id == Flight.id)
         .order_by(Baggage.created_at, Baggage.id)
     )
     if bag_id is not None:
         statement = statement.where(Baggage.id == bag_id)
     rows = (await db.execute(statement)).all()
-    tag_ids = {tag.id for _, tag, _, _ in rows if tag is not None}
+    tag_ids = {tag.id for _, tag, _, _, _ in rows if tag is not None}
     events_by_tag: dict[UUID, list[dict[str, Any]]] = {}
     if tag_ids:
         event_rows = await db.scalars(
@@ -110,7 +111,7 @@ async def load_baggage(
                 "notes": event.notes,
             })
     result = []
-    for bag, tag, booking, user in rows:
+    for bag, tag, booking, user, flight in rows:
         events = events_by_tag.get(tag.id, []) if tag else []
         location = next(
             (event["location_code"] for event in reversed(events) if event["location_code"]),
@@ -131,16 +132,21 @@ async def load_baggage(
             "passenger_name": bag.passenger_name,
             "tier_status": user.membership_tier if user else None,
             "cabin_class": booking.cabin_class if booking else None,
-            "flight_number": bag.flight_number,
-            "departure_airport": bag.departure_airport,
-            "arrival_airport": bag.arrival_airport,
-            "departure_time": bag.departure_time.isoformat(),
+            "flight_id": str(flight.id),
+            "flight_number": flight.flight_number,
+            "departure_airport": flight.origin,
+            "arrival_airport": flight.destination,
+            "departure_time": flight.departure_time.isoformat(),
+            "weather_severity": flight.weather_severity,
+            "load_factor_pct": flight.load_factor_pct,
+            "airport_congestion": flight.airport_congestion,
+            "initial_status": flight.initial_status,
             "seat_number": bag.seat_number,
             "weight_kg": tag.weight_kg if tag else None,
             "status": status,
             "last_known_location": location,
             "carousel_assigned": state.get("carousel_assigned"),
-            "connection_minutes": state.get("connection_minutes"),
+            "connection_minutes": bag.connection_minutes,
             "is_rush_bag": is_rush(status) or state.get("risk_level") in {
                 "HIGH_PRIORITY", "ACTION_REQUIRED"
             },

@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
-<<<<<<< HEAD
-from typing import Any
-from uuid import UUID, uuid4
+from typing import Any, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field
@@ -14,26 +13,12 @@ from app.models.auth import User
 from app.models.baggage import Baggage, BaggageEvent, Tag
 from app.models.booking import Booking
 from app.models.flight import Flight
-from app.services.baggage import MILESTONES, banner_for, find_tag, normalize_status, record_event
-from app.services.demo_state import (
-    LIVE_BAGS,
-    reset_demo_bags,
-=======
-from typing import Any, Literal
-
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.database import get_db
-from app.models.baggage import Baggage, Tag
-from app.services.baggage import find_tag, normalize_status, record_event
+from app.services.baggage import banner_for, find_tag, normalize_status, record_event
 from app.services.dashboard_baggage import (
     apply_assessment,
     ensure_baggage,
     find_baggage,
     load_baggage,
->>>>>>> origin/main
 )
 from app.services.risk_engine import (
     ACTIVE_RISK_MODEL,
@@ -51,7 +36,6 @@ class SyncTagRequest(BaseModel):
 
     tag_number: str = "0160892012"
     tag_code: str = "04:A2:3B:4C:5D:6E:70"
-<<<<<<< HEAD
     passenger_name: str | None = None
     flight_id: UUID | None = None
     flight_number: str | None = None
@@ -192,19 +176,6 @@ async def _database_bags(
             }
         )
     return result
-=======
-    passenger_name: str = "TRINH/HAI DANG"
-    flight_number: str = "CX548"
-    departure_airport: str = "HKG"
-    arrival_airport: str = "HND"
-    cabin_class: str = "BUSINESS"
-    weight_kg: float = Field(default=22.4, ge=0)
-    connection_minutes: int = 85
-    weather_severity: int = 2
-    load_factor_pct: float = 86.0
-    airport_congestion: int = 2
-    initial_status: str = "AWAITING_SYNC"
->>>>>>> origin/main
 
 
 class ScanEventRequest(BaseModel):
@@ -255,7 +226,6 @@ def _compute_recovery_details(
 
 
 @router.get("")
-<<<<<<< HEAD
 async def list_baggage(
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -263,10 +233,14 @@ async def list_baggage(
 ) -> list[dict[str, Any]]:
     response.headers["Cache-Control"] = "no-store"
     return await _database_bags(db, current_user.id)
-=======
-async def list_baggage(db: AsyncSession = Depends(get_db)) -> list[dict[str, Any]]:
+
+
+@router.get("/dashboard")
+async def list_dashboard_baggage(
+    response: Response, db: AsyncSession = Depends(get_db)
+) -> list[dict[str, Any]]:
+    response.headers["Cache-Control"] = "no-store"
     return await load_baggage(db)
->>>>>>> origin/main
 
 
 @router.post("/reset")
@@ -276,9 +250,19 @@ async def reset_demo_state() -> list[dict[str, Any]]:
     )
 
 
+@router.get("/dashboard/{tag_number}")
+async def get_dashboard_baggage(
+    tag_number: str, response: Response, db: AsyncSession = Depends(get_db)
+) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    bag = await find_baggage(db, tag_number)
+    if bag is None:
+        raise HTTPException(status_code=404, detail=f"Baggage tag {tag_number} not found")
+    return (await load_baggage(db, bag.id))[0]
+
+
 @router.get("/{tag_number}")
 async def get_baggage_by_tag(
-<<<<<<< HEAD
     tag_number: str,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -289,13 +273,6 @@ async def get_baggage_by_tag(
     if persisted:
         return persisted[0]
     raise HTTPException(status_code=404, detail="Baggage not found")
-=======
-    tag_number: str, db: AsyncSession = Depends(get_db)
-) -> dict[str, Any]:
-    bag = await find_baggage(db, tag_number)
-    if bag is None:
-        raise HTTPException(status_code=404, detail=f"Baggage tag {tag_number} not found")
-    return (await load_baggage(db, bag.id))[0]
 
 
 async def _writable_baggage(db: AsyncSession, identifier: str) -> tuple[Baggage, Tag]:
@@ -306,7 +283,6 @@ async def _writable_baggage(db: AsyncSession, identifier: str) -> tuple[Baggage,
     if tag is None:
         raise HTTPException(status_code=409, detail="Baggage has no registered tag")
     return bag, tag
->>>>>>> origin/main
 
 
 @router.post("/sync")
@@ -316,7 +292,6 @@ async def sync_smarttag_from_mobile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-<<<<<<< HEAD
     response.headers["Cache-Control"] = "no-store"
     tag = await find_tag(db, payload.tag_code) or await find_tag(db, payload.tag_number)
     if tag is None:
@@ -358,13 +333,16 @@ async def sync_smarttag_from_mobile(
             raise HTTPException(status_code=409, detail="Supplied route does not match the flight")
     if payload.departure_time is not None and payload.departure_time != flight.departure_time:
         raise HTTPException(status_code=409, detail="Supplied departure does not match the flight")
+    await db.execute(select(Tag.id).where(Tag.id == tag.id).with_for_update())
     bag = await db.scalar(select(Baggage).where(Baggage.tag_id == tag.id).with_for_update())
     if bag is None:
         bag = Baggage(
             tag_id=tag.id,
             flight_id=flight.id,
             passenger_name=payload.passenger_name or "",
-            status=tag.tag_status if tag.tag_status in MILESTONES else flight.initial_status,
+            status=tag.tag_status
+            if tag.tag_status not in {"UNLINKED", "AWAITING_SYNC"}
+            else flight.initial_status,
         )
         db.add(bag)
     elif bag.flight_id != flight.id:
@@ -393,108 +371,12 @@ async def sync_smarttag_from_mobile(
     owner_id = current_user.id
     await db.commit()
     return (await _database_bags(db, owner_id, number))[0]
-=======
-    tag = await find_tag(db, payload.tag_code) or await find_tag(db, payload.tag_number)
-    if tag is None:
-        raise HTTPException(status_code=404, detail="Tag not registered")
-    bag = await ensure_baggage(db, tag)
-    if bag is None:
-        raise HTTPException(status_code=409, detail="Tag has no booked itinerary")
-    status_code = payload.initial_status.strip().upper()
-    try:
-        event_type = (
-            "TAG_TAPPED" if status_code == "AWAITING_SYNC" else normalize_status(status_code)
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    assessment = ACTIVE_RISK_MODEL.predict(FlightRiskFeatures(
-        flight_number=bag.flight_number,
-        origin=bag.departure_airport,
-        destination=bag.arrival_airport,
-        transfer_minutes=payload.connection_minutes,
-        weather_severity=payload.weather_severity,
-        load_factor_pct=payload.load_factor_pct,
-        airport_congestion=payload.airport_congestion,
-    ))
-    tag.weight_kg = payload.weight_kg
-    if status_code == "AWAITING_SYNC":
-        bag.status = tag.tag_status = status_code
-        tag.sync_state = "PREPARE"
-    else:
-        tag.sync_state = "READY"
-        tag.last_synced_at = datetime.now(UTC)
-        if bag.status in {"AWAITING_SYNC", "UNLINKED"}:
-            await record_event(
-                db, tag, "TAGGED", location_code="MOBILE-APP", scanner_type="APP"
-            )
-    apply_assessment(bag, assessment, payload.connection_minutes)
-    await record_event(
-        db, tag, event_type, location_code="MOBILE-APP",
-        station_name="Cathay App SmartTag Sync", scanner_type="APP",
-        notes=f"Mobile sync - risk {assessment.risk_score}/100",
-    )
-    await db.commit()
-    return (await load_baggage(db, bag.id))[0]
-
->>>>>>> origin/main
 
 
 @router.post("/{tag_number}/scan")
 async def record_baggage_scan(
     tag_number: str, payload: ScanEventRequest, db: AsyncSession = Depends(get_db)
 ) -> dict[str, Any]:
-<<<<<<< HEAD
-    bag = LIVE_BAGS.get(tag_number)
-    if not bag or "events" not in bag:
-        raise HTTPException(status_code=404, detail=f"Baggage tag {tag_number} not found")
-
-    now = datetime.now(UTC).isoformat()
-    status_upper = payload.event_type.upper()
-    bag["status"] = status_upper
-    bag["is_tag_synced"] = status_upper != "AWAITING_SYNC"
-    bag["last_known_location"] = payload.location_code
-    bag["updated_at"] = now
-
-    if status_upper == "MISROUTED":
-        bag["is_rush_bag"] = True
-        bag["risk_score"] = 88
-        bag["risk_level"] = "HIGH_PRIORITY"
-        bag["recommended_action"] = "Reroute via Express Next Flight or Direct Hotel Courier"
-        bag["eink_banner"] = "MISROUTED • REROUTING"
-    elif status_upper == "MISSING":
-        bag["is_rush_bag"] = True
-        bag["risk_score"] = 95
-        bag["risk_level"] = "HIGH_PRIORITY"
-        bag["recommended_action"] = "Active Ramp Trace & Customer Care Escalation"
-        bag["eink_banner"] = "RECOVERY IN PROCESS"
-    elif status_upper == "RECOVERY_IN_PROGRESS":
-        bag["is_rush_bag"] = True
-        bag["risk_score"] = 65
-        bag["risk_level"] = "MEDIUM"
-        bag["recommended_action"] = "Executing Passenger Recovery Preference"
-        bag["eink_banner"] = "RECOVERY IN PROCESS"
-    elif status_upper in {"LOADED", "ARRIVED", "COLLECTED", "ON_CAROUSEL", "CLAIMED"}:
-        bag["is_rush_bag"] = False
-        bag["risk_score"] = 12
-        bag["risk_level"] = "LOW"
-        bag["recommended_action"] = "On schedule"
-        bag["eink_banner"] = status_upper.replace("_", " ")
-    else:
-        bag["is_rush_bag"] = False
-        bag["eink_banner"] = status_upper.replace("_", " ")
-
-    bag["events"].append(
-        {
-            "id": f"evt_{uuid4().hex[:6]}",
-            "event_type": status_upper,
-            "timestamp": now,
-            "location_code": payload.location_code,
-            "station_name": payload.station_name,
-            "handled_by_staff_id": payload.staff_id,
-            "scanner_type": payload.scanner_type,
-            "notes": payload.notes or f"Milestone updated to {status_upper}",
-        }
-=======
     try:
         event_type = normalize_status(payload.event_type)
     except ValueError as exc:
@@ -504,7 +386,6 @@ async def record_baggage_scan(
         db, tag, event_type, location_code=payload.location_code,
         station_name=payload.station_name, reader_id=payload.staff_id,
         scanner_type=payload.scanner_type, notes=payload.notes,
->>>>>>> origin/main
     )
     await db.commit()
     return (await load_baggage(db, bag.id))[0]
@@ -512,41 +393,21 @@ async def record_baggage_scan(
 
 @router.post("/{tag_number}/passenger/choice")
 async def submit_passenger_recovery_choice(
-<<<<<<< HEAD
-    tag_number: str, payload: PassengerChoiceRequest
-) -> dict[str, Any]:
-    bag = LIVE_BAGS.get(tag_number)
-    if not bag:
-        raise HTTPException(status_code=404, detail=f"Baggage tag {tag_number} not found")
-
-    now = datetime.now(UTC).isoformat()
-    details = _compute_recovery_details(bag, payload.choice, payload.hotel_address)
-
-    bag["passenger_recovery_choice"] = payload.choice
-    bag["recovery_flight_number"] = details["recovery_flight_number"]
-    bag["recovery_eta"] = details["recovery_eta"]
-    bag["delivery_address"] = details["delivery_address"]
-    bag["eink_banner"] = details["eink_banner"]
-    bag["status"] = "RECOVERY_IN_PROGRESS"
-    bag["updated_at"] = now
-
-    bag["events"].append(
-        {
-            "id": f"evt_{uuid4().hex[:6]}",
-            "event_type": "RECOVERY_IN_PROGRESS",
-            "timestamp": now,
-            "location_code": "PASSENGER-APP",
-            "station_name": "Cathay App Recovery Preference",
-            "scanner_type": "APP",
-            "notes": details["summary"],
-        }
-=======
-    tag_number: str, payload: PassengerChoiceRequest, db: AsyncSession = Depends(get_db)
+    tag_number: str,
+    payload: PassengerChoiceRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     bag, tag = await _writable_baggage(db, tag_number)
+    booking = await db.get(Booking, tag.booking_id) if tag.booking_id else None
+    if not tag.is_active or (
+        booking.user_id != current_user.id if booking else tag.user_id != current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="Baggage not found")
+    response.headers["Cache-Control"] = "no-store"
     details = _compute_recovery_details(
         (await load_baggage(db, bag.id))[0], payload.choice, payload.hotel_address
->>>>>>> origin/main
     )
     await record_event(
         db, tag, "RECOVERY_IN_PROGRESS", location_code="PASSENGER-APP",
@@ -580,16 +441,7 @@ async def apply_mishandling_risk_to_bag(
     return assessment
 
 
-<<<<<<< HEAD
-from pydantic import BaseModel as _PydanticBaseModel
-
-from app.services.risk_engine import FeederFlightInput, FeederFlightPriority
-
-
-class OutboundHubFlightSummary(_PydanticBaseModel):
-=======
 class OutboundHubFlightSummary(BaseModel):
->>>>>>> origin/main
     outbound_flight: str
     origin: str
     destination: str

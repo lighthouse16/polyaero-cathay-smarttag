@@ -369,6 +369,11 @@ async def test_baggage_rejects_unowned_tags_and_clients_cannot_override_flight_w
     assert listed.status_code == 200 and listed.json() == []
     denied = await client.get("/api/v1/baggage/OTHER-FLIGHT-TAG")
     assert denied.status_code == 404
+    recovery = await client.post(
+        "/api/v1/baggage/OTHER-FLIGHT-TAG/passenger/choice",
+        json={"choice": "EXPRESS_NEXT_FLIGHT"},
+    )
+    assert recovery.status_code == 404
     unauthorized = await client.post(
         "/api/v1/baggage/sync",
         json={

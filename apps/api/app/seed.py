@@ -280,11 +280,7 @@ def main() -> None:
     for model, rows in build_seed_data(args.date).items():
         print(f"{model.__tablename__}: {len(rows)} planned")
     print("No refresh tokens, verification codes, or passkeys will be seeded.")
-<<<<<<< HEAD
-    print("Member /baggage reads these database rows; staff demo recovery remains separate.")
-=======
-    print("Dashboard /baggage reads these PostgreSQL rows; spare unlinked tags are not baggage.")
->>>>>>> origin/main
+    print("Member baggage reads require ownership; the staff dashboard reads persisted PostgreSQL rows.")
     if not args.apply:
         print("Preview only; no database connection. Add --apply to insert.")
         return

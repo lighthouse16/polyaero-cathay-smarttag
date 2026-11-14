@@ -11,7 +11,7 @@ async def test_list_and_detail_return_all_seeded_bags_not_spare_tags(client, see
     with Session(seed_engine) as session, session.begin():
         tag = session.scalar(select(Tag).where(Tag.tag_code == "SEED-20261114-00"))
         tag.weight_kg = 0
-    response = await client.get("/api/v1/baggage")
+    response = await client.get("/api/v1/baggage/dashboard")
     assert response.status_code == 200, response.text
     bags = response.json()
     assert len(bags) == 10
@@ -25,7 +25,7 @@ async def test_list_and_detail_return_all_seeded_bags_not_spare_tags(client, see
         assert bag["risk_score"] is None
         assert bag["carousel_assigned"] is None
         for identifier in (bag["id"], bag["tag_number"], bag["tag_code"]):
-            detail = await client.get(f"/api/v1/baggage/{identifier}")
+            detail = await client.get(f"/api/v1/baggage/dashboard/{identifier}")
             assert detail.status_code == 200, detail.text
             assert detail.json() == bag
     assert next(bag for bag in bags if bag["tag_code"].endswith("-00"))["weight_kg"] == 0
@@ -42,13 +42,13 @@ async def test_scan_and_nfc_tap_persist_matching_status_and_history(client, seed
     assert body["status"] == "MISROUTED" and body["is_rush_bag"] is True
     assert body["events"][-1]["handled_by_staff_id"] == "STAFF-1"
     assert body["last_known_location"] == "HKG-BAY-2"
-    assert (await client.get(f"/api/v1/baggage/{identifier}")).json() == body
+    assert (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json() == body
     tapped = await client.post(
         f"/api/v1/tags/{identifier}/tap",
         json={"next_status": "LOADED", "reader_id": "NFC-1", "location_code": "HKG-GATE"},
     )
     assert tapped.status_code == 200, tapped.text
-    detail = (await client.get(f"/api/v1/baggage/{identifier}")).json()
+    detail = (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json()
     assert detail["status"] == tapped.json()["display"]["status"] == "LOADED"
     assert detail["events"][-1]["event_type"] == "LOADED"
     with Session(seed_engine) as session:
@@ -71,7 +71,7 @@ async def test_risk_and_recovery_updates_survive_new_requests(client, choice):
         json={"choice": choice, "hotel_address": "Synthetic Demo Hotel"},
     )
     assert response.status_code == 200, response.text
-    detail = (await client.get(f"/api/v1/baggage/{identifier}")).json()
+    detail = (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json()
     assert detail == response.json()
     assert detail["risk_score"] == risk.json()["risk_score"]
     assert detail["model_version"] == risk.json()["model_version"]
@@ -87,7 +87,7 @@ async def test_risk_and_recovery_updates_survive_new_requests(client, choice):
 
 async def test_sync_uses_booked_itinerary_and_is_idempotent(client, seed_engine):
     identifier = "SEED-20261114-00"
-    original = (await client.get(f"/api/v1/baggage/{identifier}")).json()
+    original = (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json()
     for _ in range(2):
         response = await client.post(
             "/api/v1/baggage/sync",
@@ -109,24 +109,24 @@ async def test_sync_uses_booked_itinerary_and_is_idempotent(client, seed_engine)
 async def test_empty_table_and_unlinked_tags_do_not_restore_demo_bags(client, seed_engine):
     with Session(seed_engine) as session, session.begin():
         session.execute(delete(Baggage))
-    assert (await client.get("/api/v1/baggage")).json() == []
+    assert (await client.get("/api/v1/baggage/dashboard")).json() == []
     missing = await client.get("/api/v1/baggage/0160892012")
     assert missing.status_code == 404
     rejected = await client.post(
         "/api/v1/baggage/sync", json={"tag_code": "SEED-20261114-10"}
     )
-    assert rejected.status_code == 409
-    assert (await client.get("/api/v1/baggage")).json() == []
+    assert rejected.status_code == 404
+    assert (await client.get("/api/v1/baggage/dashboard")).json() == []
 
 
 async def test_invalid_actions_and_reset_do_not_write(client, seed_engine):
     identifier = "SEED-20261114-00"
-    original = (await client.get(f"/api/v1/baggage/{identifier}")).json()
+    original = (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json()
     invalid = await client.post(
         f"/api/v1/baggage/{identifier}/scan", json={"event_type": "TELEPORTED"}
     )
     assert invalid.status_code == 422
-    assert (await client.get(f"/api/v1/baggage/{identifier}")).json() == original
+    assert (await client.get(f"/api/v1/baggage/dashboard/{identifier}")).json() == original
     assert (await client.post("/api/v1/baggage/reset")).status_code == 409
     missing = await client.post(
         "/api/v1/baggage/UNKNOWN/scan", json={"event_type": "LOADED"}
@@ -160,13 +160,13 @@ async def test_unattached_baggage_is_listed_without_inventing_tag_data(client, s
         bag = session.scalar(select(Baggage).limit(1))
         bag.tag_id = None
         bag_id = str(bag.id)
-    response = await client.get("/api/v1/baggage")
+    response = await client.get("/api/v1/baggage/dashboard")
     assert len(response.json()) == 10
     orphan = next(bag for bag in response.json() if bag["id"] == bag_id)
     assert orphan["tag_number"] == bag_id
     assert orphan["tag_code"] is None and orphan["weight_kg"] is None
     assert orphan["events"] == []
-    assert (await client.get(f"/api/v1/baggage/{bag_id}")).json() == orphan
+    assert (await client.get(f"/api/v1/baggage/dashboard/{bag_id}")).json() == orphan
     scan = await client.post(
         f"/api/v1/baggage/{bag_id}/scan", json={"event_type": "LOADED"}
     )
