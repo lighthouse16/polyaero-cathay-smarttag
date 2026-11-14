@@ -26,9 +26,9 @@ class PN532_UART:
             self.reset_pin.value(1)
             time.sleep_ms(10)
             self.reset_pin.value(0)
-            time.sleep_ms(50)
+            time.sleep_ms(20)
             self.reset_pin.value(1)
-            time.sleep_ms(80)
+            time.sleep_ms(30)
         while self.uart.any():
             self.uart.read()
 

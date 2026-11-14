@@ -88,13 +88,15 @@ class NfcTarget:
         Returns NDEF file buffer if write completed, else None.
         """
         self._init_ndef(preserve_ndef=True)
+        needs_reset = True
         try:
             # Start target mode
             init_res = self.nfc.call_function(0x8C, response_length=64, params=TARGET_PARAMS, timeout=session_ms)
             if not init_res:
                 return None
 
-            print("\n[+] PHONE CONNECTED! Receiving IATA tag data...")
+            init_hex = " ".join([f"{b:02X}" for b in init_res])
+            print(f"\n[+] PHONE CONNECTED! init_res: {init_hex}")
 
             # Process first command if present
             if len(init_res) > 1:
@@ -106,10 +108,12 @@ class NfcTarget:
             for _ in range(96):
                 req = self.nfc.call_function(0x86, response_length=128, timeout=NFC_APDU_TIMEOUT_MS)
                 if not req:
+                    needs_reset = True
                     break
                 status = req[0]
                 if status != 0x00:
                     print(f"    -> Session ended (Status: 0x{status:02X})")
+                    needs_reset = False
                     break
                 if len(req) > 1:
                     self._process_apdu(req[1:])
@@ -124,16 +128,18 @@ class NfcTarget:
 
         except Exception as e:
             print(f"    -> Communication error: {e}")
+            needs_reset = True
         finally:
-            # A host timeout does not cancel TgInitAsTarget/TgGetData on the chip.
-            for attempt in range(3):
-                try:
-                    self.nfc.initialize()
-                    self.configure()
-                    break
-                except Exception as exc:
-                    print(f"    -> NFC re-init retry {attempt + 1}/3: {exc}")
-                    time.sleep_ms(100)
+            if needs_reset:
+                # A host timeout does not cancel TgInitAsTarget/TgGetData on the chip.
+                for attempt in range(3):
+                    try:
+                        self.nfc.initialize()
+                        self.configure()
+                        break
+                    except Exception as exc:
+                        print(f"    -> NFC re-init retry {attempt + 1}/3: {exc}")
+                        time.sleep_ms(50)
 
         return None
 

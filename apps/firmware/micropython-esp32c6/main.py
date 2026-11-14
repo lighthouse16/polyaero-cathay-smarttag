@@ -61,10 +61,11 @@ def main():
         gc.collect()
         try:
             # Listen for phone NFC write (blocking, ~5s session)
-            nfc_target.listen(session_ms=NFC_SESSION_MS)
+            if nfc_target.listen(session_ms=NFC_SESSION_MS):
+                time.sleep_ms(300)
         except Exception as exc:
             print(f"[NFC] Loop recovery: {exc}")
-        time.sleep_ms(20)
+            time.sleep_ms(20)
 
 
 def run():
