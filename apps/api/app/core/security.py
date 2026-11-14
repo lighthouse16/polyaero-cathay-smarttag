@@ -1,6 +1,7 @@
+import secrets
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,18 @@ from app.services.auth import decode_token
 settings = get_settings()
 
 security = HTTPBearer(auto_error=False)
+
+
+async def require_flight_staff_key(x_flight_staff_key: str | None = Header(None)) -> None:
+    expected = get_settings().flight_status_staff_key
+    if not expected:
+        raise HTTPException(
+            status_code=503, detail="Staff flight-status updates are not configured"
+        )
+    if not x_flight_staff_key or not secrets.compare_digest(
+        x_flight_staff_key.encode(), expected.encode()
+    ):
+        raise HTTPException(status_code=401, detail="Invalid staff credentials")
 
 
 async def get_current_user(

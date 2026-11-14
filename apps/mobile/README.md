@@ -1,7 +1,8 @@
 # Mobile API integration
 
 The app uses the FastAPI backend for sign-in (password or email OTP), flight
-search, booking creation, trip tabs, PNR import, and SmartTag preparation status.
+search, booking creation, trip tabs, PNR import, SmartTag preparation status,
+staff-reported flight status, and prototype boarding passes.
 Existing baggage/NFC bridge requests use the same API URL.
 
 ## Local API
@@ -70,6 +71,13 @@ using Metro only needs a Metro restart.
   is implemented.
 - My trips reads upcoming/past/cancelled bookings from the authenticated API,
   supports pull-to-refresh, and imports an existing reservation by PNR/surname.
+- Travel tools > Flight status searches the database by flight number and UTC
+  departure date. Missing reports stay `UNKNOWN`; estimated/actual times are
+  not invented. This is staff-maintained data, not a live airline feed.
+- Checked-in upcoming trips offer a prototype boarding pass fetched from the
+  protected API. It shows actual booking details and is prominently marked
+  **PROTOTYPE - NOT VALID FOR BOARDING**. No real airline pass, assigned seat,
+  boarding barcode, or check-in flow is provided.
 - Tokens are held in memory and automatically refreshed after an expired
   access token. Closing/reloading the app requires signing in again. Logout
   clears local tokens and requests server revocation.

@@ -102,8 +102,20 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
     setViewState('password');
   };
 
+  const handleClose = () => {
+    if (busy) return;
+    setChallengeId(null);
+    setCode('');
+    setApiError(null);
+    if (!USE_MOCK_DATA) {
+      setPassword('');
+      setViewState('id');
+    }
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!busy) onClose(); }}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
@@ -126,7 +138,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
             {viewState.startsWith('reset_') ? 'Reset your password' : 'Sign in'}
           </Text>
 
-          <TouchableOpacity onPress={onClose} disabled={busy} style={styles.navButton}>
+          <TouchableOpacity onPress={handleClose} disabled={busy} style={styles.navButton}>
             <Ionicons name="close" size={24} color="#718096" />
           </TouchableOpacity>
         </View>

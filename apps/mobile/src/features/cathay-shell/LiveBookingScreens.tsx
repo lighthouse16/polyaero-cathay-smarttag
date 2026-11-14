@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -10,29 +11,35 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 import {
   addTrip,
   ApiError,
   CabinClass,
   createBooking,
   FlightOption,
+  getBoardingPass,
   hasSession,
   listTrips,
   prepareSmartTag,
+  PrototypeBoardingPass,
   searchFlights,
   TripCard,
   TripStatus,
-} from "../../services/api";
+} from '../../services/api';
+import {
+  HeaderSoftWave,
+  JadeBookingTicketCard,
+} from '../smarttag/components/CathaySmartTagPrimitives';
 
 const cabins: CabinClass[] = [
-  "ECONOMY",
-  "PREMIUM_ECONOMY",
-  "BUSINESS",
-  "FIRST",
+  'ECONOMY',
+  'PREMIUM_ECONOMY',
+  'BUSINESS',
+  'FIRST',
 ];
 const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : "Request failed.";
+  error instanceof Error ? error.message : 'Request failed.';
 const flightTime = (value: string) => new Date(value).toLocaleString();
 
 export function LiveBookScreen({
@@ -42,13 +49,13 @@ export function LiveBookScreen({
   onBooked: () => void;
   onOpenSignIn: () => void;
 }) {
-  const [origin, setOrigin] = useState("HKG");
-  const [destination, setDestination] = useState("NKG");
+  const [origin, setOrigin] = useState('HKG');
+  const [destination, setDestination] = useState('NKG');
   const [day, setDay] = useState(new Date().toISOString().slice(0, 10));
-  const [cabin, setCabin] = useState<CabinClass>("ECONOMY");
+  const [cabin, setCabin] = useState<CabinClass>('ECONOMY');
   const [flights, setFlights] = useState<FlightOption[] | null>(null);
   const [selected, setSelected] = useState<FlightOption | null>(null);
-  const [pnr, setPnr] = useState("");
+  const [pnr, setPnr] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +67,7 @@ export function LiveBookScreen({
       !/^\d{4}-\d{2}-\d{2}$/.test(day)
     ) {
       setError(
-        "Enter three-letter airport codes and a date in YYYY-MM-DD format.",
+        'Enter three-letter airport codes and a date in YYYY-MM-DD format.',
       );
       return;
     }
@@ -86,7 +93,7 @@ export function LiveBookScreen({
     }
     if (!/^[A-Z0-9]{5,10}$/.test(pnr.trim().toUpperCase())) {
       setError(
-        "Enter a 5-10 character booking reference (letters and numbers).",
+        'Enter a 5-10 character booking reference (letters and numbers).',
       );
       return;
     }
@@ -105,6 +112,7 @@ export function LiveBookScreen({
 
   return (
     <SafeAreaView style={styles.screen}>
+      <HeaderSoftWave />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -152,7 +160,7 @@ export function LiveBookScreen({
               }}
               style={[styles.tab, cabin === value && styles.activeTab]}
             >
-              <Text>{value.replace(/_/g, " ")}</Text>
+              <Text>{value.replace(/_/g, ' ')}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -193,18 +201,18 @@ export function LiveBookScreen({
               ]}
             >
               <Text style={styles.heading}>
-                {flight.flight_number} · {flight.origin_code} →{" "}
+                {flight.flight_number} · {flight.origin_code} →{' '}
                 {flight.destination_code}
               </Text>
               <Text>
-                {flightTime(flight.departure_time)} →{" "}
+                {flightTime(flight.departure_time)} →{' '}
                 {flightTime(flight.arrival_time)}
               </Text>
-              <Text>{flight.aircraft || "Aircraft not assigned"}</Text>
+              <Text>{flight.aircraft || 'Aircraft not assigned'}</Text>
               <Text>
                 {available
                   ? `HKD ${availability.price.toLocaleString()} · ${availability.seats_available} seats available`
-                  : "Cabin unavailable"}
+                  : 'Cabin unavailable'}
               </Text>
             </TouchableOpacity>
           );
@@ -246,12 +254,15 @@ export function LiveTripsScreen({
   onOpenSignIn: () => void;
   surname: string;
 }) {
-  const [tab, setTab] = useState<TripStatus>("UPCOMING");
+  const [tab, setTab] = useState<TripStatus>('UPCOMING');
   const [trips, setTrips] = useState<TripCard[]>([]);
   const [busy, setBusy] = useState(hasSession());
   const [adding, setAdding] = useState(false);
+  const [boardingPass, setBoardingPass] =
+    useState<PrototypeBoardingPass | null>(null);
+  const [loadingPass, setLoadingPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pnr, setPnr] = useState("");
+  const [pnr, setPnr] = useState('');
   const [lastName, setLastName] = useState(surname);
   const requestId = useRef(0);
 
@@ -298,14 +309,14 @@ export function LiveTripsScreen({
       !/^[A-Z0-9]{5,10}$/.test(pnr.trim().toUpperCase()) ||
       !lastName.trim()
     ) {
-      setError("Enter a valid booking reference and passenger surname.");
+      setError('Enter a valid booking reference and passenger surname.');
       return;
     }
     setAdding(true);
     setError(null);
     try {
       const imported = await addTrip(pnr, lastName);
-      setPnr("");
+      setPnr('');
       if (imported.booking_status !== tab) {
         setTrips([]);
         setBusy(true);
@@ -322,18 +333,32 @@ export function LiveTripsScreen({
     try {
       const prepared = await prepareSmartTag(trip.booking_id);
       Alert.alert(
-        "SmartTag preparation",
-        `Booking ${prepared.pnr}\nCheck-in: ${prepared.demo_checkin_completed ? "Complete" : "Required"}\n` +
-          `Tag: ${prepared.smarttag_available ? "Bound" : "Not bound"}\nSync: ${prepared.sync_state || "Not prepared"}\n\n` +
-          "The prototype NFC setup screens are not yet connected to live booking IDs.",
+        'SmartTag preparation',
+        `Booking ${prepared.pnr}\nCheck-in: ${prepared.demo_checkin_completed ? 'Complete' : 'Required'}\n` +
+          `Tag: ${prepared.smarttag_available ? 'Bound' : 'Not bound'}\nSync: ${prepared.sync_state || 'Not prepared'}\n\n` +
+          'The prototype NFC setup screens are not yet connected to live booking IDs.',
       );
     } catch (failure) {
       setError(errorMessage(failure));
     }
   };
 
+  const showBoardingPass = async (trip: TripCard) => {
+    if (loadingPass) return;
+    setLoadingPass(true);
+    setError(null);
+    try {
+      setBoardingPass(await getBoardingPass(trip.booking_id));
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setLoadingPass(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
+      <HeaderSoftWave />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -341,7 +366,7 @@ export function LiveTripsScreen({
       >
         <Text style={styles.title}>My trips</Text>
         <View style={styles.tabs}>
-          {(["UPCOMING", "PAST", "CANCELLED"] as const).map((value) => (
+          {(['UPCOMING', 'PAST', 'CANCELLED'] as const).map((value) => (
             <TouchableOpacity
               key={value}
               onPress={() => {
@@ -376,30 +401,48 @@ export function LiveTripsScreen({
         )}
         {trips.map((trip) => (
           <View key={trip.booking_id} style={styles.card}>
-            <Text style={styles.heading}>
-              {trip.flight_number} · {trip.origin_code} →{" "}
-              {trip.destination_code}
-            </Text>
+            <JadeBookingTicketCard
+              flightNumber={trip.flight_number}
+              route={`${trip.origin_code} → ${trip.destination_code}`}
+              dateStr={new Date(trip.departure_time).toLocaleDateString()}
+              departureTime={new Date(trip.departure_time).toLocaleTimeString(
+                [],
+                { hour: '2-digit', minute: '2-digit' },
+              )}
+              terminal={trip.terminal || 'Not assigned'}
+              gate={trip.gate || 'Not assigned'}
+            />
             <Text>Booking reference {trip.pnr}</Text>
             <Text>
-              {flightTime(trip.departure_time)} →{" "}
+              {flightTime(trip.departure_time)} →{' '}
               {flightTime(trip.arrival_time)}
             </Text>
             <Text>
-              Terminal {trip.terminal || "not assigned"} · Gate{" "}
-              {trip.gate || "not assigned"}
+              Terminal {trip.terminal || 'not assigned'} · Gate{' '}
+              {trip.gate || 'not assigned'}
             </Text>
             <Text>
-              {trip.checkin_status ? "Checked in" : "Check-in required"} ·{" "}
+              {trip.checkin_status ? 'Checked in' : 'Check-in required'} ·{' '}
               {trip.selected_bags}/{trip.allowed_bags} bags
             </Text>
-            {tab === "UPCOMING" && (
+            {tab === 'UPCOMING' && (
               <TouchableOpacity
                 style={styles.button}
                 onPress={() => showPreparation(trip)}
               >
                 <Text style={styles.buttonText}>
                   Check SmartTag preparation
+                </Text>
+              </TouchableOpacity>
+            )}
+            {tab === 'UPCOMING' && trip.checkin_status && (
+              <TouchableOpacity
+                style={styles.button}
+                disabled={loadingPass}
+                onPress={() => showBoardingPass(trip)}
+              >
+                <Text style={styles.buttonText}>
+                  {loadingPass ? 'Loading...' : 'View prototype boarding pass'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -430,53 +473,111 @@ export function LiveTripsScreen({
               onPress={importBooking}
             >
               <Text style={styles.buttonText}>
-                {adding ? "Adding..." : "Add booking"}
+                {adding ? 'Adding...' : 'Add booking'}
               </Text>
             </TouchableOpacity>
           </>
         )}
       </ScrollView>
+      <Modal
+        visible={boardingPass !== null}
+        animationType="slide"
+        onRequestClose={() => setBoardingPass(null)}
+      >
+        {boardingPass && (
+          <SafeAreaView style={styles.screen}>
+            <ScrollView contentContainerStyle={styles.content}>
+              <Text style={styles.title}>Prototype boarding pass</Text>
+              <Text style={styles.error} accessibilityRole="alert">
+                {boardingPass.notice}
+              </Text>
+              <JadeBookingTicketCard
+                flightNumber={boardingPass.flight.flight_number}
+                route={`${boardingPass.flight.origin} → ${boardingPass.flight.destination}`}
+                dateStr={new Date(
+                  boardingPass.flight.departure_time,
+                ).toLocaleDateString()}
+                departureTime={new Date(
+                  boardingPass.flight.departure_time,
+                ).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+                terminal={boardingPass.flight.terminal || 'Not assigned'}
+                gate={boardingPass.flight.gate || 'Not assigned'}
+              />
+              <Text>
+                Passenger: {boardingPass.passenger_name || 'Not supplied'}
+              </Text>
+              <Text>Booking reference: {boardingPass.pnr}</Text>
+              <Text>Cabin: {boardingPass.cabin_class.replace(/_/g, ' ')}</Text>
+              <Text>Seat: {boardingPass.seat_number || 'Not assigned'}</Text>
+              <Text>
+                Flight status: {boardingPass.flight.operational_status}{' '}
+                (staff-reported)
+              </Text>
+              <Text>
+                Last staff update:{' '}
+                {boardingPass.flight.status_reported_at
+                  ? flightTime(boardingPass.flight.status_reported_at)
+                  : 'Not reported'}
+              </Text>
+              <Text style={styles.secondary}>
+                No airline has issued this pass. Times above use your device
+                timezone. Gate and status reflect the database when this screen
+                was opened.
+              </Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => setBoardingPass(null)}
+              >
+                <Text style={styles.buttonText}>Close</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5F7F6" },
+  screen: { flex: 1, backgroundColor: '#F5F7F6' },
   content: { padding: 22, paddingBottom: 120, gap: 12 },
   title: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#195A58",
+    fontWeight: '700',
+    color: '#195A58',
     marginVertical: 16,
   },
-  heading: { fontSize: 18, fontWeight: "600", color: "#195A58" },
-  secondary: { color: "#4A5568", lineHeight: 22 },
-  label: { fontSize: 14, fontWeight: "600", color: "#1C2024" },
+  heading: { fontSize: 18, fontWeight: '600', color: '#195A58' },
+  secondary: { color: '#4A5568', lineHeight: 22 },
+  label: { fontSize: 14, fontWeight: '600', color: '#1C2024' },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: "#CBD5E0",
+    borderColor: '#CBD5E0',
     borderRadius: 8,
     padding: 14,
   },
-  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tab: { padding: 12, borderBottomWidth: 2, borderBottomColor: "transparent" },
-  activeTab: { borderBottomColor: "#006564", backgroundColor: "#E8F0EE" },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tab: { padding: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  activeTab: { borderBottomColor: '#006564', backgroundColor: '#E8F0EE' },
   button: {
-    backgroundColor: "#006564",
+    backgroundColor: '#006564',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
-  buttonText: { color: "#fff", fontWeight: "600" },
+  buttonText: { color: '#fff', fontWeight: '600' },
   card: {
     padding: 18,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 12,
     gap: 10,
     borderWidth: 1,
-    borderColor: "#DDE5E2",
+    borderColor: '#DDE5E2',
   },
-  selectedCard: { borderColor: "#006564", borderWidth: 2 },
-  error: { color: "#B91C1C", lineHeight: 22 },
+  selectedCard: { borderColor: '#006564', borderWidth: 2 },
+  error: { color: '#B91C1C', lineHeight: 22 },
 });

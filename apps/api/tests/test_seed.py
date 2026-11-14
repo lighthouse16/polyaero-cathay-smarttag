@@ -1,16 +1,14 @@
-import os
 from datetime import date
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.schema import CreateSchema, DropSchema
 
-from app.core.database import Base, get_db
+from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
 from app.models.auth import RefreshToken, User, VerificationCode, WebAuthnCredential
@@ -23,24 +21,6 @@ from app.services.baggage import MILESTONES
 from app.services.smarttag import build_display_payload
 
 DAY = date(2026, 11, 14)
-
-
-@pytest.fixture
-def seed_engine():
-    url = os.environ.get("SEED_TEST_DATABASE_URL")
-    if not url:
-        pytest.skip("Set SEED_TEST_DATABASE_URL to an isolated PostgreSQL test database")
-    schema = f"seed_test_{uuid4().hex}"
-    engine = create_engine(url, execution_options={"schema_translate_map": {None: schema}})
-    try:
-        with engine.begin() as connection:
-            connection.execute(CreateSchema(schema))
-            Base.metadata.create_all(connection)
-        yield engine
-    finally:
-        with engine.begin() as connection:
-            connection.execute(DropSchema(schema, cascade=True, if_exists=True))
-        engine.dispose()
 
 
 def test_preview_never_applies(monkeypatch, capsys):

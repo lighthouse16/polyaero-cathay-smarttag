@@ -1,5 +1,5 @@
-import type { UserAuthProfile } from "../features/cathay-shell/CathayTypes";
-import { API_BASE_URL } from "./apiConfig";
+import type { UserAuthProfile } from '../features/cathay-shell/CathayTypes';
+import { API_BASE_URL } from './apiConfig';
 
 interface TokenPair {
   access_token: string;
@@ -28,8 +28,8 @@ export interface SignInResponse {
   refresh_token: string | null;
 }
 
-export type CabinClass = "ECONOMY" | "PREMIUM_ECONOMY" | "BUSINESS" | "FIRST";
-export type TripStatus = "UPCOMING" | "PAST" | "CANCELLED";
+export type CabinClass = 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';
+export type TripStatus = 'UPCOMING' | 'PAST' | 'CANCELLED';
 
 export interface FlightOption {
   id: string;
@@ -83,13 +83,50 @@ export interface SmartTagPreparation {
   tag_id: string | null;
 }
 
+export interface FlightStatus {
+  id: string;
+  flight_number: string;
+  origin: string;
+  destination: string;
+  departure_time: string;
+  arrival_time: string;
+  operational_status:
+    | 'UNKNOWN'
+    | 'SCHEDULED'
+    | 'DELAYED'
+    | 'BOARDING'
+    | 'DEPARTED'
+    | 'ARRIVED'
+    | 'CANCELLED';
+  estimated_departure_time: string | null;
+  estimated_arrival_time: string | null;
+  actual_departure_time: string | null;
+  actual_arrival_time: string | null;
+  terminal: string | null;
+  gate: string | null;
+  status_reported_at: string | null;
+  source: 'STAFF_REPORTED_DATABASE';
+}
+
+export interface PrototypeBoardingPass {
+  booking_id: string;
+  pnr: string;
+  passenger_name: string;
+  cabin_class: string;
+  seat_number: null;
+  flight: FlightStatus;
+  generated_at: string;
+  valid_for_boarding: false;
+  notice: 'PROTOTYPE - NOT VALID FOR BOARDING';
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
   ) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
   }
 }
 
@@ -116,8 +153,8 @@ async function send<T>(
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const headers = new Headers(init.headers);
-    if (init.body) headers.set("Content-Type", "application/json");
-    if (token) headers.set("Authorization", `Bearer ${token}`);
+    if (init.body) headers.set('Content-Type', 'application/json');
+    if (token) headers.set('Authorization', `Bearer ${token}`);
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers,
@@ -127,11 +164,11 @@ async function send<T>(
       let message = `API request failed (${response.status})`;
       try {
         const body = await response.json();
-        if (typeof body.detail === "string") message = body.detail;
+        if (typeof body.detail === 'string') message = body.detail;
         else if (Array.isArray(body.detail)) {
           message = body.detail
-            .map((item: { msg?: string }) => item.msg || "Invalid input")
-            .join("; ");
+            .map((item: { msg?: string }) => item.msg || 'Invalid input')
+            .join('; ');
         }
       } catch {
         // Proxies can return non-JSON errors.
@@ -145,8 +182,8 @@ async function send<T>(
     if (error instanceof ApiError) throw error;
     throw new ApiError(
       controller.signal.aborted
-        ? "The API request timed out. Please try again."
-        : "Cannot reach the API. Check the API URL, network, and server.",
+        ? 'The API request timed out. Please try again.'
+        : 'Cannot reach the API. Check the API URL, network, and server.',
       0,
     );
   } finally {
@@ -158,14 +195,14 @@ async function refreshSession(): Promise<void> {
   if (refreshInFlight) return refreshInFlight;
   const current = tokens;
   const version = sessionVersion;
-  if (!current) throw new ApiError("Please sign in again.", 401);
-  const refresh = send<TokenPair>("/auth/refresh", {
-    method: "POST",
+  if (!current) throw new ApiError('Please sign in again.', 401);
+  const refresh = send<TokenPair>('/auth/refresh', {
+    method: 'POST',
     body: JSON.stringify({ refresh_token: current.refresh_token }),
   })
     .then((next) => {
       if (sessionVersion !== version)
-        throw new ApiError("Session changed. Please sign in again.", 401);
+        throw new ApiError('Session changed. Please sign in again.', 401);
       tokens = next;
     })
     .catch((error) => {
@@ -190,7 +227,7 @@ export async function apiRequest<T>(
   authenticated = false,
 ): Promise<T> {
   if (authenticated && !tokens)
-    throw new ApiError("Please sign in to continue.", 401);
+    throw new ApiError('Please sign in to continue.', 401);
   const version = sessionVersion;
   const accessToken = tokens?.access_token;
   try {
@@ -221,11 +258,11 @@ export async function apiRequest<T>(
 
 async function startSession(pair: TokenPair): Promise<ApiUser> {
   if (!pair.access_token || !pair.refresh_token)
-    throw new ApiError("Invalid authentication response.", 502);
+    throw new ApiError('Invalid authentication response.', 502);
   clearSession();
   tokens = pair;
   try {
-    return await apiRequest<ApiUser>("/auth/me", {}, true);
+    return await apiRequest<ApiUser>('/auth/me', {}, true);
   } catch (error) {
     clearSession();
     throw error;
@@ -236,8 +273,8 @@ export async function signIn(
   identifier: string,
   password: string,
 ): Promise<ApiUser | SignInResponse> {
-  const result = await apiRequest<SignInResponse>("/auth/signin", {
-    method: "POST",
+  const result = await apiRequest<SignInResponse>('/auth/signin', {
+    method: 'POST',
     body: JSON.stringify({
       identifier: identifier.trim(),
       password: password || undefined,
@@ -245,7 +282,7 @@ export async function signIn(
   });
   if (result.otp_required) return result;
   if (!result.access_token || !result.refresh_token)
-    throw new ApiError("Invalid sign-in response.", 502);
+    throw new ApiError('Invalid sign-in response.', 502);
   return startSession({
     access_token: result.access_token,
     refresh_token: result.refresh_token,
@@ -256,8 +293,8 @@ export async function verifySignIn(
   challengeId: string,
   code: string,
 ): Promise<ApiUser> {
-  const result = await apiRequest<TokenPair>("/auth/signin/verify", {
-    method: "POST",
+  const result = await apiRequest<TokenPair>('/auth/signin/verify', {
+    method: 'POST',
     body: JSON.stringify({ challenge_id: challengeId, code: code.trim() }),
   });
   return startSession(result);
@@ -267,28 +304,28 @@ export async function signOut(): Promise<void> {
   const current = tokens;
   clearSession();
   if (current)
-    await send<void>("/auth/logout", {
-      method: "POST",
+    await send<void>('/auth/logout', {
+      method: 'POST',
       body: JSON.stringify({ refresh_token: current.refresh_token }),
     });
 }
 
 export function userProfile(user: ApiUser): UserAuthProfile {
-  const tiers: Record<string, UserAuthProfile["tierStatus"]> = {
-    GREEN: "Green",
-    SILVER: "Silver",
-    GOLD: "Gold",
-    DIAMOND: "Diamond",
+  const tiers: Record<string, UserAuthProfile['tierStatus']> = {
+    GREEN: 'Green',
+    SILVER: 'Silver',
+    GOLD: 'Gold',
+    DIAMOND: 'Diamond',
   };
   return {
     isLoggedIn: true,
-    title: user.title || "",
-    familyName: user.family_name || "",
-    givenName: user.given_names || "",
+    title: user.title || '',
+    familyName: user.family_name || '',
+    givenName: user.given_names || '',
     email: user.email,
-    mobile: `${user.country_code || ""} ${user.phone_number || ""}`.trim(),
-    membershipNumber: user.membership_number || "",
-    tierStatus: tiers[user.membership_tier] || "Green",
+    mobile: `${user.country_code || ''} ${user.phone_number || ''}`.trim(),
+    membershipNumber: user.membership_number || '',
+    tierStatus: tiers[user.membership_tier] || 'Green',
     memberSince: String(new Date(user.created_at).getFullYear()),
     statusPoints: user.status_points,
     asiaMiles: null,
@@ -302,13 +339,13 @@ export function searchFlights(
   day: string,
   cabin: CabinClass,
 ) {
-  return apiRequest<{ outbound: FlightOption[] }>("/flights/search", {
-    method: "POST",
+  return apiRequest<{ outbound: FlightOption[] }>('/flights/search', {
+    method: 'POST',
     body: JSON.stringify({
       origin: origin.toUpperCase(),
       destination: destination.toUpperCase(),
       departure_date: day,
-      trip_type: "ONE_WAY",
+      trip_type: 'ONE_WAY',
       cabin_class: cabin,
       passenger_count: 1,
     }),
@@ -321,9 +358,9 @@ export function createBooking(
   cabin: CabinClass,
 ) {
   return apiRequest<Booking>(
-    "/bookings",
+    '/bookings',
     {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         flight_id: flightId,
         pnr: pnr.trim().toUpperCase(),
@@ -340,9 +377,9 @@ export function listTrips(tab: TripStatus) {
 
 export function addTrip(pnr: string, lastName: string) {
   return apiRequest<TripCard>(
-    "/trips/add",
+    '/trips/add',
     {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         pnr: pnr.trim().toUpperCase(),
         last_name: lastName.trim(),
@@ -355,6 +392,20 @@ export function addTrip(pnr: string, lastName: string) {
 export function prepareSmartTag(bookingId: string) {
   return apiRequest<SmartTagPreparation>(
     `/smarttag/prepare/${encodeURIComponent(bookingId)}`,
+    {},
+    true,
+  );
+}
+
+export function getFlightStatus(flightNumber: string, departureDate: string) {
+  return apiRequest<FlightStatus[]>(
+    `/flights/status?flight_number=${encodeURIComponent(flightNumber.trim().toUpperCase())}&departure_date=${encodeURIComponent(departureDate)}`,
+  );
+}
+
+export function getBoardingPass(bookingId: string) {
+  return apiRequest<PrototypeBoardingPass>(
+    `/bookings/${encodeURIComponent(bookingId)}/boarding-pass`,
     {},
     true,
   );
