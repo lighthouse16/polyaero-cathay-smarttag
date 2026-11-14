@@ -13,6 +13,5 @@
 #   mpremote mip install github:micropython/micropython-lib/urequests
 
 # For development/testing on host:
-# Install editor stubs on the computer, not on the ESP32.
-micropython-esp32-stubs==1.29.0.post1
+# micropython-stubs  (type hints)
 # pytest
