@@ -15,6 +15,7 @@ interface BaggageInvestigationPanelProps {
   timeToAct: number | null;
   connectionLabel: string;
   onClose?: () => void;
+  onSnapshotMutated?: () => Promise<void> | void;
 }
 
 const TABS: Array<{ id: InvestigationTab; label: string }> = [
@@ -272,7 +273,10 @@ export function BaggageInvestigationPanel({
   timeToAct,
   connectionLabel,
   onClose,
+  onSnapshotMutated,
 }: BaggageInvestigationPanelProps) {
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<InvestigationTab>("overview");
   const [copiedTag, setCopiedTag] = useState(false);
   const id = useId();
@@ -433,7 +437,129 @@ export function BaggageInvestigationPanel({
           className={styles.tabPanel}
         >
           {tab.id === "overview" && (
-            <OverviewSummary bag={bag} connectionLabel={connectionLabel} />
+            <>
+              <OverviewSummary bag={bag} connectionLabel={connectionLabel} />
+              <section aria-label="Live backend actions" style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(18, 43, 41, 0.1)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#163230" }}>PostgreSQL Custody &amp; Risk Actions</span>
+                  {actionBusy && <span style={{ fontSize: 11, color: "#526360" }}>Syncing…</span>}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <button
+                    type="button"
+                    disabled={actionBusy !== null}
+                    onClick={async () => {
+                      setActionBusy("scan");
+                      setActionNotice(null);
+                      try {
+                        const res = await fetch(`/api/v1/baggage/${encodeURIComponent(bag.tag_number)}/actions`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "scan",
+                            event_type: "TRANSFER_SCANNED",
+                            location_code: "HKG-T1-TRANSFER",
+                            station_name: "HKIA T1 Transfer Hub",
+                            notes: "Transfer scan recorded from Staff Portal",
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                        setActionNotice({ tone: "ok", text: "Transfer scan persisted to PostgreSQL RDS." });
+                        await onSnapshotMutated?.();
+                      } catch (err) {
+                        setActionNotice({ tone: "err", text: err instanceof Error ? err.message : "Scan failed" });
+                      } finally {
+                        setActionBusy(null);
+                      }
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, borderRadius: 6, border: "1px solid #006564", background: "#006564", color: "#fff", cursor: "pointer" }}
+                  >
+                    Record Transfer Scan
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionBusy !== null}
+                    onClick={async () => {
+                      setActionBusy("load");
+                      setActionNotice(null);
+                      try {
+                        const res = await fetch(`/api/v1/baggage/${encodeURIComponent(bag.tag_number)}/actions`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "scan",
+                            event_type: "LOADED",
+                            location_code: "HKG-T1-GATE",
+                            station_name: `Outbound ${bag.flight_number} Hold`,
+                            notes: "Confirmed loaded via Staff Portal",
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                        setActionNotice({ tone: "ok", text: `Bag marked LOADED on ${bag.flight_number} in PostgreSQL RDS.` });
+                        await onSnapshotMutated?.();
+                      } catch (err) {
+                        setActionNotice({ tone: "err", text: err instanceof Error ? err.message : "Load update failed" });
+                      } finally {
+                        setActionBusy(null);
+                      }
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, borderRadius: 6, border: "1px solid rgba(18, 43, 41, 0.25)", background: "#fff", color: "#163230", cursor: "pointer" }}
+                  >
+                    Mark Loaded
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionBusy !== null}
+                    onClick={async () => {
+                      setActionBusy("risk");
+                      setActionNotice(null);
+                      try {
+                        const res = await fetch(`/api/v1/baggage/${encodeURIComponent(bag.tag_number)}/actions`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "risk",
+                            flight_number: bag.flight_number || "CX548",
+                            origin: bag.departure_airport || "HKG",
+                            destination: bag.arrival_airport || "NRT",
+                            transfer_minutes: typeof timeToAct === "number" && timeToAct > 0 ? Math.max(15, Math.round(timeToAct + 20)) : 35,
+                            weather_severity: 2,
+                            load_factor_pct: 85,
+                            airport_congestion: 2,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                        const score = data.assessment?.risk_score ?? "updated";
+                        setActionNotice({ tone: "ok", text: `AI risk score persisted (${score}/100).` });
+                        await onSnapshotMutated?.();
+                      } catch (err) {
+                        setActionNotice({ tone: "err", text: err instanceof Error ? err.message : "Risk assessment failed" });
+                      } finally {
+                        setActionBusy(null);
+                      }
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, borderRadius: 6, border: "1px solid rgba(18, 43, 41, 0.25)", background: "#fff", color: "#163230", cursor: "pointer" }}
+                  >
+                    Run AI Risk Check
+                  </button>
+                </div>
+                {actionNotice && (
+                  <p
+                    role="status"
+                    style={{
+                      marginTop: 8,
+                      fontSize: 12,
+                      color: actionNotice.tone === "ok" ? "#006564" : "#9E2A2B",
+                    }}
+                  >
+                    {actionNotice.text}
+                  </p>
+                )}
+              </section>
+            </>
           )}
           {tab.id === "journey" && <ReportedEvents events={bag.events || []} />}
           {tab.id === "smarttag" && <SmartTagStatusPanel bag={bag} />}

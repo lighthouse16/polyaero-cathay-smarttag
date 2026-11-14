@@ -26,6 +26,7 @@ export function FlightWorkbench({
   onSelection,
   copilotOpen = false,
   onCopilotOpenChange,
+  onRefreshSnapshot,
 }: {
   snapshot: TransferControlSnapshot;
   selection: TransferSelection;
@@ -34,6 +35,7 @@ export function FlightWorkbench({
   onSelection: (action: SelectionAction) => void;
   copilotOpen?: boolean;
   onCopilotOpenChange?: (open: boolean) => void;
+  onRefreshSnapshot?: () => Promise<void> | void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -427,6 +429,7 @@ export function FlightWorkbench({
                       timeToAct={bagTime}
                       connectionLabel={`${header?.leg.flightNumber ?? "—"} ← ${selectedConnection.leg.flightNumber}`}
                       onClose={back}
+                      onSnapshotMutated={onRefreshSnapshot}
                     />
                   ) : (
                     <div className="table-empty" role="status">

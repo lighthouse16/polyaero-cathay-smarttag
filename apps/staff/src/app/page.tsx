@@ -284,6 +284,7 @@ export default function StaffDashboardPage() {
         onSelection={select}
         copilotOpen={copilotOpen}
         onCopilotOpenChange={setCopilotOpen}
+        onRefreshSnapshot={() => fetchSnapshot()}
       />
     )}
     {!selection.outbound && (
