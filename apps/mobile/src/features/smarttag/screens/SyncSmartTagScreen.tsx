@@ -18,6 +18,7 @@ import {
   NfcCancelledError,
   NFC_STATE_MESSAGES,
   NfcSyncMachineState,
+  NfcSyncOutcome,
   SmartTagFailureInfo,
   buildNfcPayloadForBag,
   runSmartTagSync,
@@ -37,7 +38,7 @@ import {
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
-import { syncBookingToCopilot, postSmartTagTap } from '../../../services/copilotBridge';
+import { acknowledgePhysicalSync, buildOwnedBagPayload, getOwnedSyncBag, OwnedSyncBag } from '../../../services/smartTagSync';
 
 export interface SyncSmartTagScreenProps {
   onOpenDevMenu?: () => void;
@@ -61,21 +62,40 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const [machineState, setMachineState] = useState<NfcSyncMachineState>('IDLE');
   const [statusMessage, setStatusMessage] = useState<string>(NFC_STATE_MESSAGES.IDLE);
   const [failure, setFailure] = useState<SmartTagFailureInfo | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ outcome: NfcSyncOutcome; bag: OwnedSyncBag; bagSetupId: string; itineraryId: string } | null>(null);
+  const saveLock = useRef(false);
+  const lifetime = useRef(new AbortController());
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
-  useEffect(() => () => {
+  useEffect(() => {
+    if (lifetime.current.signal.aborted) lifetime.current = new AbortController();
+    return () => {
+      lifetime.current.abort();
+      if (session.current) {
+        session.current.cancelled = true;
+        void session.current.service.cancelScan().catch(() => {});
+      }
+    };
+  }, []);
+  const leave = () => {
+    lifetime.current.abort();
     if (session.current) {
       session.current.cancelled = true;
       void session.current.service.cancelScan().catch(() => {});
     }
-  }, []);
+    smartTagController.goBack();
+  };
   const cancelSync = async () => {
     if (!session.current) return;
     session.current.cancelled = true;
     try {
       await session.current.service.cancelScan();
     } finally {
-      setMachineState('CANCELLED');
-      setStatusMessage(NFC_STATE_MESSAGES.CANCELLED);
+      if (!lifetime.current.signal.aborted) {
+        setMachineState('CANCELLED');
+        setStatusMessage(NFC_STATE_MESSAGES.CANCELLED);
+      }
     }
   };
 
@@ -85,7 +105,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         <CathayScreenHeader
           title="Cathay SmartTag"
           backIcon="chevron-back"
-          onBack={() => smartTagController.goBack()}
+          onBack={leave}
           onLongPressTitle={onOpenDevMenu}
         />
         <View style={styles.emptyWrap}>
@@ -102,7 +122,27 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   }
 
 
-  const isBusy =
+  const saveVerified = async (verified: NonNullable<typeof pending>) => {
+    if (saveLock.current || lifetime.current.signal.aborted) return;
+    const signal = lifetime.current.signal;
+    saveLock.current = true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await acknowledgePhysicalSync(verified.outcome, verified.bag, signal);
+      if (signal.aborted) return;
+      smartTagRepository.recordSyncOutcome(verified.bagSetupId, verified.outcome);
+      setPending(null);
+      smartTagController.navigateTo('result', { itineraryId: verified.itineraryId, bagSetupId: verified.bagSetupId });
+    } catch (error) {
+      if (!signal.aborted) setSaveError(error instanceof Error ? error.message : 'Server confirmation failed.');
+    } finally {
+      saveLock.current = false;
+      if (!signal.aborted) setSaving(false);
+    }
+  };
+
+  const isBusy = saving ||
     machineState === 'CHECKING_AVAILABILITY' ||
     machineState === 'READY_TO_SCAN' ||
     machineState === 'SCANNING' ||
@@ -111,15 +151,17 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'VERIFYING';
 
   const handleStartSync = async (forceDemo = false) => {
-    if (isBusy || session.current) return;
+    if (isBusy || session.current || saveLock.current || pending || lifetime.current.signal.aborted) return;
+    const signal = lifetime.current.signal;
     if (activeBag.setupState === 'UNREGISTERED') {
       smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
       return;
     }
     const bag = activeBag;
     setFailure(null);
+    setSaveError(null);
 
-    const payload = buildNfcPayloadForBag(itinerary, bag);
+    let payload = buildNfcPayloadForBag(itinerary, bag);
     const physicalService = forceDemo ? null : getPhysicalNfcService();
     if (!forceDemo && !physicalService) {
       setFailure({
@@ -138,60 +180,64 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     const operation = { service: effectiveService, cancelled: false };
     session.current = operation;
 
+    let ownedBag: OwnedSyncBag | null = null;
+    try {
+      if (physicalService) {
+        setSaving(true);
+        ownedBag = await getOwnedSyncBag(payload.tagUid, payload.baggageTagNumber);
+        if (signal.aborted || operation.cancelled) {
+          session.current = null;
+          if (!signal.aborted) setSaving(false);
+          return;
+        }
+        const ownedPayload = buildOwnedBagPayload(ownedBag);
+        if (ownedPayload.flightNumber !== payload.flightNumber || ownedPayload.originAirport !== payload.originAirport ||
+            ownedPayload.destinationAirport !== payload.destinationAirport || ownedPayload.departureDate !== payload.departureDate) {
+          throw new Error('Selected setup does not match the live booking. Open the live booking instead.');
+        }
+        payload = ownedPayload;
+        setSaving(false);
+      }
+    } catch (error) {
+      session.current = null;
+      if (!signal.aborted) {
+        setSaving(false);
+        setSaveError(error instanceof Error ? error.message : 'Could not load owned baggage.');
+      }
+      return;
+    }
+    if (operation.cancelled || signal.aborted) {
+      session.current = null;
+      return;
+    }
     const outcome = await runSmartTagSync({
       mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
       service: effectiveService,
       payload,
-      expectedTagUid: bag.smartTag.tagUid,
+      expectedTagUid: payload.tagUid,
       stepDelayMs: physicalService ? 0 : 140,
       onStep: (step) => {
-        if (operation.cancelled) {
+        if (operation.cancelled || signal.aborted) {
           if (step.state === 'SCANNING' || step.state === 'WRITING') throw new NfcCancelledError();
           return;
         }
         setMachineState(step.state);
-        setStatusMessage(step.statusMessage);
+        setStatusMessage(step.state === 'SUCCESS' && physicalService ? 'Display verified; waiting for server confirmation…' : step.statusMessage);
         if (step.failure) setFailure(step.failure);
       },
     });
 
     session.current = null;
-    if (operation.cancelled) return;
-    smartTagRepository.recordSyncOutcome(bag.id, outcome);
-
-    if (outcome.finalState === 'SUCCESS') {
-      // 1. Sync booking to Copilot first so live backend bag record exists
-      await syncBookingToCopilot({
-        tagNumber: bag.baggage.tagNumber,
-        tagCode: bag.smartTag.tagUid,
-        flightNumber: itinerary.flight.flightNumber,
-        origin: itinerary.flight.origin,
-        destination: itinerary.flight.destination,
-        initialStatus: 'TAGGED',
-      });
-
-      // Only verified hardware writes are reported as physical NFC taps.
-      const tapPayload = {
-        tagUid: bag.smartTag.tagUid,
-        baggageTagNumber: bag.baggage.tagNumber,
-        flightNumber: itinerary.flight.flightNumber,
-        originAirport: itinerary.flight.origin,
-        destinationAirport: itinerary.flight.destination,
-        passengerInitials: itinerary.passengerInitials,
-        departureDate: itinerary.departureDateIso,
-        status: 'TAGGED',
-        timestamp: Date.now() / 1000,
-      };
-      if (outcome.mode === 'PHYSICAL_HARDWARE') {
-        await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
-      }
-
-      smartTagController.navigateTo('result', {
-        itineraryId: itinerary.id,
-        bagSetupId: bag.id,
-      });
-    } else if (outcome.failure) {
-      setFailure(outcome.failure);
+    if (operation.cancelled || signal.aborted) return;
+    if (outcome.finalState === 'SUCCESS' && outcome.mode === 'PHYSICAL_HARDWARE' && ownedBag) {
+      const verified = { outcome, bag: ownedBag, bagSetupId: bag.id, itineraryId: itinerary.id };
+      setPending(verified);
+      await saveVerified(verified);
+    } else {
+      smartTagRepository.recordSyncOutcome(bag.id, outcome);
+      if (outcome.finalState === 'SUCCESS') {
+        smartTagController.navigateTo('result', { itineraryId: itinerary.id, bagSetupId: bag.id });
+      } else if (outcome.failure) setFailure(outcome.failure);
     }
   };
 
@@ -201,7 +247,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       <CathayScreenHeader
         title="Cathay SmartTag"
         backIcon="chevron-back"
-        onBack={() => smartTagController.goBack()}
+        onBack={leave}
         onLongPressTitle={onOpenDevMenu}
       />
 
@@ -252,6 +298,14 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           </View>
         )}
 
+        {(pending || saveError) && (
+          <InlineNotice tone="warning"
+            title={pending ? 'Display updated; server confirmation pending' : 'Live baggage unavailable'}
+            message={saving ? 'Saving verified SmartTag sync…' : saveError || 'Retry saving without tapping again.'}
+            actionLabel={pending && !saving ? 'Retry saving' : undefined}
+            onAction={pending && !saving ? () => void saveVerified(pending) : undefined}
+          />
+        )}
         {/* Action Buttons */}
         <View style={styles.actionsWrap}>
           {isBusy && (
@@ -261,9 +315,9 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
             </TouchableOpacity>
           )}
           <CathayPrimaryButton
-            label={isBusy ? statusMessage : 'Start NFC sync'}
+            label={saving ? 'Confirming server sync…' : isBusy ? statusMessage : 'Start NFC sync'}
             onPress={() => handleStartSync(false)}
-            disabled={isBusy}
+            disabled={isBusy || !!pending}
             style={styles.primaryCta}
             testID="btn-start-sync"
           />
@@ -271,7 +325,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           <TouchableOpacity
             style={styles.demoLinkBtn}
             onPress={() => handleStartSync(true)}
-            disabled={isBusy}
+            disabled={isBusy || !!pending}
             accessibilityRole="button"
             activeOpacity={0.7}
             testID="btn-demo-sync"

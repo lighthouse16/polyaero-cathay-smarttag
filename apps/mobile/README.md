@@ -112,3 +112,23 @@ The real-API test skips by default. To run it, set `MOBILE_API_TEST_URL` to an
 **isolated** FastAPI server's full API prefix and `MOBILE_API_TEST_PASSWORD` to
 its seeded password; seed that server's database with today's UTC date first.
 The test creates a reservation and must not target production.
+
+## Physical tap acknowledgement
+
+Checked-in live trips offer **Tap and sync SmartTag** using the selected server
+booking and uniquely bound, owned baggage record. The API must expose the
+baggage `tag_id`, real NFC UID, and server-issued 10-digit barcode. Missing or
+ambiguous records fail closed; the app does not manufacture identities.
+
+Physical readback succeeds first. Then authenticated `POST /baggage/sync`
+saves `SYNCHRONIZED`; only a matching persisted bag/tag/flight and fresh sync
+event completes the UI. The phone does not send device secrets or call the
+trusted hardware `/tags/{id}/tap` route. Demo simulation remains local-only.
+
+If saving fails after the physical write, the UI says server confirmation is
+pending and offers **Retry saving (no NFC tap)**. Retry state is in memory;
+leaving the screen loses it and requires a new tap. This is not a durable
+background upload queue. Deploy the backend `tag_id` response change before
+shipping this mobile build. Existing APKs do not gain this code automatically.
+Connected staff dashboards read the same persisted event on their next poll;
+a disconnected/protected-by-missing-configuration portal is not proof of delivery.

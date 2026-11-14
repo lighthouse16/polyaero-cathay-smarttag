@@ -27,6 +27,7 @@ import {
   TripCard,
   TripStatus,
 } from '../../services/api';
+import { LiveSmartTagSync } from '../smarttag/screens/LiveSmartTagSync';
 import {
   HeaderSoftWave,
   JadeBookingTicketCard,
@@ -336,7 +337,7 @@ export function LiveTripsScreen({
         'SmartTag preparation',
         `Booking ${prepared.pnr}\nCheck-in: ${prepared.demo_checkin_completed ? 'Complete' : 'Required'}\n` +
           `Tag: ${prepared.smarttag_available ? 'Bound' : 'Not bound'}\nSync: ${prepared.sync_state || 'Not prepared'}\n\n` +
-          'The prototype NFC setup screens are not yet connected to live booking IDs.',
+          'Use Tap and sync SmartTag on this booking for a verified physical write.',
       );
     } catch (failure) {
       setError(errorMessage(failure));
@@ -435,6 +436,7 @@ export function LiveTripsScreen({
                 </Text>
               </TouchableOpacity>
             )}
+            {tab === 'UPCOMING' && trip.checkin_status && <LiveSmartTagSync trip={trip} />}
             {tab === 'UPCOMING' && trip.checkin_status && (
               <TouchableOpacity
                 style={styles.button}
