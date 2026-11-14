@@ -81,6 +81,7 @@ class PN532_UART:
                     idx += 1
                 elif idx == 2 and b == 0xFF:
                     preamble[idx] = b
+                    idx += 1
                     break
                 else:
                     idx = 0 if b != 0x00 else 1
@@ -90,8 +91,10 @@ class PN532_UART:
             return None
 
         # Read length, LCS
-        if self.uart.any() < 2:
-            return None
+        while self.uart.any() < 2:
+            if time.ticks_diff(time.ticks_ms(), start) >= timeout:
+                return None
+            time.sleep_ms(1)
         length = self.uart.read(1)[0]
         lcs = self.uart.read(1)[0]
         if ((length + lcs) & 0xFF) != 0x00:
@@ -118,7 +121,7 @@ class PN532_UART:
         postamble = data[-1]
         payload = data[:-2]
 
-        calc_dcs = (~(self.PN532_PN532TOHOST + sum(payload)) + 1) & 0xFF
+        calc_dcs = (-sum(payload)) & 0xFF
         if dcs != calc_dcs or postamble != 0x00:
             return None
 
@@ -152,4 +155,6 @@ class PN532_UART:
 
         if self.debug:
             print(f"[PN532 RX] {' '.join(f'{b:02X}' for b in resp)}")
-        return resp
+        if not resp or resp[0] != ((cmd + 1) & 0xFF):
+            return None
+        return resp[1:]  # Skip the PN532 response command byte.

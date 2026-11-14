@@ -120,7 +120,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     setFailure(null);
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
-    const physicalService = null;
+    const physicalService = forceDemo ? null : getPhysicalNfcService();
     if (!forceDemo && !physicalService) {
       setFailure({
         code: 'NFC_UNAVAILABLE',
@@ -134,7 +134,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       return;
     }
     const effectiveService = physicalService ?? demoNfcService;
-    demoNfcService.setMockTag(payload);
+    if (!physicalService) demoNfcService.setMockTag(payload);
     const operation = { service: effectiveService, cancelled: false };
     session.current = operation;
 
@@ -160,7 +160,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
-      // 1. Update backend DB with NFC tap (replaces firmware HTTP POST)
+      // Only verified hardware writes are reported as physical NFC taps.
       const tapPayload = {
         tagUid: bag.smartTag.tagUid,
         baggageTagNumber: bag.baggage.tagNumber,
@@ -172,7 +172,9 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         status: 'TAGGED',
         timestamp: Date.now() / 1000,
       };
-      await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
+      if (outcome.mode === 'PHYSICAL_HARDWARE') {
+        await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
+      }
 
       // 2. Sync booking to Copilot (existing flow)
       await syncBookingToCopilot({

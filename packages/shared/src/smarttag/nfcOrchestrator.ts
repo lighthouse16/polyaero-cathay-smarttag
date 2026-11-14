@@ -369,5 +369,7 @@ export async function runSmartTagSync(options: RunSmartTagSyncOptions): Promise<
       failure,
       payload,
     };
+  } finally {
+    await service.cancelScan().catch(() => {});
   }
 }

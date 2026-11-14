@@ -19,9 +19,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#006564"
       },
-      "permissions": [
-        "android.permission.NFC"
-      ]
+      "permissions": ["android.permission.NFC"]
     },
     "web": {
       "bundler": "metro",
@@ -30,7 +28,12 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
-      "react-native-nfc-manager"
+      [
+        "react-native-nfc-manager",
+        {
+          "selectIdentifiers": ["D2760000850101"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

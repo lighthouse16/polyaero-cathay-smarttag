@@ -176,7 +176,6 @@ export async function postSmartTagTap(
   try {
     const ndefPayload = JSON.stringify({
       v: 1,
-      tag: payload.baggageTagNumber,
       tag_code: tagUid,
       booking: 'unknown',
       flight: payload.flightNumber,

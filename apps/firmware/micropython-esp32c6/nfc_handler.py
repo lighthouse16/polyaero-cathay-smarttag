@@ -2,9 +2,11 @@
 # APDU processing: SELECT, READ BINARY, UPDATE BINARY
 # NDEF payload parsing for IATA pipe-delimited format
 
+import ujson as json
+
 CC_FILE = bytearray([
     0x00, 0x0F, 0x20, 0x00, 0x3B, 0x00, 0x34,
-    0x04, 0x06, 0xE1, 0x04, 0x00, 0xFF, 0x00, 0x00
+    0x04, 0x06, 0xE1, 0x04, 0x02, 0x00, 0x00, 0x00
 ])
 
 # PN532 TgInitAsTarget parameters for Type-4A (ISO 14443-4)
@@ -19,12 +21,14 @@ TARGET_PARAMS = bytearray([
     0x00, 0x00  # Length of general bytes
 ])
 
-AID_NFC_FORUM = bytearray(b'\xD2\x76\x00\x00\x85\x01')  # NDEF Tag Application
+AID_NFC_FORUM = bytearray(b'\xD2\x76\x00\x00\x85\x01\x01')
 
 
 class NfcTarget:
-    def __init__(self, nfc):
+    def __init__(self, nfc, tag_uid="04:A2:3B:4C:5D:6E:70", refresh_display=None):
         self.nfc = nfc
+        self.tag_uid = tag_uid.upper()
+        self.refresh_display = refresh_display
         self.ndef_file = bytearray(512)
         self.current_file = 0xE103
         self.write_completed = False
@@ -38,13 +42,14 @@ class NfcTarget:
         self.ndef_file[0:len(init_record)] = init_record
         self.write_completed = False
         self.wrote_payload = False
+        self.written = bytearray(512)
+        self.refresh_attempted = False
+        self.refresh_receipt = None
         self.current_file = 0xE103
 
     def configure(self):
-        """Send TgInitAsTarget to PN532"""
-        self.nfc.call_function(0x8C, response_length=64, params=TARGET_PARAMS, timeout=5000)
-        # Select NDEF Tag Application by default
-        self.nfc.call_function(0x12, response_length=0, params=bytearray([0x34]), timeout=200)
+        """Enable automatic ISO 14443-4 target responses before listening."""
+        self.nfc.call_function(0x12, response_length=1, params=bytearray([0x34]), timeout=200)
 
     def reset(self):
         self._init_ndef()
@@ -70,7 +75,7 @@ class NfcTarget:
                     self._process_apdu(first_cmd)
 
             # Continue receiving APDUs via TgGetData (0x86)
-            for _ in range(40):
+            for _ in range(96):
                 req = self.nfc.call_function(0x86, response_length=128, timeout=600)
                 if not req:
                     break
@@ -80,10 +85,10 @@ class NfcTarget:
                     break
                 if len(req) > 1:
                     self._process_apdu(req[1:])
-                    if self.write_completed:
-                        return self.ndef_file
+                    if self.write_completed and not self.refresh_attempted:
+                        self._refresh_display()
 
-            if self.wrote_payload:
+            if self.write_completed:
                 return self.ndef_file
 
         except Exception as e:
@@ -93,22 +98,49 @@ class NfcTarget:
 
         return None
 
+    def _refresh_display(self):
+        self.refresh_attempted = True
+        try:
+            parsed = parse_iata_payload(self.ndef_file)
+            if not parsed or self.refresh_display is None:
+                return
+            sync_id = parsed.get("sync_id")
+            if sync_id and parsed.get("tag_code") != self.tag_uid:
+                return
+            self.refresh_display(parsed)
+            self.refresh_receipt = sync_id
+        except Exception as exc:
+            print(f"[EPD] Refresh failed: {exc}")
+
     def _process_apdu(self, apdu: bytearray):
         """Process incoming APDU command"""
-        hex_str = " ".join([f"{b:02X}" for b in apdu])
-        print(f"    -> APDU: {hex_str}")
+        if len(apdu) < 4:
+            self._respond(0x67, 0x00)
+            return
+
+        # PA1 bridge identity and refresh receipt, not an RF-UID ownership proof.
+        if apdu == bytearray([0x80, 0x10, 0x00, 0x00, 0x00]):
+            self._respond_raw(bytearray(("PA1|" + self.tag_uid).encode()) + bytearray([0x90, 0x00]))
+            return
+        if apdu == bytearray([0x80, 0x11, 0x00, 0x00, 0x00]):
+            if self.refresh_receipt:
+                self._respond_raw(bytearray(("PA1|" + self.refresh_receipt).encode()) + bytearray([0x90, 0x00]))
+            else:
+                self._respond(0x65, 0x81)
+            return
 
         # 1. SELECT (00 A4 ...)
-        if len(apdu) >= 2 and apdu[0] == 0x00 and apdu[1] == 0xA4:
+        if len(apdu) >= 5 and apdu[0] == 0x00 and apdu[1] == 0xA4:
             if apdu[2] == 0x04:  # Select by DF name (AID)
-                if len(apdu) >= 12 and apdu[5:11] == AID_NFC_FORUM:
+                if apdu[4] == len(AID_NFC_FORUM) and apdu[5:12] == AID_NFC_FORUM:
                     self.current_file = 0xE103  # CC file after AID select
                     self._respond_ok()
                 else:
                     self._respond(0x6A, 0x82)  # File not found
             elif apdu[2] == 0x00 and len(apdu) >= 7:  # Select by File ID
-                self.current_file = (apdu[5] << 8) | apdu[6]
-                if self.current_file in (0xE103, 0xE104):
+                file_id = (apdu[5] << 8) | apdu[6]
+                if apdu[4] == 2 and file_id in (0xE103, 0xE104):
+                    self.current_file = file_id
                     self._respond_ok()
                 else:
                     self._respond(0x6A, 0x82)
@@ -118,7 +150,11 @@ class NfcTarget:
         # 2. READ BINARY (00 B0 ...)
         elif len(apdu) >= 5 and apdu[0] == 0x00 and apdu[1] == 0xB0:
             offset = (apdu[2] << 8) | apdu[3]
-            le = apdu[4]
+            le = apdu[4] or 256
+            source = CC_FILE if self.current_file == 0xE103 else self.ndef_file
+            if offset + le > len(source):
+                self._respond(0x6B, 0x00)
+                return
             if self.current_file == 0xE103:
                 data = CC_FILE[offset:offset + le]
             else:
@@ -132,21 +168,36 @@ class NfcTarget:
             lc = apdu[4]
             payload = apdu[5:5 + lc]
 
-            # Bounds check
-            if offset + lc <= len(self.ndef_file):
-                self.ndef_file[offset:offset + lc] = payload
-
-            self._respond_ok()
-
-            # Track write completion
+            if self.current_file != 0xE104 or not lc or len(apdu) != 5 + lc or offset + lc > len(self.ndef_file):
+                self._respond(0x67, 0x00)
+                return
+            if offset == 0:
+                if lc < 2:
+                    self._respond(0x67, 0x00)
+                    return
+                nlen = (payload[0] << 8) | payload[1]
+                if nlen > 510:
+                    self._respond(0x67, 0x00)
+                    return
+                if nlen == 0 or lc > 2:
+                    self.written[:] = b'\x00' * 512
+                    self.write_completed = False
+                    self.wrote_payload = False
+                    self.refresh_attempted = False
+                    self.refresh_receipt = None
+                if nlen and lc == 2 and not all(self.written[2:2 + nlen]):
+                    self._respond(0x67, 0x00)
+                    return
+            self.ndef_file[offset:offset + lc] = payload
+            self.written[offset:offset + lc] = b'\x01' * lc
             if offset >= 2 or lc > 2:
                 self.wrote_payload = True
-            if offset == 0 and lc == 2:
-                nlen = (payload[0] << 8) | payload[1]
-                if nlen > 0 and self.wrote_payload:
-                    self.write_completed = True
-            elif offset == 0 and lc > 5:
+            nlen = (self.ndef_file[0] << 8) | self.ndef_file[1]
+            if offset == 0 and nlen and all(self.written[2:2 + nlen]):
                 self.write_completed = True
+            self._respond_ok()
+            if self.write_completed and not self.refresh_attempted:
+                self._refresh_display()
 
         # 4. Proprietary class (e.g., DESFire 90 60) -> 6E 00 (Class not supported)
         elif apdu[0] != 0x00:
@@ -177,30 +228,70 @@ def parse_iata_payload(ndef_buf: bytearray) -> dict:
     - Pipe-delimited: TAG|DEST|CITY|FLIGHT|DATE|TIME|PAX
     - Digits-only: extracts 10-digit tag number
     """
+    if len(ndef_buf) < 9:
+        return None
     nlen = (ndef_buf[0] << 8) | ndef_buf[1]
-    search_end = min(len(ndef_buf), (2 + nlen) if nlen > 0 else 180)
-    raw_bytes = ndef_buf[2:search_end]
-
-    # Find Text record (TNF=0x01, Type='T')
-    text_str = ""
-    for idx in range(min(12, len(raw_bytes) - 3)):
-        if raw_bytes[idx] == 0x54:  # 'T'
-            plen = raw_bytes[idx - 1]
-            lang_len = raw_bytes[idx + 1] & 0x3F
-            start = idx + 2 + lang_len
-            end = min(len(raw_bytes), idx + 1 + plen)
-            text_str = "".join([chr(b) for b in raw_bytes[start:end] if 32 <= b <= 126])
-            break
-
-    if not text_str:
-        # Fallback: all printable chars
-        text_str = "".join([chr(b) for b in raw_bytes if 32 <= b <= 126])
-
-    text_str = text_str.strip()
+    if not nlen or nlen > len(ndef_buf) - 2:
+        return None
+    raw = ndef_buf[2:2 + nlen]
+    if len(raw) < 3 or (raw[0] & 0xEF) != 0xC1 or raw[1] != 1:
+        return None
+    short = bool(raw[0] & 0x10)
+    header_len = 3 if short else 6
+    if len(raw) < header_len + 4:
+        return None
+    plen = raw[2] if short else int.from_bytes(raw[2:6], "big")
+    if raw[header_len] != 0x54:
+        return None
+    status = raw[header_len + 1]
+    lang_len = status & 0x3F
+    start = header_len + 2 + lang_len
+    end = header_len + 1 + plen
+    if status & 0x80 or plen < 1 + lang_len or end > len(raw):
+        return None
+    try:
+        text_str = bytes(raw[start:end]).decode("utf-8").strip()
+    except UnicodeError:
+        return None
     if not text_str or text_str == "INIT":
         return None
 
-    print(f"    -> Decoded NDEF Text: '{text_str}'")
+    if text_str.startswith("{") or text_str.startswith("["):
+        try:
+            record = json.loads(text_str)
+            if not isinstance(record, dict):
+                return None
+            tag = record.get("tag", "")
+            route = record.get("route", "").split("-")
+            flight = record.get("flight", "")
+            sync_id = record.get("sync_id")
+            if (not isinstance(tag, str) or len(tag) != 10 or not tag.isdigit()
+                    or len(route) != 2 or any(len(code) != 3 or not code.isalpha() for code in route)
+                    or not isinstance(flight, str) or not flight.strip()
+                    or (sync_id is not None and (not isinstance(sync_id, str)
+                        or not 1 <= len(sync_id) <= 64
+                        or any(ord(c) < 33 or ord(c) > 126 for c in sync_id)))):
+                return None
+            date = str(record.get("date", ""))
+            if len(date) == 10 and date[4] == "-" and date[7] == "-":
+                month = int(date[5:7])
+                if not 1 <= month <= 12:
+                    return None
+                date = date[8:10] + ("JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                     "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")[month - 1]
+            return {
+                "tag_num": tag,
+                "dest_code": route[1].upper(),
+                "dest_city": route[1].upper(),
+                "flight": flight.upper(),
+                "date": date,
+                "time": str(record.get("time", "")),
+                "passenger": str(record.get("passenger", "")).upper(),
+                "tag_code": str(record.get("tag_code", "")).upper(),
+                "sync_id": sync_id,
+            }
+        except (ValueError, TypeError, AttributeError):
+            return None
 
     # Default IATA data structure
     result = {

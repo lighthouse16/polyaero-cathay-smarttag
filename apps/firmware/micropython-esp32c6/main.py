@@ -12,11 +12,11 @@ from pn532_uart import PN532_UART
 from epaper4in2 import EPD_4in2
 from graphics import PortraitCanvas
 from layout import render_iata_baggage_tag
-from nfc_handler import NfcTarget, parse_iata_payload
+from nfc_handler import NfcTarget
 from config import (
     PN532_RX, PN532_TX, PN532_RST, PN532_BAUD,
     EPD_CS, EPD_DC, EPD_RST, EPD_BUSY, EPD_SCK, EPD_MOSI,
-    NFC_SESSION_MS
+    NFC_SESSION_MS, SMARTTAG_UID
 )
 
 
@@ -30,13 +30,17 @@ def main():
     rst_pin = Pin(PN532_RST, Pin.OUT)
     nfc = PN532_UART(uart, reset=rst_pin, debug=False)
 
-    # Configure PN532 as Type-4 PICC target
-    nfc_target = NfcTarget(nfc)
-    nfc_target.configure()
-
     print("Initializing 4.2\" e-Paper (Portrait 300x400)...")
     epd = EPD_4in2()
+    epd.init()
     canvas = PortraitCanvas(epd)
+
+    def refresh_display(parsed):
+        render_iata_baggage_tag(canvas, parsed)
+        epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
+
+    nfc_target = NfcTarget(nfc, SMARTTAG_UID, refresh_display)
+    nfc_target.configure()
 
     # Initial display (blank/ready state)
     canvas.clear()
@@ -53,19 +57,6 @@ def main():
         baggage_data = nfc_target.listen(session_ms=NFC_SESSION_MS)
 
         if baggage_data:
-            print("\n[V] NDEF received, parsing...")
-            parsed = parse_iata_payload(baggage_data)
-            if parsed:
-                print(f"    Parsed: {parsed}")
-
-                # Render directly to e-paper using local layout
-                render_iata_baggage_tag(canvas, parsed)
-                epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
-                print("Display updated.")
-
-            else:
-                print("[!] Could not parse NDEF payload")
-
             # Brief pause before next session
             time.sleep(2)
             nfc_target.reset()

@@ -251,6 +251,25 @@ describe('NFC Sync State Machine & Honesty Guarantees', () => {
     expect(outcome.writeRecord?.verifiedHardwareReadback).toBe(true);
   });
 
+  it('closes the hardware session when a different tag is detected', async () => {
+    let closed = false;
+    const outcome = await runSmartTagSync({
+      mode: 'PHYSICAL_HARDWARE',
+      service: {
+        isAvailable: async () => true,
+        isEnabled: async () => true,
+        readTagUid: async () => ({ tagUid: 'OTHER-TAG', isMockSimulation: false }),
+        writeEinkDisplay: async () => { throw new Error('Must not write the wrong tag'); },
+        cancelScan: async () => { closed = true; },
+      },
+      payload: samplePayload,
+      expectedTagUid: samplePayload.tagUid,
+      stepDelayMs: 0,
+    });
+    expect(outcome.failure?.code).toBe('NFC_WRONG_TAG');
+    expect(closed).toBe(true);
+  });
+
   it('handles NFC disabled, timeout, cancellation, write failure, and wrong tag UID without marking tag synchronized', async () => {
     const nfc = new MockNfcService();
 
@@ -314,10 +333,10 @@ describe('NFC Sync State Machine & Honesty Guarantees', () => {
       payload: samplePayload,
       expectedTagUid: samplePayload.tagUid,
       stepDelayMs: 10,
+      onStep: (step) => {
+        if (step.state === 'SCANNING') queueMicrotask(() => { void nfc.cancelScan(); });
+      },
     });
-    setTimeout(() => {
-      nfc.cancelScan();
-    }, 35);
     const cancelOut = await cancelPromise;
     expect(cancelOut.finalState).toBe('CANCELLED');
     expect(cancelOut.setupState).toBe('PENDING_PHYSICAL_WRITE');

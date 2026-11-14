@@ -82,6 +82,32 @@ NFC_SESSION_MS = 5000        # Max wait for phone NFC write
 
 **No WiFi/API credentials needed** — firmware is standalone.
 
+### Verified mobile sync
+
+Set `SMARTTAG_UID` in `config.py` to the SmartTag identity assigned in the app.
+Give each bridge a distinct value. This is a configured logical identity, not the
+PN532's short emulated RF UID and not proof of ownership.
+
+Reflash the firmware and rebuild the Expo development client before testing.
+Expo Go and web remain simulation-only. The native app uses one ISO-DEP session:
+
+1. Select NDEF application `D2760000850101` and read bridge identity (`80 10 00 00 00`).
+2. Clear NLEN, write the NDEF Text record in chunks, then commit NLEN.
+3. Firmware validates and renders the payload, activates the V2 display refresh,
+   and waits for BUSY to assert and then clear. No receipt is issued on failure.
+4. Read the refresh receipt (`80 11 00 00 00`), match its `sync_id` to this write,
+   and read back the entire NDEF record before marking the tag verified.
+
+Successful proprietary responses contain UTF-8 `PA1|<identity>` or
+`PA1|<sync_id>` followed by `90 00`; a missing/failed refresh returns `65 81`.
+An NDEF write acknowledgement alone does not confirm display refresh.
+Verification confirms controller completion and payload readback, not optical
+barcode readability or the physical appearance of every pixel.
+
+The driver targets the **monochrome Waveshare 4.2-inch V2** controller: RAM writes
+use `24`, refresh activation uses `22`/`20`, and partial update mode is `FF`.
+It is not compatible with older or three-colour panels.
+
 ---
 
 ## Deploy
@@ -144,6 +170,9 @@ Phone (NFC Write)          PN532 (Target)        ESP32-C6              E-Paper D
      "flight": "CX888",
      "route": "HKG-NRT",
      "barcode": "0074774268",
+     "passenger": "CHAN/T",
+     "date": "2026-11-21",
+     "sync_id": "unique-per-write",
      "status": "TAGGED",
      "at": 1700000000
    }
@@ -180,14 +209,15 @@ adb reverse tcp:8000 tcp:8000
 ```
 Then open `https://localhost:8000` on phone.
 
-**Mobile App:** `NativeNfcService.ts` writes NDEF JSON format.
+**Mobile App:** `NativeNfcService.ts` writes NDEF JSON over ISO-DEP and verifies
+the firmware's refresh receipt plus NDEF readback.
 
 ---
 
 ## E-Paper Display
 
 - **Resolution:** 400×300 native → rendered as 300×400 portrait
-- **Mode:** Partial refresh (`PARTIAL_DISPLAY_REFRESH` command 0x1A)
+- **Mode:** Initial full refresh, then partial refresh (`22 FF`, `20`)
 - **Layout:** 4-section IATA baggage tag
   1. **Maximized barcode zone** — horizontal (255×68) + vertical ladder (255×177) ITF-10
   2. **License plate + airline badge + passenger**
@@ -244,13 +274,14 @@ Watch serial output: `>>> SYSTEM READY. Tap phone to PN532 <<<`
 - E-paper renders baggage tag
 
 ### 4. Verify DB Update (Mobile App Flow)
-After NFC write, mobile app should POST to API. Verify in backend:
+After verified physical sync, the mobile app posts the tap to the API. The
+API payload uses `tag_code` and `barcode`; `tag` is reserved for a database tag UUID.
+Verify the demo baggage record in the backend:
 ```bash
 # Check baggage events
-curl -H "Authorization: Bearer <token>" \
-  https://api.example.com/api/v1/baggage/0160892012/events
+curl https://api.example.com/api/v1/baggage/0160892012
 ```
-Should show `TAGGED` event with `scanner_type: NFC_TAP`.
+Its `events` should include `TAGGED` with `scanner_type: NFC_TAP`.
 
 ---
 
