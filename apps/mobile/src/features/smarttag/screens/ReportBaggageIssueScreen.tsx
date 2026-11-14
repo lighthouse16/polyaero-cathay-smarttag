@@ -15,8 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BaggageIssueType } from '@polyaero/shared';
 import {
+  CATHAY_FONT_FAMILY,
   CATHAY_JADE,
-  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -307,14 +307,15 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   headerSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
   },
@@ -328,6 +329,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 2,
@@ -362,6 +364,7 @@ const styles = StyleSheet.create({
   selectBoxText: {
     flexShrink: 1,
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_PRIMARY,
     fontWeight: '500',
   },
@@ -374,6 +377,7 @@ const styles = StyleSheet.create({
   },
   multilineInput: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_PRIMARY,
     minHeight: 48,
     lineHeight: 20,
@@ -381,6 +385,7 @@ const styles = StyleSheet.create({
   },
   charCounter: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     textAlign: 'right',
     marginTop: 6,
@@ -403,6 +408,7 @@ const styles = StyleSheet.create({
   uploadPhotoText: {
     flex: 1,
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     fontWeight: '500',
   },
@@ -432,16 +438,19 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '800',
     color: CATHAY_TEXT_PRIMARY,
   },
   successRef: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_JADE,
   },
   successDesc: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     textAlign: 'center',
     lineHeight: 20,

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathaySignInModalProps {
   visible: boolean;
@@ -409,6 +410,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#1C2024',
   },
@@ -422,6 +424,7 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 8,
@@ -429,12 +432,14 @@ const styles = StyleSheet.create({
   },
   pageSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#52565A',
     marginBottom: 24,
   },
   identifierDisplay: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 20,
@@ -444,6 +449,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#52565A',
     marginBottom: 6,
@@ -460,6 +466,7 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   textInput: {
@@ -469,6 +476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   passwordContainer: {
@@ -483,6 +491,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   eyeBtn: {
@@ -498,6 +507,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
   },
   dividerRow: {
@@ -513,6 +523,7 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   altButtonsCol: {
@@ -528,6 +539,7 @@ const styles = StyleSheet.create({
   },
   outlineButtonText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
   },
@@ -538,10 +550,12 @@ const styles = StyleSheet.create({
   },
   signUpPromptText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   signUpLinkText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#2E6E6D',
   },
@@ -551,6 +565,7 @@ const styles = StyleSheet.create({
   },
   forgotPassText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
   },
@@ -579,10 +594,12 @@ const styles = StyleSheet.create({
   errorExclamationMark: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
   errorBannerText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#1C2024',
     flex: 1,
@@ -605,6 +622,7 @@ const styles = StyleSheet.create({
     borderColor: '#CBD5E1',
     borderRadius: 8,
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#006564',
     backgroundColor: '#F8FAFC',
@@ -622,6 +640,7 @@ const styles = StyleSheet.create({
   },
   resetDoneTitle: {
     fontSize: 20,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     textAlign: 'center',
@@ -630,6 +649,7 @@ const styles = StyleSheet.create({
   },
   resetDoneSub: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#64748B',
     textAlign: 'center',

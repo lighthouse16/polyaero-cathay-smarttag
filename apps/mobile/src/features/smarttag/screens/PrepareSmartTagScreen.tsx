@@ -18,8 +18,8 @@ import {
   SmartTagDeclarations,
 } from '@polyaero/shared';
 import {
+  CATHAY_FONT_FAMILY,
   CATHAY_JADE,
-  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -332,14 +332,15 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 24,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   mainSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
   },
@@ -350,6 +351,7 @@ const styles = StyleSheet.create({
   },
   checklistSectionHeading: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 14,
@@ -396,11 +398,13 @@ const styles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   checklistSubtitle: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },

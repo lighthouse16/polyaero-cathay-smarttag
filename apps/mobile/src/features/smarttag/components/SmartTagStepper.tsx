@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CATHAY_JADE, CATHAY_TEXT_PRIMARY, CATHAY_TEXT_MUTED } from './CathaySmartTagPrimitives';
+import { CATHAY_FONT_FAMILY, CATHAY_JADE, CATHAY_TEXT_PRIMARY, CATHAY_TEXT_MUTED } from './CathaySmartTagPrimitives';
 
 export type SmartTagStep = 'prepare' | 'sync' | 'ready';
 
@@ -124,6 +124,7 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 6,
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: CATHAY_TEXT_MUTED,
   },

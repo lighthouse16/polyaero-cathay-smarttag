@@ -53,12 +53,23 @@ def main():
     nfc_target = NfcTarget(nfc, SMARTTAG_UID, refresh_display)
     nfc_target.configure()
 
-    # Initial display (blank/ready state)
+    # Initial display (Cathay SmartTag ready state)
     canvas.clear()
-    canvas.text("READY FOR TAP", 60, 180, canvas.black, scale=2, bold=True)
-    canvas.text("Tap phone to write tag", 40, 220, canvas.black, scale=1)
-    print("[EPD] Initial full refresh")
-    epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
+    canvas.fill_rect(20, 30, 260, 48, canvas.black)
+    canvas.text("CATHAY PACIFIC", 35, 46, canvas.white, scale=2, bold=True)
+    canvas.rect(20, 88, 260, 240, canvas.black, thickness=2)
+    canvas.text("SmartTag(TM)", 65, 120, canvas.black, scale=2, bold=True)
+    canvas.draw_airplane_icon(142, 160, canvas.black)
+    canvas.text("READY TO PAIR", 60, 200, canvas.black, scale=2, bold=True)
+    canvas.text("Tap phone with NFC", 55, 235, canvas.black, scale=1)
+    canvas.text("to write baggage tag", 50, 255, canvas.black, scale=1)
+    canvas.text("IATA DIGITAL BAGGAGE", 45, 350, canvas.black, scale=1, bold=True)
+    print("[EPD] Initial full refresh (Ready state)")
+    try:
+        epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
+    except Exception as e:
+        print(f"[EPD] Cold-boot full refresh fallback to partial: {e}")
+        epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
 
     print("\n>>> SYSTEM READY. Tap phone to PN532 <<<")
 
@@ -74,7 +85,7 @@ def main():
                 render_iata_baggage_tag(canvas, parsed)
                 epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
                 print("[EPD] Baggage refresh completed")
-                time.sleep_ms(300)
+                time.sleep_ms(3000)
         except Exception as exc:
             print(f"[NFC] Loop recovery: {exc}")
             time.sleep_ms(20)

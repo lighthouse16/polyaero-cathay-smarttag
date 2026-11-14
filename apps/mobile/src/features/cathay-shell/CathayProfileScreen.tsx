@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayProfileScreenProps {
   user: UserAuthProfile;
@@ -843,6 +844,7 @@ const styles = StyleSheet.create({
   },
   guestTitle: {
     fontSize: 20,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
     marginBottom: 8,
@@ -850,6 +852,7 @@ const styles = StyleSheet.create({
   },
   guestSub: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 19,
     color: '#64748B',
     textAlign: 'center',
@@ -866,6 +869,7 @@ const styles = StyleSheet.create({
   guestPrimaryBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
@@ -906,6 +910,7 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#FFFFFF',
     letterSpacing: -0.2,
@@ -917,6 +922,7 @@ const styles = StyleSheet.create({
   },
   memberIdText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#FFFFFF',
     fontWeight: '400',
     letterSpacing: 0.2,
@@ -926,6 +932,7 @@ const styles = StyleSheet.create({
   },
   tierLabelText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: 'rgba(255, 255, 255, 0.92)',
     marginTop: 22,
@@ -957,11 +964,13 @@ const styles = StyleSheet.create({
   },
   goldLabelText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#827127',
   },
   statusPointsBigNum: {
     fontSize: 28,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginTop: 4,
@@ -1021,6 +1030,7 @@ const styles = StyleSheet.create({
   },
   reachSilverText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
     fontWeight: '400',
   },
@@ -1042,6 +1052,7 @@ const styles = StyleSheet.create({
   },
   daysLeftText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#785D2A',
     fontWeight: '400',
   },
@@ -1070,6 +1081,7 @@ const styles = StyleSheet.create({
   },
   asiaMilesValueText: {
     fontSize: 25,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginRight: 10,
@@ -1093,6 +1105,7 @@ const styles = StyleSheet.create({
   },
   amberLabelText: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#8A5A1E',
     marginBottom: 8,
@@ -1103,6 +1116,7 @@ const styles = StyleSheet.create({
   },
   greenTierValueText: {
     fontSize: 19,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1E2328',
     marginLeft: 10,
@@ -1133,11 +1147,13 @@ const styles = StyleSheet.create({
   },
   completeTitleText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1E2328',
   },
   completeDescText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 19,
     color: '#2C3034',
     marginTop: 6,
@@ -1162,6 +1178,7 @@ const styles = StyleSheet.create({
   },
   completeProgressFraction: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#5C6066',
     marginLeft: 12,
     fontWeight: '400',
@@ -1195,6 +1212,7 @@ const styles = StyleSheet.create({
   },
   circleActionLabel: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     textAlign: 'center',
@@ -1224,6 +1242,7 @@ const styles = StyleSheet.create({
   startingDatePillText: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   enhancedTextGroup: {
@@ -1231,6 +1250,7 @@ const styles = StyleSheet.create({
   },
   enhancedHeading: {
     fontSize: 21,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     letterSpacing: -0.3,
@@ -1238,6 +1258,7 @@ const styles = StyleSheet.create({
   },
   enhancedSubheading: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#2C3034',
     marginBottom: 20,
@@ -1253,6 +1274,7 @@ const styles = StyleSheet.create({
   learnMoreOutlineBtnText: {
     color: '#2E6B69',
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
   },
   enhancedRightPhotosCol: {
@@ -1279,11 +1301,13 @@ const styles = StyleSheet.create({
   },
   benefitsSectionTitle: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
   },
   benefitsViewAllText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#2E6B69',
   },
@@ -1313,17 +1337,20 @@ const styles = StyleSheet.create({
   },
   currentStatusGoldLabel: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#827127',
     marginBottom: 2,
   },
   currentStatusTierName: {
     fontSize: 20,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
   },
   youveUnlockedTitle: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 14,
@@ -1342,6 +1369,7 @@ const styles = StyleSheet.create({
   unlockedItemText: {
     flex: 1,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 21,
     color: '#4B5563',
   },
@@ -1368,6 +1396,7 @@ const styles = StyleSheet.create({
   reachSilverBadgeText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   lockedItemRow: {
@@ -1382,6 +1411,7 @@ const styles = StyleSheet.create({
   lockedItemText: {
     flex: 1,
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#4B5563',
   },
@@ -1399,6 +1429,7 @@ const styles = StyleSheet.create({
   },
   cardFooterBoldText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
   },
@@ -1444,6 +1475,7 @@ const styles = StyleSheet.create({
   },
   scCardTitle: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     lineHeight: 23,
@@ -1479,6 +1511,7 @@ const styles = StyleSheet.create({
   },
   modalHeaderTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#1C2024',
   },
@@ -1511,6 +1544,7 @@ const styles = StyleSheet.create({
   },
   digitalCardNameText: {
     fontSize: 23,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#FFFFFF',
     marginBottom: 28,
@@ -1521,12 +1555,14 @@ const styles = StyleSheet.create({
   },
   digitalCardMetaLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: 'rgba(255, 255, 255, 0.78)',
     letterSpacing: 0.4,
     marginBottom: 4,
   },
   digitalCardMetaValue: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#FFFFFF',
     fontWeight: '400',
   },
@@ -1551,16 +1587,19 @@ const styles = StyleSheet.create({
   appleWalletSmallText: {
     color: '#FFFFFF',
     fontSize: 10,
+    fontFamily: CATHAY_FONT_FAMILY,
   },
   appleWalletBigText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
   /* Complete Your Profile Modal (Frame #98) */
   stepCompletedLine: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     marginBottom: 20,
   },
@@ -1581,6 +1620,7 @@ const styles = StyleSheet.create({
   completeListText: {
     flex: 1,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
 
@@ -1591,6 +1631,7 @@ const styles = StyleSheet.create({
   },
   yourProfileBigHeading: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 20,
@@ -1605,6 +1646,7 @@ const styles = StyleSheet.create({
   },
   yourProfileRowText: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     fontWeight: '400',
   },
@@ -1615,6 +1657,7 @@ const styles = StyleSheet.create({
   },
   signOutRowText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#DC2626',
     fontWeight: '500',
   },
@@ -1622,6 +1665,7 @@ const styles = StyleSheet.create({
   /* Transactions Modal (Frame #154) */
   txParagraph: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 22,
     color: '#1C2024',
     marginBottom: 16,
@@ -1642,6 +1686,7 @@ const styles = StyleSheet.create({
   },
   linkCardPromoTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     lineHeight: 21,
@@ -1657,10 +1702,12 @@ const styles = StyleSheet.create({
   linkCardDarkBtnText: {
     color: '#FFFFFF',
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   viewStatementLink: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6B69',
     marginVertical: 14,
   },
@@ -1678,6 +1725,7 @@ const styles = StyleSheet.create({
   },
   txTabActiveText: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     fontWeight: '400',
   },
@@ -1686,6 +1734,7 @@ const styles = StyleSheet.create({
   },
   txTabInactiveText: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#4B5563',
   },
   txUpcomingSummaryRow: {
@@ -1696,11 +1745,13 @@ const styles = StyleSheet.create({
   },
   txUpcomingHeading: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     lineHeight: 24,
   },
   txZeroCount: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   txEmptyNotice: {
@@ -1711,6 +1762,7 @@ const styles = StyleSheet.create({
   },
   txEmptyNoticeText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
   },
   infoGreyBox: {

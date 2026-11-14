@@ -168,7 +168,7 @@ export function BaggageInvestigationPanel({
 
   return (
     <aside aria-label="Baggage Case Investigation" style={{ minWidth: 0 }}>
-      <div className="card-surface" style={{ padding: "20px 22px" }}>
+      <div className="card-surface" style={{ padding: "20px 22px", position: "relative" }}>
         {/* Top Header Row: Category label + Close button at top-right corner */}
         <div
           style={{
@@ -195,30 +195,30 @@ export function BaggageInvestigationPanel({
               title="Close baggage case"
               className="focus-ring"
               style={{
-                background: "#FAF9F5",
-                border: "1px solid #E5E2DA",
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                background: "transparent",
+                border: "none",
                 color: "#000000",
                 cursor: "pointer",
                 width: "28px",
                 height: "28px",
-                borderRadius: "6px",
+                borderRadius: "50%",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 padding: 0,
-                margin: "-4px -4px 0 0",
                 transition: "background-color 0.15s ease, color 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#EAE7DF";
-                e.currentTarget.style.color = "#000000";
+                e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0.06)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#FAF9F5";
-                e.currentTarget.style.color = "#000000";
+                e.currentTarget.style.backgroundColor = "transparent";
               }}
             >
-              <CloseIcon size={14} color="#000000" />
+              <CloseIcon size={16} color="currentColor" />
             </button>
           )}
         </div>

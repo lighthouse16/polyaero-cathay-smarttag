@@ -12,6 +12,7 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayTravelToolsScreenProps {
   onClose?: () => void;
@@ -754,6 +755,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 20,
@@ -776,6 +778,7 @@ const styles = StyleSheet.create({
   },
   gridLabel: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
     fontWeight: '400',
     textAlign: 'center',
@@ -801,6 +804,7 @@ const styles = StyleSheet.create({
   },
   modalHeaderTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#1C2024',
   },
@@ -813,6 +817,7 @@ const styles = StyleSheet.create({
   },
   modalExplainer: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#2C3034',
     marginBottom: 20,
@@ -822,6 +827,7 @@ const styles = StyleSheet.create({
   },
   statusInputLabel: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#52565A',
     marginBottom: 6,
@@ -833,6 +839,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   cathayPrimaryBtn: {
@@ -846,6 +853,7 @@ const styles = StyleSheet.create({
   cathayPrimaryBtnText: {
     color: '#FFFFFF',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   flightResultBox: {
@@ -864,6 +872,7 @@ const styles = StyleSheet.create({
   },
   flightResultNum: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
   },
@@ -875,6 +884,7 @@ const styles = StyleSheet.create({
   },
   onTimeText: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#2E6B69',
   },
@@ -885,11 +895,13 @@ const styles = StyleSheet.create({
   },
   flightResultCity: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
   flightResultTime: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
     marginTop: 2,
   },
@@ -913,6 +925,7 @@ const styles = StyleSheet.create({
   },
   cabinChoicePillText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
     fontWeight: '500',
     textAlign: 'center',
@@ -940,11 +953,13 @@ const styles = StyleSheet.create({
   },
   allowanceTitle: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
   allowanceDetail: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
     marginTop: 2,
   },
@@ -969,18 +984,21 @@ const styles = StyleSheet.create({
   },
   smartTagBadgeText: {
     fontSize: 11,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#2E6B69',
     letterSpacing: 0.5,
   },
   smartTagTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 6,
   },
   smartTagBody: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#2C3034',
     marginBottom: 16,
@@ -998,6 +1016,7 @@ const styles = StyleSheet.create({
   },
   tagStatusLabel: {
     fontSize: 10,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#76777A',
     marginBottom: 4,
@@ -1009,6 +1028,7 @@ const styles = StyleSheet.create({
   },
   tagStatusValue: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
@@ -1021,12 +1041,14 @@ const styles = StyleSheet.create({
   },
   timetableRoute: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 4,
   },
   timetableDetail: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   statusNoticeBox: {
@@ -1040,12 +1062,14 @@ const styles = StyleSheet.create({
   },
   statusNoticeTitle: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#195A58',
     marginBottom: 4,
   },
   statusNoticeBody: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#2C3034',
   },

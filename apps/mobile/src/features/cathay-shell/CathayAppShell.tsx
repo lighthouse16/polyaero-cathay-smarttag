@@ -39,6 +39,7 @@ import {
   startNfcTapListener,
   subscribeNfcTaps,
 } from '../../services/nfc/nfcTapBridge';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -214,6 +215,11 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
     if (Platform.OS === 'web') return;
     const handleTap = (tap: DiscoveredNfcTap | null) => {
       if (!tap) return;
+      const currentRoute = smartTagController.getSnapshot().nav.currentRoute;
+      // Do not interrupt completed journey or result screens with background taps
+      if (currentRoute === 'result' || currentRoute === 'journey') {
+        return;
+      }
       const snap = smartTagRepository.getSnapshot();
       const itin =
         (snap.activeItineraryId
@@ -233,10 +239,12 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
       }
       setOnboardingScreen(null);
       setActiveTab('trips');
-      smartTagController.navigateTo('sync', {
-        itineraryId: itin.id,
-        bagSetupId: bag?.id,
-      });
+      if (currentRoute !== 'sync') {
+        smartTagController.navigateTo('sync', {
+          itineraryId: itin.id,
+          bagSetupId: bag?.id,
+        });
+      }
     };
 
     const unsubscribe = subscribeNfcTaps(handleTap);
@@ -792,6 +800,7 @@ const styles = StyleSheet.create({
   },
   dockLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     marginTop: 2,
     letterSpacing: -0.1,
   },
@@ -829,11 +838,13 @@ const styles = StyleSheet.create({
   },
   devMenuTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#0F172A',
   },
   devMenuSub: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#64748B',
     marginBottom: 16,
   },
@@ -848,6 +859,7 @@ const styles = StyleSheet.create({
   },
   devOptionBtnText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#334155',
     fontWeight: '600',
   },

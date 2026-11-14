@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayMessageCentreModalProps {
   visible: boolean;
@@ -130,6 +131,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#64748B',
   },
@@ -186,18 +189,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
   },
   alertBadgeText: {
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
   },
   alertDate: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#718096',
   },
   alertHeading: {
     fontSize: 17,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 12,
@@ -205,6 +212,7 @@ const styles = StyleSheet.create({
   },
   alertParagraph: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#334155',
     marginBottom: 12,
@@ -221,17 +229,20 @@ const styles = StyleSheet.create({
   },
   bulletDot: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#006564',
     lineHeight: 20,
   },
   bulletText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 19,
     color: '#334155',
     flex: 1,
   },
   alertFooterNotice: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#64748B',
     marginTop: 16,
@@ -245,6 +256,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
     marginTop: 16,
@@ -252,6 +264,7 @@ const styles = StyleSheet.create({
   },
   emptySub: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 20,

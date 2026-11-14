@@ -246,20 +246,35 @@ dialog::backdrop {
   }
 }
 
-/* Custom slim scrollbar for operational tables */
+/* Elegant, subtle scrollbar across all web views */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.16) transparent; /* background */
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1cdc4;
+  background: rgba(0, 0, 0, 0.14);
   border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a296;
+  background: rgba(0, 0, 0, 0.28);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.42);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Hide scrollbars for timeline container */

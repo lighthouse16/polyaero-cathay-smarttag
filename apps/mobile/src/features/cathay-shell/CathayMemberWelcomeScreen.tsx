@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayMemberWelcomeScreenProps {
   onSignUp?: () => void;
@@ -174,6 +175,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 27,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     letterSpacing: -0.3,
@@ -181,6 +183,7 @@ const styles = StyleSheet.create({
   },
   subheading: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 22,
     color: '#2D3748',
     marginTop: 16,
@@ -191,11 +194,13 @@ const styles = StyleSheet.create({
   },
   benefitItem: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 24,
     color: '#2D3748',
   },
   programmeNotice: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 21,
     color: '#4A5568',
     marginBottom: 28,
@@ -222,6 +227,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
@@ -238,6 +244,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#006564',
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
@@ -249,6 +256,7 @@ const styles = StyleSheet.create({
   tertiaryButtonText: {
     color: '#006564',
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   modalOverlay: {
@@ -271,12 +279,14 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 10,
   },
   modalBody: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#4A5568',
     marginBottom: 20,
@@ -290,6 +300,7 @@ const styles = StyleSheet.create({
   modalPrimaryBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
   modalSecondaryBtn: {
@@ -300,6 +311,7 @@ const styles = StyleSheet.create({
   modalSecondaryBtnText: {
     color: '#718096',
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
 });

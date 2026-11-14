@@ -23,10 +23,10 @@ import {
   runSmartTagSync,
 } from '@polyaero/shared';
 import {
+  CATHAY_FONT_FAMILY,
   CATHAY_JADE,
   CATHAY_CRIMSON,
   CATHAY_AMBER_WARM,
-  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -38,7 +38,13 @@ import {
 } from '../components/CathaySmartTagPrimitives';
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
-import { clearLastNfcTap, useDiscoveredNfcTap } from '../../../services/nfc/nfcTapBridge';
+import {
+  clearLastNfcTap,
+  pauseNfcTapListener,
+  resumeNfcTapListener,
+  setNfcTapCooldown,
+  useDiscoveredNfcTap,
+} from '../../../services/nfc/nfcTapBridge';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 import { syncBookingToCopilot, postSmartTagTap } from '../../../services/copilotBridge';
 
@@ -67,7 +73,9 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
   const discoveredTap = useDiscoveredNfcTap();
   const handledTapSeq = useRef<number | null>(null);
   const session = useRef<{ service: INfcService; cancelled: boolean } | null>(null);
+  const syncCompletedRef = useRef(false);
   useEffect(() => () => {
+    resumeNfcTapListener();
     if (session.current) {
       session.current.cancelled = true;
       void session.current.service.cancelScan().catch(() => {});
@@ -92,7 +100,11 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     machineState === 'WRITING' ||
     machineState === 'VERIFYING';
 
-  const handleStartSync = useCallback(async (forceDemo = false) => {
+  const handleStartSync = useCallback(async (forceDemo = false, isUserInitiated = false) => {
+    if (isUserInitiated) {
+      syncCompletedRef.current = false;
+    }
+    if (syncCompletedRef.current) return;
     if (!itinerary || !activeBag || isBusy || session.current) return;
     if (activeBag.setupState === 'UNREGISTERED') {
       smartTagController.navigateTo('prepare', { itineraryId: itinerary.id, bagSetupId: activeBag.id });
@@ -100,10 +112,12 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     }
     const bag = activeBag;
     setFailure(null);
+    pauseNfcTapListener();
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
     const physicalService = forceDemo ? null : getPhysicalNfcService();
     if (!forceDemo && !physicalService) {
+      resumeNfcTapListener();
       setFailure({
         code: 'NFC_UNAVAILABLE',
         title: 'Physical NFC unavailable',
@@ -138,10 +152,16 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     });
 
     session.current = null;
-    if (operation.cancelled) return;
+    if (operation.cancelled) {
+      resumeNfcTapListener();
+      return;
+    }
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
+      syncCompletedRef.current = true;
+      setNfcTapCooldown(8000);
+      resumeNfcTapListener();
       clearLastNfcTap();
       smartTagController.navigateTo('result', {
         itineraryId: itinerary.id,
@@ -172,18 +192,22 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
         }
       })();
-    } else if (outcome.failure) {
-      setFailure(outcome.failure);
+    } else {
+      resumeNfcTapListener();
+      if (outcome.failure) {
+        setFailure(outcome.failure);
+      }
     }
   }, [activeBag, isBusy, itinerary]);
 
   useEffect(() => {
+    if (syncCompletedRef.current) return;
     if (Platform.OS === 'web' || !discoveredTap) return;
     if (handledTapSeq.current === discoveredTap.tapSeq) return;
     if (!itinerary || !activeBag || activeBag.setupState === 'UNREGISTERED') return;
     if (isBusy || session.current) return;
     handledTapSeq.current = discoveredTap.tapSeq;
-    void handleStartSync(false);
+    void handleStartSync(false, false);
   }, [discoveredTap, itinerary, activeBag, isBusy, handleStartSync]);
 
   if (!itinerary || !activeBag) {
@@ -314,7 +338,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
           )}
           <CathayPrimaryButton
             label={isBusy ? statusMessage : 'Start NFC sync'}
-            onPress={() => handleStartSync(false)}
+            onPress={() => handleStartSync(false, true)}
             disabled={isBusy}
             style={styles.primaryCta}
             testID="btn-start-sync"
@@ -322,7 +346,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
           <TouchableOpacity
             style={styles.demoLinkBtn}
-            onPress={() => handleStartSync(true)}
+            onPress={() => handleStartSync(true, true)}
             disabled={isBusy}
             accessibilityRole="button"
             activeOpacity={0.7}
@@ -375,8 +399,8 @@ const styles = StyleSheet.create({
   },
   instructionTitle: {
     fontSize: 24,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 8,
@@ -384,6 +408,7 @@ const styles = StyleSheet.create({
   },
   instructionSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
     textAlign: 'center',
@@ -405,6 +430,7 @@ const styles = StyleSheet.create({
   hintText: {
     flex: 1,
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_PRIMARY,
     lineHeight: 18,
     fontWeight: '500',
@@ -427,6 +453,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: CATHAY_JADE,
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
@@ -460,17 +487,20 @@ const styles = StyleSheet.create({
   errorTitle: {
     color: CATHAY_TEXT_PRIMARY,
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     marginBottom: 3,
   },
   errorText: {
     color: CATHAY_TEXT_SECONDARY,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18.5,
   },
   errorHintText: {
     color: CATHAY_TEXT_MUTED,
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 17.5,
     marginTop: 6,
   },
@@ -490,6 +520,7 @@ const styles = StyleSheet.create({
   demoLinkText: {
     color: CATHAY_TEXT_MUTED,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     textDecorationLine: 'underline',
   },
 });

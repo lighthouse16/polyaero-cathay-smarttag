@@ -4,7 +4,10 @@ import { NativeNfcService } from '../NativeNfcService';
 import {
   formatNfcHexUid,
   getLastNfcTap,
+  pauseNfcTapListener,
   resetNfcTapBridgeForTests,
+  resumeNfcTapListener,
+  setNfcTapCooldown,
   startNfcTapListener,
 } from '../nfcTapBridge';
 import { postSmartTagTap } from '../../copilotBridge';
@@ -391,5 +394,45 @@ describe('Standard Type-4A compatibility and NFC launch tap bridge', () => {
       uid: '12:34:56',
       ndefText: null,
     });
+  });
+
+  it('debounces rapid repeated scans of same tag and suppresses taps during pause or cooldown', async () => {
+    resetNfcTapBridgeForTests();
+    const setEventListener = vi.fn((_event: string, _cb: (tag: any) => void) => {});
+
+    await startNfcTapListener({
+      default: {
+        start: vi.fn(async () => undefined),
+        setEventListener,
+      } as any,
+    });
+
+    const cb = setEventListener.mock.calls[0]?.[1];
+    expect(cb).toBeDefined();
+
+    // First tap of tag A
+    cb?.({ id: 'AABBCC' });
+    expect(getLastNfcTap()?.tapSeq).toBe(1);
+    expect(getLastNfcTap()?.uid).toBe('AA:BB:CC');
+
+    // Duplicate tap of tag A within 2.5s window -> debounced, no new tap emitted
+    cb?.({ id: 'AABBCC' });
+    expect(getLastNfcTap()?.tapSeq).toBe(1);
+
+    // Cooldown active -> tag B also suppressed
+    setNfcTapCooldown(5000);
+    cb?.({ id: 'DDEEFF' });
+    expect(getLastNfcTap()?.tapSeq).toBe(1);
+
+    // Reset bridge for pause test
+    resetNfcTapBridgeForTests();
+    pauseNfcTapListener();
+    cb?.({ id: '112233' });
+    expect(getLastNfcTap()).toBeNull();
+
+    resumeNfcTapListener();
+    cb?.({ id: '112233' });
+    expect(getLastNfcTap()?.tapSeq).toBe(1);
+    expect(getLastNfcTap()?.uid).toBe('11:22:33');
   });
 });

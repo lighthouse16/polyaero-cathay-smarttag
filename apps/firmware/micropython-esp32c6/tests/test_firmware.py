@@ -57,6 +57,9 @@ class MockCanvas:
     def clear(self):
         self.calls.append(('clear',))
 
+    def rect(self, x, y, w, h, color, thickness=1):
+        self.calls.append(('rect', x, y, w, h, color, thickness))
+
 
 def test_itf_encoding():
     """Test ITF-10 element encoding"""

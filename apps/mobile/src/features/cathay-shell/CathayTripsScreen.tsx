@@ -486,6 +486,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
@@ -511,6 +512,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#76777A',
   },
@@ -571,12 +573,14 @@ const styles = StyleSheet.create({
   },
   smartTagTitle: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
   smartTagDescription: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 19,
     color: CATHAY_TEXT_SECONDARY,
   },
@@ -588,6 +592,7 @@ const styles = StyleSheet.create({
   },
   multiBagCountNote: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_JADE,
     fontWeight: '600',
   },
@@ -600,6 +605,7 @@ const styles = StyleSheet.create({
   },
   reconfigureLinkText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_JADE,
     fontWeight: '500',
   },
@@ -623,17 +629,20 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#2C3034',
     textAlign: 'center',
   },
   lastUpdatedText: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#76777A',
     marginTop: 8,
   },
   pullToRefreshText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
     marginTop: 24,
   },
@@ -642,6 +651,7 @@ const styles = StyleSheet.create({
   },
   cantFindHeading: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#2C3034',
     textAlign: 'center',
@@ -658,6 +668,7 @@ const styles = StyleSheet.create({
   addBookingOutlineBtnText: {
     color: CATHAY_JADE,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
   demoPopulateBtn: {
@@ -674,6 +685,7 @@ const styles = StyleSheet.create({
   demoPopulateBtnText: {
     color: CATHAY_JADE,
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
   creamTipBox: {
@@ -692,6 +704,7 @@ const styles = StyleSheet.create({
   creamTipText: {
     flex: 1,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#2C3034',
   },
@@ -716,6 +729,7 @@ const styles = StyleSheet.create({
   },
   modalHeaderTitle: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
@@ -726,6 +740,7 @@ const styles = StyleSheet.create({
   },
   modalNoticeText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
     lineHeight: 19,
     marginBottom: 18,
@@ -742,12 +757,14 @@ const styles = StyleSheet.create({
   },
   fieldFloatingLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#76777A',
     marginBottom: 4,
     letterSpacing: 0.2,
   },
   cleanTextInput: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     paddingVertical: 2,
   },
@@ -784,6 +801,7 @@ const styles = StyleSheet.create({
   radioLabelText: {
     flex: 1,
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   redValidationBanner: {
@@ -803,12 +821,14 @@ const styles = StyleSheet.create({
   redExclamationMark: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
   redValidationText: {
     flex: 1,
     color: '#C92A2A',
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
   },
   continueBtnContainer: {
     marginTop: 28,
@@ -826,6 +846,7 @@ const styles = StyleSheet.create({
   continueModalBtnText: {
     color: '#8D9297',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
   continueModalBtnTextActive: {

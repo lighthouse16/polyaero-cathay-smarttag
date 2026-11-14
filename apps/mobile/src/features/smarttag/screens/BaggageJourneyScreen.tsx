@@ -1,5 +1,5 @@
 /**
- * Screen 05 — Baggage Journey (Taobao-Style Live Transport Progress, Arrival ETA & AI Risk Score)
+ * Screen 05 — Baggage Journey (Cathay Pacific Style Live Baggage Tracking)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,17 +15,19 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  CATHAY_FONT_FAMILY,  CATHAY_BG,
+  CATHAY_BORDER,
   CATHAY_JADE,
   CATHAY_CRIMSON,
   CATHAY_AMBER_WARM,
-  CATHAY_WARM_CREAM,
-  CATHAY_WARM_BORDER,
-  CATHAY_FONT_FAMILY,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
+  CathayScreenHeader,
+  FlightSummaryCard,
   InlineNotice,
   HeaderSoftWave,
+  JadeStatusCard,
 } from '../components/CathaySmartTagPrimitives';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
 import {
@@ -101,8 +103,9 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
         ) {
           setSelectedOption(data.passenger_recovery_choice);
         }
-        if (data.delivery_address && !hotelAddress) {
-          setHotelAddress(data.delivery_address);
+        if (data.delivery_address) {
+          const address = data.delivery_address;
+          setHotelAddress((prev) => prev || address);
         }
       }
     };
@@ -122,16 +125,14 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   if (!itinerary || !activeBag || !journeyView) {
     return (
       <View style={styles.root}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => smartTagController.goBack()}>
-            <Ionicons name="chevron-back" size={24} color={CATHAY_JADE} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Baggage journey</Text>
-          </View>
-          <View style={styles.headerRightSpacer} />
-        </View>
-        <View style={{ padding: 20 }}>
+        <HeaderSoftWave />
+        <CathayScreenHeader
+          title="Baggage journey"
+          backIcon="chevron-back"
+          onBack={() => smartTagController.goBack()}
+          onLongPressTitle={onOpenDevMenu}
+        />
+        <View style={styles.emptyNoticeWrap}>
           <InlineNotice
             tone="warning"
             title="No baggage journey available"
@@ -178,23 +179,42 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
     liveBag?.recovery_eta || liveBag?.predicted_arrival_time || 'Today, 14:35 Local';
   const carouselName = liveBag?.carousel_assigned || 'Belt 7';
 
-  // Taobao-style horizontal transport route nodes
-  const transitLegs = [
-    { key: 'sync', label: 'Tag Synced', icon: 'pricetag' as const, done: currentStepIdx >= 0 },
-    { key: 'drop', label: `${activeOrigin} Drop`, icon: 'cube' as const, done: currentStepIdx >= 1 },
-    { key: 'air', label: activeFlightNum, icon: 'airplane' as const, done: currentStepIdx >= 2 },
-    { key: 'arr', label: `${activeDest} ${carouselName}`, icon: 'location' as const, done: currentStepIdx >= 3 },
-    { key: 'done', label: 'Collected', icon: 'checkmark-circle' as const, done: currentStepIdx >= 4 },
-  ];
-  const progressPercent = isAwaitingSync
-    ? 5
-    : isMissing || isMisroutedOrRecovering
-      ? 45
-      : Math.min(100, Math.round(((currentStepIdx + 1) / transitLegs.length) * 100));
-
   const riskScore = liveBag?.risk_score ?? 22;
   const riskLevel = liveBag?.risk_level ?? 'LOW';
   const isHighRisk = riskLevel === 'HIGH_PRIORITY' || riskScore >= 65;
+
+  const displayItinerary = {
+    ...itinerary,
+    flight: {
+      ...itinerary.flight,
+      flightNumber: activeFlightNum,
+      origin: activeOrigin,
+      destination: activeDest,
+    },
+  };
+
+  const destCity = itinerary.flight.destinationCity || activeDest;
+  const statusCardTitle = isAwaitingSync
+    ? 'Awaiting tag sync'
+    : isMissing || isMisroutedOrRecovering
+      ? 'Recovery in process'
+      : liveStatusCode === 'CHECKED_IN'
+        ? 'Bag accepted'
+        : liveStatusCode === 'LOADED'
+          ? `Loaded on ${activeFlightNum}`
+          : liveStatusCode === 'ARRIVED' || liveStatusCode === 'ON_CAROUSEL'
+            ? `Arrived in ${destCity}`
+            : liveStatusCode === 'COLLECTED' || liveStatusCode === 'CLAIMED'
+              ? 'Collected'
+              : 'Tag synced';
+
+  const statusCardSubtitle = isAwaitingSync
+    ? 'Pair your SmartTag to activate tracking'
+    : isMissing || isMisroutedOrRecovering
+      ? liveBag?.recovery_eta || 'Baggage care team assisting'
+      : liveStatusCode === 'ARRIVED' || liveStatusCode === 'ON_CAROUSEL'
+        ? `Collect at ${carouselName}`
+        : `Expected ${expectedArrival} · ${carouselName}`;
 
   const baseMilestones = journeyView.items.map(
     (
@@ -235,106 +255,48 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   return (
     <View style={styles.root}>
       <HeaderSoftWave />
-      <View style={styles.headerBar}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => smartTagController.goBack()}
-          testID="smarttag-back-btn"
-        >
-          <Ionicons name="chevron-back" size={24} color={CATHAY_JADE} />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Baggage journey</Text>
-          <Text style={styles.headerSubtitle}>
-            {activeFlightNum} · {activeOrigin} → {activeDest} · Tag {activeBag.baggage.tagNumber}
-          </Text>
-        </View>
-
-        {onOpenDevMenu ? (
-          <TouchableOpacity style={styles.headerRightBtn} onPress={onOpenDevMenu}>
-            <Ionicons name="ellipsis-horizontal" size={20} color={CATHAY_TEXT_PRIMARY} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.headerRightSpacer} />
-        )}
-      </View>
+      <CathayScreenHeader
+        title="Baggage journey"
+        backIcon="chevron-back"
+        onBack={() => smartTagController.goBack()}
+        onLongPressTitle={onOpenDevMenu}
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Taobao-Style Hero Delivery ETA & Transport Progress Card */}
-        <View style={styles.etaHeroCard}>
-          <View style={styles.etaTopRow}>
-            <View>
-              <Text style={styles.etaEyebrow}>EXPECTED BAGGAGE ARRIVAL</Text>
-              <Text style={styles.etaTimeText}>{expectedArrival}</Text>
-            </View>
-            <View style={styles.statusPill}>
-              <Text style={styles.statusPillText}>{badgeLabel}</Text>
-            </View>
-          </View>
+        <JadeStatusCard title={statusCardTitle} subtitle={statusCardSubtitle} />
 
-          <Text style={styles.etaSubText}>
-            Destination: {activeDest} International · {carouselName}
-          </Text>
-
-          {/* Horizontal Node-to-Node Transport Progress Bar */}
-          <View style={styles.progressTrackWrap}>
-            <View style={styles.progressTrackBg}>
-              <View style={[styles.progressTrackFill, { width: `${progressPercent}%` }]} />
-            </View>
-            <View style={styles.nodesRow}>
-              {transitLegs.map((leg) => (
-                <View key={leg.key} style={styles.transitNode}>
-                  <View style={[styles.transitDot, leg.done && styles.transitDotDone]}>
-                    <Ionicons
-                      name={leg.icon}
-                      size={11}
-                      color={leg.done ? '#FFFFFF' : '#718096'}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.transitLabel, leg.done && styles.transitLabelDone]}
-                    numberOfLines={1}
-                  >
-                    {leg.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
+        <View style={styles.summaryCardWrap}>
+          <FlightSummaryCard
+            itinerary={displayItinerary}
+            bagHeader={{
+              displayBagCode: activeBag.baggage.tagNumber,
+              statusLabel: badgeLabel,
+              statusTone:
+                isMissing || isMisroutedOrRecovering
+                  ? 'amber'
+                  : isAwaitingSync
+                    ? 'neutral'
+                    : 'jade',
+            }}
+          />
         </View>
 
-        {/* AI Flight & Bag Risk Prediction Card (Sent Live to Passenger) */}
-        <View style={[styles.riskCard, isHighRisk && styles.riskCardHigh]}>
-          <View style={styles.riskHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons
-                name={isHighRisk ? 'shield-half' : 'shield-checkmark'}
-                size={18}
-                color={isHighRisk ? CATHAY_AMBER_WARM : CATHAY_JADE}
-              />
-              <Text style={styles.riskTitle}>Flight &amp; Bag Risk Prediction</Text>
-            </View>
-            <View style={[styles.riskScoreBadge, isHighRisk && styles.riskScoreBadgeHigh]}>
-              <Text style={[styles.riskScoreText, isHighRisk && styles.riskScoreTextHigh]}>
-                {riskScore}/100 · {riskLevel.replace('_', ' ')}
-              </Text>
-            </View>
+        {isHighRisk && (
+          <View style={styles.advisoryWrap}>
+            <InlineNotice
+              tone="warning"
+              title="Transfer monitoring active"
+              message={
+                liveBag?.passenger_risk_summary ||
+                `Our baggage team is monitoring ${activeFlightNum} (${activeOrigin} → ${activeDest}).`
+              }
+            />
           </View>
-          <Text style={styles.riskSummary}>
-            {liveBag?.passenger_risk_summary ||
-              `Smooth transfer outlook on ${activeFlightNum} (${activeOrigin} → ${activeDest}).`}
-          </Text>
-          {liveBag?.risk_factors && liveBag.risk_factors.length > 0 && (
-            <Text style={styles.riskFactorsText}>
-              Factors: {liveBag.risk_factors.join(' · ')}
-            </Text>
-          )}
-        </View>
+        )}
 
         {/* Prompt to sync tag if passenger has not yet synced */}
         {isAwaitingSync && (
@@ -621,174 +583,25 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-    paddingTop: Platform.OS === 'android' ? 68 : 56,
+    backgroundColor: CATHAY_BG,
+    paddingTop: Platform.OS === 'android' ? 12 : 0,
+    position: 'relative',
   },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    paddingBottom: 8,
-    zIndex: 10,
+  emptyNoticeWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
-  backBtn: { padding: 4 },
-  headerCenter: { alignItems: 'center' },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: CATHAY_FONT_FAMILY,
-    fontWeight: '700',
-    color: CATHAY_TEXT_PRIMARY,
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 11.5,
-    color: CATHAY_TEXT_MUTED,
-    marginTop: 1,
-  },
-  headerRightBtn: { padding: 6 },
-  headerRightSpacer: { width: 32 },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 110,
   },
-  etaHeroCard: {
-    backgroundColor: '#004B4A',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-  },
-  etaTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  etaEyebrow: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#A7D7D2',
-    letterSpacing: 0.6,
-  },
-  etaTimeText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 3,
-  },
-  statusPill: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  statusPillText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  etaSubText: {
-    fontSize: 12.5,
-    color: '#D7EBE8',
-    marginTop: 4,
+  summaryCardWrap: {
     marginBottom: 16,
   },
-  progressTrackWrap: {
-    marginTop: 2,
-  },
-  progressTrackBg: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  progressTrackFill: {
-    height: 4,
-    backgroundColor: '#6EE7B7',
-    borderRadius: 2,
-  },
-  nodesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  transitNode: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  transitDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  transitDotDone: {
-    backgroundColor: '#00875A',
-  },
-  transitLabel: {
-    fontSize: 9.5,
-    color: '#A7D7D2',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  transitLabelDone: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  riskCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D7EBE8',
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-  },
-  riskCardHigh: {
-    backgroundColor: CATHAY_WARM_CREAM,
-    borderColor: CATHAY_WARM_BORDER,
-  },
-  riskHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  riskTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#1C2024',
-  },
-  riskScoreBadge: {
-    backgroundColor: '#EBF4F1',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  riskScoreBadgeHigh: {
-    backgroundColor: '#F4EFE4',
-  },
-  riskScoreText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: CATHAY_JADE,
-  },
-  riskScoreTextHigh: {
-    color: CATHAY_AMBER_WARM,
-  },
-  riskSummary: {
-    fontSize: 12.5,
-    color: CATHAY_TEXT_SECONDARY,
-    lineHeight: 17,
-  },
-  riskFactorsText: {
-    fontSize: 11,
-    color: CATHAY_TEXT_MUTED,
-    marginTop: 5,
+  advisoryWrap: {
+    marginBottom: 16,
   },
   syncNowCard: {
     flexDirection: 'row',
@@ -803,11 +616,13 @@ const styles = StyleSheet.create({
   },
   syncNowTitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#004B4A',
   },
   syncNowSub: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#284239',
     marginTop: 2,
   },
@@ -823,11 +638,13 @@ const styles = StyleSheet.create({
   },
   missingTitle: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   missingSub: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     marginTop: 4,
     marginBottom: 12,
@@ -845,6 +662,7 @@ const styles = StyleSheet.create({
   callCenterBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
   recoveryCard: {
@@ -859,10 +677,12 @@ const styles = StyleSheet.create({
     color: '#004B4A',
     fontWeight: '700',
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
   },
   recoverySub: {
     color: CATHAY_TEXT_SECONDARY,
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     marginTop: 3,
     marginBottom: 12,
   },
@@ -885,6 +705,7 @@ const styles = StyleSheet.create({
   },
   choiceBtnText: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_JADE,
   },
@@ -899,6 +720,7 @@ const styles = StyleSheet.create({
   },
   outcomeLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#006564',
     letterSpacing: 0.4,
@@ -906,11 +728,13 @@ const styles = StyleSheet.create({
   },
   outcomeMain: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
   },
   outcomeEta: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#004B4A',
     marginTop: 3,
@@ -923,6 +747,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     marginTop: 4,
     marginBottom: 8,
@@ -936,19 +761,21 @@ const styles = StyleSheet.create({
   saveAddressBtnText: {
     color: '#FFFFFF',
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
   sectionHeading: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_SECONDARY,
     marginBottom: 12,
   },
   timelineCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: CATHAY_BORDER,
     padding: 16,
     marginBottom: 16,
   },
@@ -1030,22 +857,26 @@ const styles = StyleSheet.create({
   },
   itemDateText: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     fontWeight: '500',
   },
   itemTimeText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_PRIMARY,
     fontWeight: '600',
     marginTop: 1,
   },
   itemTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   itemLocation: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     marginTop: 2,
   },
@@ -1062,6 +893,7 @@ const styles = StyleSheet.create({
   },
   lastUpdatedText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
   },
   reportIssueBtn: {
@@ -1077,6 +909,7 @@ const styles = StyleSheet.create({
   },
   reportIssueBtnText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: CATHAY_JADE,
   },

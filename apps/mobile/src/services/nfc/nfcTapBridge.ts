@@ -44,7 +44,28 @@ let tapCounter = 0;
 let latestTap: DiscoveredNfcTap | null = null;
 let started = false;
 let launchIntentConsumed = false;
+let isListenerPaused = false;
+let cooldownUntil = 0;
+let lastEmittedUid: string | null = null;
+let lastEmittedAt = 0;
+const DEFAULT_DEBOUNCE_MS = 2500;
 const listeners = new Set<(tap: DiscoveredNfcTap | null) => void>();
+
+export function pauseNfcTapListener(): void {
+  isListenerPaused = true;
+}
+
+export function resumeNfcTapListener(): void {
+  isListenerPaused = false;
+}
+
+export function setNfcTapCooldown(durationMs = 4000): void {
+  cooldownUntil = Math.max(cooldownUntil, Date.now() + durationMs);
+}
+
+export function isNfcTapPausedOrCoolingDown(): boolean {
+  return isListenerPaused || Date.now() < cooldownUntil;
+}
 
 /** Format raw Android/iOS tag hex ID into uppercase colon-separated octets. */
 export function formatNfcHexUid(rawId: unknown): string | null {
@@ -94,18 +115,29 @@ function ingestTagEvent(
   ndefLib?: NfcModuleLike['Ndef'],
 ): void {
   if (!tag || typeof tag !== 'object') return;
+  if (isListenerPaused) return;
+
+  const now = Date.now();
+  if (now < cooldownUntil) return;
+
   const uid = formatNfcHexUid(tag.id) ?? 'PN532-TYPE4A';
+  if (uid === lastEmittedUid && now - lastEmittedAt < DEFAULT_DEBOUNCE_MS) {
+    return;
+  }
+
   const ndefText = decodeFirstNdefText(tag, ndefLib);
   const techTypes = Array.isArray(tag.techTypes)
     ? tag.techTypes.filter((t): t is string => typeof t === 'string')
     : [];
   tapCounter += 1;
+  lastEmittedUid = uid;
+  lastEmittedAt = now;
   emitTap({
     tapSeq: tapCounter,
     uid,
     ndefText,
     techTypes,
-    detectedAt: Date.now(),
+    detectedAt: now,
   });
 }
 
@@ -180,6 +212,10 @@ export function resetNfcTapBridgeForTests(): void {
   tapCounter = 0;
   latestTap = null;
   listeners.clear();
+  isListenerPaused = false;
+  cooldownUntil = 0;
+  lastEmittedUid = null;
+  lastEmittedAt = 0;
 }
 
 export function useDiscoveredNfcTap(): DiscoveredNfcTap | null {
