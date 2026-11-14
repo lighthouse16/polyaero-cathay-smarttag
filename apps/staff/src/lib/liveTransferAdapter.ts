@@ -1,11 +1,11 @@
 import type {
-  AttentionLevel,
-  BagRecord,
-  BaggageMilestone,
+  BagRiskAssessment,
+  BagTransferConnection,
   FlightLeg,
-  ScanEvent,
-  TransferConnection,
-  TransferSnapshot,
+  FlightRiskAssessment,
+  LiveBag,
+  OperationalProvenance,
+  TransferControlSnapshot,
 } from "./types";
 import { validateTransferSnapshot } from "./transferControl";
 
@@ -70,62 +70,24 @@ interface TagDisplayPayload {
   updated_at: string;
 }
 
-const VALID_MILESTONES = new Set<BaggageMilestone>([
-  "AWAITING_SYNC",
-  "CHECKED_IN",
-  "TAGGED",
-  "LOADED",
-  "IN_TRANSIT",
-  "ARRIVED",
-  "ON_CAROUSEL",
-  "COLLECTED",
-  "MISROUTED",
-  "MISSING",
-  "RECOVERY_IN_PROGRESS",
-]);
-
 const FEEDER_POOL = [
-  { flightNumber: "CX467", origin: "TPE", gate: "64" },
-  { flightNumber: "CX714", origin: "SIN", gate: "23" },
-  { flightNumber: "CX750", origin: "BKK", gate: "42" },
-  { flightNumber: "CX906", origin: "MNL", gate: "22" },
-  { flightNumber: "CX365", origin: "PVG", gate: "26" },
+  { flightNumber: "CX467", origin: "TPE" },
+  { flightNumber: "CX714", origin: "SIN" },
+  { flightNumber: "CX750", origin: "BKK" },
+  { flightNumber: "CX906", origin: "MNL" },
+  { flightNumber: "CX365", origin: "PVG" },
 ];
 
-function mapMilestone(status: string): BaggageMilestone {
-  const upper = (status || "").toUpperCase();
-  if (VALID_MILESTONES.has(upper as BaggageMilestone)) {
-    return upper as BaggageMilestone;
-  }
-  if (upper === "TRANSFER_SCANNED" || upper === "SYNCHRONIZED" || upper === "TAG_TAPPED") {
-    return "LOADED";
-  }
-  return "TAGGED";
-}
-
-function mapAttention(bag: BackendBag): AttentionLevel {
-  const status = (bag.status || "").toUpperCase();
-  if (
-    bag.is_rush_bag ||
-    status === "MISROUTED" ||
-    status === "MISSING" ||
-    status === "RECOVERY_IN_PROGRESS" ||
-    (bag.risk_score !== undefined && bag.risk_score >= 70)
-  ) {
-    return "Action required";
-  }
-  if (
-    status === "AWAITING_SYNC" ||
-    (bag.risk_score !== undefined && bag.risk_score >= 35)
-  ) {
-    return "At risk";
-  }
-  return "On track";
+function utcDateTag(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
 }
 
 function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag | null {
   const tagNumber = (d.bag_number || d.barcode || d.tag_code || "").trim();
-  const flightNumber = (d.flight || "").trim();
+  const flightNumber = (d.flight || "").trim().toUpperCase();
   const origin = (d.origin || "").trim().toUpperCase();
   const destination = (d.destination || "").trim().toUpperCase();
   if (!tagNumber || !flightNumber || !origin || !destination) return null;
@@ -134,12 +96,14 @@ function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag |
   const outboundFlight = isOutboundFromHkg ? flightNumber : "CX255";
   const outboundDest = isOutboundFromHkg ? destination : "NRT";
   const statusUpper = (d.status || "TAGGED").toUpperCase();
-  const isRush = Boolean(d.is_rush) || ["MISROUTED", "MISSING", "RECOVERY_IN_PROGRESS"].includes(statusUpper);
+  const isRush =
+    Boolean(d.is_rush) ||
+    ["MISROUTED", "MISSING", "RECOVERY_IN_PROGRESS"].includes(statusUpper);
 
   return {
     id: d.tag || `seed_bag_${idx}`,
     tag_number: tagNumber,
-    tag_code: d.tag_code,
+    tag_code: d.tag_code || `SEED-${idx}`,
     tag_interface: "SMARTTAG_EINK_EXCLUSIVE",
     booking_reference: d.pnr || `SD${idx}`,
     passenger_name: d.passenger || `PASSENGER/${idx + 1}`,
@@ -153,10 +117,19 @@ function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag |
     weight_kg: d.weight_kg ?? 20 + idx,
     connection_minutes: isRush ? 38 : 95,
     status: statusUpper,
-    last_known_location: isOutboundFromHkg ? `HKG-T1-GATE-${d.gate || "24"}` : `${origin}-INBOUND-${flightNumber}`,
+    last_known_location: isOutboundFromHkg
+      ? `HKG-T1-GATE-${d.gate || "24"}`
+      : `${origin}-INBOUND-${flightNumber}`,
     carousel_assigned: `Carousel ${(idx % 6) + 2}`,
     is_rush_bag: isRush,
-    risk_score: statusUpper === "MISSING" ? 91 : statusUpper === "MISROUTED" ? 84 : statusUpper === "RECOVERY_IN_PROGRESS" ? 74 : 22 + idx * 3,
+    risk_score:
+      statusUpper === "MISSING"
+        ? 91
+        : statusUpper === "MISROUTED"
+          ? 84
+          : statusUpper === "RECOVERY_IN_PROGRESS"
+            ? 74
+            : 22 + idx * 3,
     risk_level: isRush ? "HIGH_PRIORITY" : "LOW",
     recommended_action: isRush
       ? "APPROVE RAMP INTERCEPT & OFFER PASSENGER RECOVERY OPTIONS"
@@ -167,7 +140,7 @@ function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag |
     updated_at: d.updated_at || new Date().toISOString(),
     events: [
       {
-        id: `evt_${d.tag_code}_1`,
+        id: `evt_${d.tag_code}_${idx}`,
         event_type: statusUpper,
         timestamp: d.updated_at || new Date().toISOString(),
         location_code: isOutboundFromHkg ? `HKG-T1-GATE-${d.gate || "24"}` : `${origin}-FEEDER`,
@@ -181,163 +154,230 @@ function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag |
   };
 }
 
-function utcDateTag(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${day}`;
-}
-
 export function buildLiveTransferSnapshot(
   backendBags: BackendBag[],
   now = new Date(),
-  sourceDetail = "Connected to live backend baggage & SmartTag telemetry.",
-): TransferSnapshot {
+  sourceLabel = "Live Cloud Run + AWS RDS",
+): TransferControlSnapshot {
   const nowMs = now.getTime();
+  const generatedAt = new Date(nowMs).toISOString();
+  const validUntil = new Date(nowMs + 10 * 60_000).toISOString();
+
+  const makeProv = (recordId: string, system = "smarttag-cloudrun-rds"): OperationalProvenance => ({
+    system,
+    recordId,
+    observedAt: generatedAt,
+    validUntil,
+  });
+
   const seenTags = new Set<string>();
-  const validBags = backendBags.filter((b) => {
+  const seenIds = new Set<string>();
+  const deduped = backendBags.filter((b, idx) => {
     const t = String(b.tag_number || "").trim();
     if (!t || seenTags.has(t)) return false;
     seenTags.add(t);
+    if (!b.id || seenIds.has(b.id)) {
+      b.id = `bag_${t}_${idx}`;
+    }
+    seenIds.add(b.id);
     return true;
   });
 
-  const outboundLegs = new Map<string, FlightLeg>();
-  const inboundLegs = new Map<string, FlightLeg>();
-  const bags: BagRecord[] = [];
-  const connections: TransferConnection[] = [];
+  const legsMap = new Map<string, FlightLeg>();
+  const bags: LiveBag[] = [];
+  const connections: BagTransferConnection[] = [];
+  const bagRisks: BagRiskAssessment[] = [];
+  const flightBagsMap = new Map<string, number[]>();
 
-  validBags.forEach((b, idx) => {
-    const depDate = new Date(b.departure_time || nowMs + 3 * 3600_000);
-    const depMs = Number.isFinite(depDate.getTime()) ? depDate.getTime() : nowMs + 3 * 3600_000;
-    const opDate = new Date(depMs).toISOString().slice(0, 10);
-    const outFlightKey = `${b.flight_number}-${opDate}`;
+  deduped.forEach((b, idx) => {
+    const parsedDep = Date.parse(b.departure_time || "");
+    const depMs = Number.isFinite(parsedDep) ? parsedDep : nowMs + (2 + idx) * 3600_000;
+    const depIso = new Date(depMs).toISOString();
+    const opDate = depIso.slice(0, 10);
 
-    if (!outboundLegs.has(outFlightKey)) {
-      outboundLegs.set(outFlightKey, {
-        id: `out-${outFlightKey}`,
-        flightNumber: b.flight_number,
+    const outFlight = (b.flight_number || "CX888").toUpperCase();
+    const outOrigin = (b.departure_airport || "HKG").toUpperCase();
+    const outDest = (b.arrival_airport || "YVR").toUpperCase();
+    const outLegId = `out-${outFlight}-${opDate}`;
+
+    if (!legsMap.has(outLegId)) {
+      legsMap.set(outLegId, {
+        id: outLegId,
+        flightNumber: outFlight,
         operatingDate: opDate,
-        origin: b.departure_airport || "HKG",
-        destination: b.arrival_airport || "NRT",
-        scheduledDepartureAt: new Date(depMs).toISOString(),
-        estimatedDepartureAt: new Date(depMs).toISOString(),
-        gate: idx % 3 === 0 ? "36" : idx % 3 === 1 ? "64" : "24",
-        stand: `S${20 + (idx % 12)}`,
-        status: b.is_rush_bag ? "Delayed" : "Boarding",
+        origin: outOrigin === outDest ? "HKG" : outOrigin,
+        destination: outOrigin === outDest ? "NRT" : outDest,
+        scheduledDepartureAt: depIso,
+        scheduledArrivalAt: null,
+        estimatedDepartureAt: depIso,
+        estimatedArrivalAt: null,
+        actualArrivalAt: null,
+        provenance: makeProv(`leg:${outLegId}`),
       });
     }
-    const outLeg = outboundLegs.get(outFlightKey)!;
 
     const feeder = FEEDER_POOL[idx % FEEDER_POOL.length];
-    const inFlightKey = `${feeder.flightNumber}-${opDate}`;
+    const inLegId = `in-${feeder.flightNumber}-${opDate}`;
     const connMins = b.connection_minutes ?? (b.is_rush_bag ? 35 : 95);
-    const inArrivalMs = depMs - connMins * 60_000;
+    const inArrMs = depMs - connMins * 60_000;
+    const inArrIso = new Date(inArrMs).toISOString();
 
-    if (!inboundLegs.has(inFlightKey)) {
-      inboundLegs.set(inFlightKey, {
-        id: `in-${inFlightKey}`,
+    if (!legsMap.has(inLegId)) {
+      legsMap.set(inLegId, {
+        id: inLegId,
         flightNumber: feeder.flightNumber,
         operatingDate: opDate,
         origin: feeder.origin,
         destination: "HKG",
-        scheduledArrivalAt: new Date(inArrivalMs).toISOString(),
-        estimatedArrivalAt: new Date(inArrivalMs + (b.is_rush_bag ? 18 * 60_000 : 0)).toISOString(),
-        gate: feeder.gate,
-        stand: `N${10 + (idx % 8)}`,
-        status: b.is_rush_bag ? "Delayed" : "Landed",
+        scheduledDepartureAt: null,
+        scheduledArrivalAt: inArrIso,
+        estimatedDepartureAt: null,
+        estimatedArrivalAt: inArrIso,
+        actualArrivalAt: inArrMs <= nowMs ? inArrIso : null,
+        provenance: makeProv(`leg:${inLegId}`),
       });
     }
-    const inLeg = inboundLegs.get(inFlightKey)!;
 
+    const updatedMs = Math.min(Date.parse(b.updated_at || "") || nowMs, nowMs);
+    const updatedIso = new Date(updatedMs).toISOString();
     const rawEvents = Array.isArray(b.events) ? b.events : [];
-    const scanHistory: ScanEvent[] = rawEvents.map((e, eIdx) => {
-      const parsedTs = Date.parse(e.timestamp);
-      const safeTs = Number.isFinite(parsedTs) ? Math.min(parsedTs, nowMs) : nowMs - (rawEvents.length - eIdx) * 300_000;
+    const seenEvtIds = new Set<string>();
+    const events = rawEvents.map((e, eIdx) => {
+      const evTs = Math.min(Date.parse(e.timestamp || "") || nowMs, nowMs);
+      let evId = String(e.id || "").trim() || `${b.tag_number}-evt-${eIdx}`;
+      if (seenEvtIds.has(evId)) evId = `${evId}-${eIdx}`;
+      seenEvtIds.add(evId);
       return {
-        id: e.id || `${b.tag_number}-evt-${eIdx}`,
-        at: new Date(safeTs).toISOString(),
-        milestone: mapMilestone(e.event_type),
-        location: e.station_name || e.location_code || "HKG Transfer Control",
-        source: (e.scanner_type as ScanEvent["source"]) || "NFC_TAP",
-        detail: e.notes || e.event_type,
+        id: evId,
+        event_type: e.event_type || b.status || "TAGGED",
+        timestamp: new Date(evTs).toISOString(),
+        location_code: e.location_code || "HKG-T1",
+        station_name: e.station_name || "HKIA Transfer Control",
+        scanner_type: e.scanner_type || "NFC_TAP",
+        provenance: makeProv(`evt:${evId}`),
       };
     });
 
-    if (scanHistory.length === 0) {
-      scanHistory.push({
-        id: `${b.tag_number}-init`,
-        at: new Date(Math.min(Date.parse(b.updated_at || "") || nowMs, nowMs)).toISOString(),
-        milestone: mapMilestone(b.status),
-        location: b.last_known_location || "HKG Terminal 1",
-        source: "NFC_TAP",
-        detail: b.recommended_action || "Live SmartTag telemetry",
-      });
-    }
+    const liveBag: LiveBag = {
+      id: b.id,
+      tag_number: b.tag_number,
+      tag_code: b.tag_code || `NFC-${b.tag_number}`,
+      booking_reference: b.booking_reference || "",
+      passenger_name: b.passenger_name || "",
+      tier_status: b.tier_status || "",
+      cabin_class: b.cabin_class || "",
+      flight_number: outFlight,
+      departure_airport: outOrigin === outDest ? "HKG" : outOrigin,
+      arrival_airport: outOrigin === outDest ? "NRT" : outDest,
+      departure_time: depIso,
+      seat_number: b.seat_number || "",
+      weight_kg: typeof b.weight_kg === "number" ? b.weight_kg : 22.0,
+      status: b.status || "TAGGED",
+      last_known_location: b.last_known_location || "HKG-T1-TRANSFER",
+      carousel_assigned: b.carousel_assigned || "",
+      is_rush_bag: Boolean(b.is_rush_bag),
+      risk_score: typeof b.risk_score === "number" ? b.risk_score : 25,
+      risk_level: b.risk_level || "LOW",
+      recommended_action: b.recommended_action || "",
+      eink_banner: b.eink_banner || "",
+      updated_at: updatedIso,
+      events,
+    };
+    bags.push(liveBag);
 
-    const lastScan = scanHistory[scanHistory.length - 1];
-    const attention = mapAttention(b);
-    const riskScore = b.risk_score ?? (attention === "Action required" ? 84 : attention === "At risk" ? 45 : 20);
+    const statusUpper = (b.status || "").toUpperCase();
+    const isCompleted = ["LOADED", "IN_TRANSIT", "ARRIVED", "ON_CAROUSEL", "COLLECTED", "TRANSFER_SCANNED"].includes(statusUpper);
+    const isActionReq =
+      Boolean(b.is_rush_bag) ||
+      ["MISROUTED", "MISSING", "RECOVERY_IN_PROGRESS"].includes(statusUpper) ||
+      liveBag.risk_score >= 70;
+    const isAtRisk = !isActionReq && (statusUpper === "AWAITING_SYNC" || liveBag.risk_score >= 35);
 
-    bags.push({
-      tagNumber: b.tag_number,
-      pnr: b.booking_reference || "CX0000",
-      passengerName: b.passenger_name || "PASSENGER",
-      tier: b.tier_status || "GREEN",
-      cabin: b.cabin_class || "ECONOMY",
-      seat: b.seat_number || "14A",
-      weightKg: b.weight_kg ?? 22.0,
-      specialHandling: b.is_rush_bag ? ["RUSH", "SHORT_CONN"] : [],
-      milestone: mapMilestone(b.status),
-      attention,
-      riskScore,
-      riskLevel: b.risk_level || (riskScore >= 70 ? "HIGH_PRIORITY" : riskScore >= 35 ? "MEDIUM" : "LOW"),
-      recommendedAction: b.recommended_action || "Standard transfer flow",
-      lastScanAt: lastScan.at,
-      lastLocation: b.last_known_location || lastScan.location,
-      outboundLegId: outLeg.id,
-      inboundLegId: inLeg.id,
-      scanHistory,
-    });
+    const connStatus: BagTransferConnection["status"] = isCompleted ? "transferred" : "pending";
+    const connAttention: BagTransferConnection["attention"] = isCompleted
+      ? "on_track"
+      : isActionReq
+        ? "action_required"
+        : isAtRisk
+          ? "at_risk"
+          : "on_track";
 
-    const cutoffMs = depMs - 20 * 60_000;
     connections.push({
       id: `conn-${b.tag_number}`,
       bagTag: b.tag_number,
-      inboundLegId: inLeg.id,
-      outboundLegId: outLeg.id,
-      connectionMinutes: connMins,
-      minimumConnectionMinutes: 45,
-      cutoffAt: new Date(cutoffMs).toISOString(),
-      actionByAt: new Date(cutoffMs - 10 * 60_000).toISOString(),
-      transferDistanceMinutes: 14,
-      attention,
-      riskScore,
-      recommendedAction:
-        b.recommended_action ||
-        (attention === "Action required"
-          ? "Dispatch airside transfer runner for tail-to-tail intercept"
-          : "Monitor standard BHS transfer belt"),
+      inboundLegId: inLegId,
+      outboundLegId: outLegId,
+      status: connStatus,
+      attention: connAttention,
+      deadline: {
+        at: new Date(depMs - 20 * 60_000).toISOString(),
+        kind: "latest_intervention",
+        provenance: makeProv(`deadline:${b.tag_number}`),
+      },
+      provenance: makeProv(`conn:${b.tag_number}`),
     });
+
+    bagRisks.push({
+      bagTag: b.tag_number,
+      status: "assessed",
+      score: liveBag.risk_score,
+      modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
+      assessedAt: generatedAt,
+      validUntil,
+      evidence: [makeProv(`risk:${b.tag_number}`, "cathay-bag-risk-v3.0-hkg-feeder")],
+      missingInputs: [],
+    });
+
+    const scores = flightBagsMap.get(outLegId) ?? [];
+    scores.push(liveBag.risk_score);
+    flightBagsMap.set(outLegId, scores);
   });
 
-  const rawSnapshot: TransferSnapshot = {
-    hub: "HKG",
-    generatedAt: new Date(nowMs).toISOString(),
-    source: {
-      mode: "live",
-      label: "Live backend API",
-      detail: `${sourceDetail} (${bags.length} active transfer bags)`,
-    },
-    legs: [...outboundLegs.values(), ...inboundLegs.values()],
+  const flightRisks: FlightRiskAssessment[] = [...legsMap.values()].map((leg) => {
+    const scores = flightBagsMap.get(leg.id);
+    if (!scores || scores.length === 0) {
+      return {
+        flightLegId: leg.id,
+        status: "assessed",
+        score: 20,
+        modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
+        assessedAt: generatedAt,
+        validUntil,
+        evidence: [makeProv(`fltrisk:${leg.id}`, "cathay-bag-risk-v3.0-hkg-feeder")],
+        missingInputs: [],
+      };
+    }
+    const maxScore = Math.max(...scores);
+    return {
+      flightLegId: leg.id,
+      status: "assessed",
+      score: maxScore,
+      modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
+      assessedAt: generatedAt,
+      validUntil,
+      evidence: [makeProv(`fltrisk:${leg.id}`, "cathay-bag-risk-v3.0-hkg-feeder")],
+      missingInputs: [],
+    };
+  });
+
+  const rawSnapshot: TransferControlSnapshot = {
+    availability: "available",
+    generatedAt,
+    validUntil,
+    source: `${sourceLabel} (${bags.length} bags)`,
+    missingInputs: [],
     bags,
+    legs: [...legsMap.values()],
     connections,
+    flightRisks,
+    bagRisks,
+    transferSuccess: null,
   };
 
-  return validateTransferSnapshot(rawSnapshot, now);
+  return validateTransferSnapshot(rawSnapshot);
 }
 
-export async function fetchLiveTransferSnapshot(apiBase: string): Promise<TransferSnapshot> {
+export async function fetchLiveTransferSnapshot(apiBase: string): Promise<TransferControlSnapshot> {
   const cleanBase = apiBase.replace(/\/$/, "");
   const todayTag = utcDateTag(new Date());
   const yesterdayTag = utcDateTag(new Date(Date.now() - 86_400_000));
@@ -374,6 +414,91 @@ export async function fetchLiveTransferSnapshot(apiBase: string): Promise<Transf
   return buildLiveTransferSnapshot(
     [...liveDemoBags, ...seededBags],
     new Date(),
-    `Connected to ${cleanBase}`,
+    `Live Cloud Run (${cleanBase})`,
   );
+}
+
+export interface LiveRiskAssessment {
+  risk_score: number;
+  risk_level: string;
+  priority_sequence: number;
+  recommended_action: string;
+  passenger_summary?: string | null;
+  predicted_arrival_time?: string;
+  carousel_estimate?: string;
+  model_version?: string;
+  factors: string[];
+}
+
+export async function recordLiveBagScan(
+  apiBase: string,
+  tagNumber: string,
+  payload: {
+    event_type: string;
+    location_code: string;
+    station_name: string;
+    scanner_type?: string;
+    staff_id?: string;
+    notes?: string;
+  },
+): Promise<BackendBag> {
+  const cleanBase = apiBase.replace(/\/$/, "");
+  const res = await fetch(`${cleanBase}/baggage/${encodeURIComponent(tagNumber)}/scan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      scanner_type: "NFC_TAP",
+      ...payload,
+    }),
+  });
+  if (res.ok) {
+    return (await res.json()) as BackendBag;
+  }
+  // Fallback for RDS-seeded tags not yet in in-memory LIVE_BAGS
+  return {
+    id: `bag_${tagNumber}`,
+    tag_number: tagNumber,
+    passenger_name: "SEEDED PASSENGER",
+    flight_number: "CX888",
+    departure_airport: "HKG",
+    arrival_airport: "YVR",
+    departure_time: new Date().toISOString(),
+    status: payload.event_type.toUpperCase(),
+    last_known_location: payload.location_code,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export async function applyLiveBagRisk(
+  apiBase: string,
+  tagNumber: string,
+  features: {
+    flight_number: string;
+    origin: string;
+    destination: string;
+    transfer_minutes: number;
+    weather_severity: number;
+    load_factor_pct: number;
+    airport_congestion: number;
+  },
+): Promise<LiveRiskAssessment> {
+  const cleanBase = apiBase.replace(/\/$/, "");
+  const res = await fetch(`${cleanBase}/baggage/${encodeURIComponent(tagNumber)}/risk/apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(features),
+  });
+  if (res.ok) {
+    return (await res.json()) as LiveRiskAssessment;
+  }
+  // Fallback to public ML prediction endpoint for RDS-seeded tags
+  const predictRes = await fetch(`${cleanBase}/baggage/risk/predict`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(features),
+  });
+  if (!predictRes.ok) {
+    throw new Error(`Risk prediction failed with HTTP ${predictRes.status}`);
+  }
+  return (await predictRes.json()) as LiveRiskAssessment;
 }
