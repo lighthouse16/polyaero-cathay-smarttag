@@ -300,3 +300,174 @@ async def apply_mishandling_risk_to_bag(
     bag["is_rush_bag"] = assessment.risk_level == "HIGH_PRIORITY"
     bag["updated_at"] = now
     return assessment
+
+
+from pydantic import BaseModel as _PydanticBaseModel
+from app.services.risk_engine import FeederFlightInput, FeederFlightPriority
+
+
+class OutboundHubFlightSummary(_PydanticBaseModel):
+    outbound_flight: str
+    origin: str
+    destination: str
+    city_name: str
+    scheduled_departure: str
+    gate: str
+    dest_flight_frequency_pct: float
+    total_connecting_bags: int
+    total_expected_missed_bags: float
+    top_priority_feeder: str
+    feeders: list[FeederFlightPriority]
+
+
+class FeederRankRequest(_PydanticBaseModel):
+    outbound_flight: str
+    feeders: list[FeederFlightInput]
+
+
+DEFAULT_HUB_OUTBOUND_SCENARIOS = [
+    {
+        "outbound_flight": "CX251",
+        "origin": "HKG",
+        "destination": "LHR",
+        "city_name": "London Heathrow",
+        "scheduled_departure": "23:55 HKT",
+        "gate": "Gate 64",
+        "dest_flight_frequency_pct": 15.0,
+        "feeders": [
+            FeederFlightInput(
+                feeder_flight="CX467",
+                origin="TPE",
+                transfer_bag_count=100,
+                inbound_delay_mins=32,
+                scheduled_transfer_mins=70,
+                weather_impact_score=3,
+                airport_congestion_index=3,
+                dest_flight_frequency_pct=15.0,
+                historical_route_delay_rate=0.34,
+            ),
+            FeederFlightInput(
+                feeder_flight="CX906",
+                origin="MNL",
+                transfer_bag_count=2,
+                inbound_delay_mins=58,
+                scheduled_transfer_mins=65,
+                weather_impact_score=4,
+                airport_congestion_index=4,
+                dest_flight_frequency_pct=15.0,
+                historical_route_delay_rate=0.48,
+            ),
+            FeederFlightInput(
+                feeder_flight="CX509",
+                origin="NRT",
+                transfer_bag_count=45,
+                inbound_delay_mins=5,
+                scheduled_transfer_mins=125,
+                weather_impact_score=1,
+                airport_congestion_index=2,
+                dest_flight_frequency_pct=15.0,
+                historical_route_delay_rate=0.14,
+            ),
+        ],
+    },
+    {
+        "outbound_flight": "CX888",
+        "origin": "HKG",
+        "destination": "YVR",
+        "city_name": "Vancouver",
+        "scheduled_departure": "00:30 HKT",
+        "gate": "Gate 23",
+        "dest_flight_frequency_pct": 12.0,
+        "feeders": [
+            FeederFlightInput(
+                feeder_flight="CX714",
+                origin="SIN",
+                transfer_bag_count=68,
+                inbound_delay_mins=26,
+                scheduled_transfer_mins=68,
+                weather_impact_score=3,
+                airport_congestion_index=3,
+                dest_flight_frequency_pct=12.0,
+                historical_route_delay_rate=0.28,
+            ),
+            FeederFlightInput(
+                feeder_flight="CX365",
+                origin="PVG",
+                transfer_bag_count=24,
+                inbound_delay_mins=18,
+                scheduled_transfer_mins=95,
+                weather_impact_score=2,
+                airport_congestion_index=4,
+                dest_flight_frequency_pct=12.0,
+                historical_route_delay_rate=0.31,
+            ),
+        ],
+    },
+    {
+        "outbound_flight": "CX548",
+        "origin": "HKG",
+        "destination": "HND",
+        "city_name": "Tokyo Haneda",
+        "scheduled_departure": "08:45 HKT",
+        "gate": "Gate 42",
+        "dest_flight_frequency_pct": 65.0,
+        "feeders": [
+            FeederFlightInput(
+                feeder_flight="CX750",
+                origin="BKK",
+                transfer_bag_count=52,
+                inbound_delay_mins=21,
+                scheduled_transfer_mins=65,
+                weather_impact_score=2,
+                airport_congestion_index=3,
+                dest_flight_frequency_pct=65.0,
+                historical_route_delay_rate=0.25,
+            ),
+            FeederFlightInput(
+                feeder_flight="CX415",
+                origin="ICN",
+                transfer_bag_count=31,
+                inbound_delay_mins=0,
+                scheduled_transfer_mins=115,
+                weather_impact_score=1,
+                airport_congestion_index=2,
+                dest_flight_frequency_pct=65.0,
+                historical_route_delay_rate=0.16,
+            ),
+        ],
+    },
+]
+
+
+@router.get("/outbound-hub-flights", response_model=list[OutboundHubFlightSummary])
+async def list_outbound_hub_flights() -> list[OutboundHubFlightSummary]:
+    """Lists outbound HKG flights with their inbound feeder flights ranked by expected missed bags & actionability."""
+    summaries: list[OutboundHubFlightSummary] = []
+    for item in DEFAULT_HUB_OUTBOUND_SCENARIOS:
+        ranked_feeders = ACTIVE_RISK_MODEL.rank_feeders(item["outbound_flight"], item["feeders"])
+        total_bags = sum(f.transfer_bag_count for f in ranked_feeders)
+        total_exp_missed = round(sum(f.expected_missed_bags for f in ranked_feeders), 1)
+        top_feeder = ranked_feeders[0].feeder_flight if ranked_feeders else "N/A"
+        summaries.append(
+            OutboundHubFlightSummary(
+                outbound_flight=item["outbound_flight"],
+                origin=item["origin"],
+                destination=item["destination"],
+                city_name=item["city_name"],
+                scheduled_departure=item["scheduled_departure"],
+                gate=item["gate"],
+                dest_flight_frequency_pct=item["dest_flight_frequency_pct"],
+                total_connecting_bags=total_bags,
+                total_expected_missed_bags=total_exp_missed,
+                top_priority_feeder=top_feeder,
+                feeders=ranked_feeders,
+            )
+        )
+    summaries.sort(key=lambda s: s.total_expected_missed_bags, reverse=True)
+    return summaries
+
+
+@router.post("/outbound-hub-flights/rank", response_model=list[FeederFlightPriority])
+async def rank_inbound_feeder_flights(payload: FeederRankRequest) -> list[FeederFlightPriority]:
+    """Dynamically re-ranks inbound feeder flights for an outbound HKG flight given live telemetry."""
+    return ACTIVE_RISK_MODEL.rank_feeders(payload.outbound_flight, payload.feeders)
