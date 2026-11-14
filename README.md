@@ -14,6 +14,7 @@ The prototype includes:
 2. **SmartTag Digital Identity & E-ink Interaction**: Contactless NFC reading, baggage tagging, and passive E-ink display buffer simulation.
 3. **Ground Staff Operations Portal**: A Next.js web application for ground staff and ramp leads to inspect, verify, and re-route baggage.
 4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
+5. **Backend API**: FastAPI with local PostgreSQL for development and an AWS RDS PostgreSQL demo deployment runbook for Google Cloud Run.
 
 ---
 
@@ -22,6 +23,7 @@ The prototype includes:
 ```text
 polyaero-cathay-smarttag/
 ├── apps/
+│   ├── api/            # FastAPI backend, Alembic migrations, Cloud Run deployment
 │   ├── mobile/         # React Native + Expo SDK 52 + Expo Router v4
 │   └── staff/          # Next.js 15 App Router Ground Staff Portal
 ├── packages/
@@ -60,6 +62,22 @@ pnpm dev:mobile
 pnpm dev:staff
 ```
 Open `http://localhost:3000` to access the ground staff dashboard.
+
+### Run the Backend API
+
+See [API setup and deployment](apps/api/README.md) for local PostgreSQL setup,
+environment variables, migrations, and Python checks.
+
+For the one-day cloud demo, the backend runs on Google Cloud Run and connects
+to AWS RDS PostgreSQL using verified TLS. The deployment script creates a
+static outbound IP for the AWS firewall and keeps secrets in Google Secret
+Manager. Local and AWS databases remain separate, even when both are named
+`smarttag`.
+
+This is not a production release: some routes still lack authorization and
+baggage demo state resets when the server instance is replaced. Do not use
+real passenger data. Cloud NAT, reserved IPs, and database resources can incur
+charges; follow the API README's cleanup instructions after the hackathon.
 
 ### Verification & Quality Gates
 ```bash

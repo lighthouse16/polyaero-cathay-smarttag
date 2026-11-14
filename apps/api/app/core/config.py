@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/smarttag"
+    database_ssl_ca_file: str | None = None
 
     # App
     app_name: str = "PolyAero Cathay SmartTag API"
