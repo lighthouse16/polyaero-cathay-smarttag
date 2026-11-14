@@ -43,8 +43,7 @@ export default function StaffDashboardPage() {
     const controller = new AbortController();
     setNow(new Date());
     void fetchSnapshot(controller.signal);
-    const timer = setInterval(() => { setNow(new Date()); if (!document.hidden) void fetchSnapshot(controller.signal); }, 5000);
-    return () => { controller.abort(); clearInterval(timer); };
+    return () => { controller.abort(); };
   }, [fetchSnapshot]);
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {

@@ -96,7 +96,11 @@ export function buildLiveTransferSnapshot(
 
   deduped.forEach((b, idx) => {
     const parsedDep = Date.parse(b.departure_time || "");
-    const depMs = Number.isFinite(parsedDep) ? parsedDep : nowMs + (2 + idx) * 3600_000;
+    let depMs = Number.isFinite(parsedDep) ? parsedDep : nowMs + (2 + idx) * 3600_000;
+    // ponytail: live demo anchor. If incoming flight departure is stale (>2h past or >24h future), roll to current operational shift.
+    if (depMs < nowMs - 2 * 3600_000 || depMs > nowMs + 24 * 3600_000) {
+      depMs = nowMs + ((idx % 6) * 20 + 10) * 60_000;
+    }
     const depIso = new Date(depMs).toISOString();
     const opDate = depIso.slice(0, 10);
 
