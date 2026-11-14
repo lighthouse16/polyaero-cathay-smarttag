@@ -1,39 +1,320 @@
-
-:root {
-  --cathay-jade: #006564;
-  --cathay-jade-dark: #004B4A;
-  --cathay-pine: #284239;
-  --cathay-mint: #EBF4F1;
-  --cathay-gold: #C49A45;
-  --cathay-bg: #F6F8F8;
-  --cathay-text-primary: #1C2024;
-  --cathay-text-secondary: #4A5568;
-  --cathay-text-muted: #718096;
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Lt.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
 }
 
-* {
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Rg.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cathay Sans EN";
+  src: url("/fonts/cathay/CathaySans_WCorp_Bd.woff2") format("woff2");
+  font-weight: 600 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Regular.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GT Walsheim";
+  src: url("/fonts/cathay/GT-Walsheim-Bold.woff2") format("woff2");
+  font-weight: 600 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ops-header-height: 82px;
+  --cathay-jade-header-start: #003837;
+  --cathay-jade-header-end: #005b58;
+  --cathay-sidebar-bg: #003b3a;
+  --cathay-sidebar-active: rgba(255, 255, 255, 0.14);
+  --cathay-jade: #006564;
+  --cathay-jade-dark: #004b4a;
+  --cathay-jade-muted: #EEEDE8;
+  --cathay-mint: #EFEEE9;
+  --cathay-gold: #c49a45;
+
+  --workspace-bg: #f6f5f1;
+  --surface-card: #ffffff;
+  --surface-subtle: #faf9f5;
+  --border-hairline: #e8e5de;
+  --border-strong: #d6d1c6;
+
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-muted: #000000;
+
+  --risk-high-bg: #87323A;
+  --risk-high-soft: #F3F1EC;
+  --risk-high-border: #D8D3CB;
+  --risk-high-text: #000000;
+
+  --risk-med-bg: #856432;
+  --risk-med-soft: #F3F1EC;
+  --risk-med-border: #DAD5CA;
+  --risk-med-text: #000000;
+
+  --risk-low-soft: #EFEEE9;
+  --risk-low-border: #C8D1CB;
+  --risk-low-text: #000000;
+
+  --shadow-card:
+    0 1px 3px rgba(17, 24, 39, 0.04), 0 1px 2px rgba(17, 24, 39, 0.02);
+  --shadow-elevated: 0 8px 24px rgba(0, 45, 44, 0.08);
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--cathay-bg);
-  color: var(--cathay-text-primary);
-  font-family: var(--font-cathay), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  max-width: 100vw;
+  background-color: var(--workspace-bg);
+  color: var(--text-primary);
+  font-family:
+    "Cathay Sans EN",
+    "GT Walsheim",
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button {
+button,
+input,
+optgroup,
+select,
+textarea,
+dialog {
   font-family: inherit;
-  transition: all 0.16s ease;
+  font-size: 100%;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
 }
 
-button:hover:not(:disabled) {
-  filter: brightness(0.96);
-  transform: translateY(-0.5px);
+.font-editorial {
+  font-family:
+    "Cathay Sans EN",
+    "GT Walsheim",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
-button:active:not(:disabled) {
-  transform: translateY(0);
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.hatched-bar {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #F2F1ED,
+    #F2F1ED 4px,
+    #e5e7eb 4px,
+    #e5e7eb 6px
+  );
+}
+
+.card-surface {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-ring:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--cathay-jade);
+  outline-offset: 2px;
+}
+
+/* Native HTML <dialog> styling */
+dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-enter {
+  animation: fadeSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pulseLive {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+}
+
+.pulse-dot {
+  animation: pulseLive 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter,
+  .pulse-dot,
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Custom slim scrollbar for operational tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1cdc4;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a296;
+}
+
+/* Hide scrollbars for timeline container */
+.timeline-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.timeline-scroll {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Entrance selectors stay mounted across polling; only deliberate navigation replays. */
+.kpi-grid > * {
+  animation: fadeSlideUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.kpi-grid > :nth-child(2) {
+  animation-delay: 55ms;
+}
+.kpi-grid > :nth-child(3) {
+  animation-delay: 110ms;
+}
+.kpi-grid > :nth-child(4) {
+  animation-delay: 165ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+@media (max-width: 720px) {
+  :root {
+    --ops-header-height: 64px;
+  }
+}
+
+@media (max-width: 960px) {
+  main {
+    padding: 16px 16px 28px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 12px 10px 24px !important;
+  }
 }
