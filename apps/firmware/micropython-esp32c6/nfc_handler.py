@@ -68,6 +68,7 @@ class NfcTarget:
         self.written = bytearray(512)
         self.refresh_attempted = False
         self.refresh_receipt = None
+        self.pa1_session = False
         self.current_file = 0xE103
 
     def configure(self):
@@ -111,7 +112,7 @@ class NfcTarget:
                     break
                 if len(req) > 1:
                     self._process_apdu(req[1:])
-                    if self.write_completed and not self.refresh_attempted:
+                    if self.write_completed and not self.refresh_attempted and not self.pa1_session:
                         self._refresh_display()
 
             if self.wrote_payload and not self.refresh_attempted:
@@ -158,9 +159,12 @@ class NfcTarget:
 
         # PA1 bridge identity and refresh receipt, not an RF-UID ownership proof.
         if apdu == bytearray([0x80, 0x10, 0x00, 0x00, 0x00]):
+            self.pa1_session = True
             self._respond_raw(bytearray(("PA1|" + self.tag_uid).encode()) + bytearray([0x90, 0x00]))
             return
         if apdu == bytearray([0x80, 0x11, 0x00, 0x00, 0x00]):
+            if self.write_completed and not self.refresh_attempted:
+                self._refresh_display()
             if self.refresh_receipt:
                 self._respond_raw(bytearray(("PA1|" + self.refresh_receipt).encode()) + bytearray([0x90, 0x00]))
             else:
@@ -234,7 +238,7 @@ class NfcTarget:
             if nlen and self.wrote_payload and all(self.written[0:2 + nlen]):
                 self.write_completed = True
             self._respond_ok()
-            if self.write_completed and not self.refresh_attempted:
+            if self.write_completed and not self.refresh_attempted and not self.pa1_session:
                 self._refresh_display()
 
         # 4. Proprietary class (e.g., DESFire 90 60) -> 6E 00 (Class not supported)
