@@ -111,7 +111,7 @@ export function mapNfcErrorToFailureInfo(error: unknown): SmartTagFailureInfo {
         return {
           code: 'NFC_WRITE_FAILED',
           title: 'Could not update SmartTag display',
-          message: 'RF coupling was interrupted while transmitting the E-ink display frame.',
+          message: error.message || 'NFC communication failed while updating the SmartTag.',
           recoveryHint: 'Keep your phone flat against the tag until verification completes, then retry.',
           canRetry: true,
           canSwitchToDemo: true,

@@ -103,6 +103,15 @@ describe('MicroPython bridge physical NFC sync', () => {
     expect(outcome.setupState).toBe('PHYSICALLY_WRITTEN_AND_VERIFIED');
     expect(outcome.writeRecord?.verifiedHardwareReadback).toBe(true);
     expect(mock.requestTechnology).toHaveBeenCalledTimes(1);
+    expect(mock.requestTechnology).toHaveBeenCalledWith(
+      'IsoDep',
+      expect.objectContaining({
+        isReaderModeEnabled: true,
+        readerModeFlags: 129,
+        readerModeDelay: 750,
+      }),
+    );
+    expect(mock.setTimeout).toHaveBeenCalledWith(10000);
     expect(mock.cancelTechnologyRequest).toHaveBeenCalled();
     const commands = mock.exchange.mock.calls.map(
       ([command]) => command as number[],
@@ -131,6 +140,35 @@ describe('MicroPython bridge physical NFC sync', () => {
   it('rejects corrupted payload readback even with a refresh receipt', async () => {
     corruptReadback = true;
     expect((await sync()).finalState).toBe('FAILED');
+  });
+
+  it('shows a connected bridge rejection instead of blaming RF coupling', async () => {
+    mock.exchange.mockResolvedValueOnce([0x6a, 0x82]);
+    const outcome = await sync();
+    expect(outcome.failure?.message).toContain(
+      'Selecting SmartTag application',
+    );
+    expect(outcome.failure?.message).toContain('6A82');
+    expect(mock.cancelTechnologyRequest).toHaveBeenCalled();
+    expect(mock.exchange).toHaveBeenCalledTimes(1);
+  });
+
+  it('identifies an unconfirmed display refresh in the app error', async () => {
+    receiptMode = 'failed';
+    const outcome = await sync();
+    expect(outcome.failure?.message).toContain('Confirming display refresh');
+    expect(outcome.failure?.message).toContain('6581');
+    expect(outcome.failure?.message).toContain('not confirmed');
+    expect(outcome.writeRecord).toBeNull();
+  });
+
+  it('rejects a malformed response and allows a fresh reader session afterwards', async () => {
+    mock.exchange.mockResolvedValueOnce([0x90]);
+    const service = new NativeNfcService();
+    const failed = await sync(service);
+    expect(failed.failure?.message).toContain('incomplete NFC response');
+    expect((await sync(service)).finalState).toBe('SUCCESS');
+    expect(mock.requestTechnology).toHaveBeenCalledTimes(2);
   });
 
   it('does not write to a different bridge', async () => {

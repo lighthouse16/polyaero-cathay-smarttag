@@ -195,20 +195,27 @@ def bridge_record(**overrides):
 class FakeNfc:
     def __init__(self):
         self.responses = []
+        self.initializations = 0
+
+    def initialize(self):
+        self.initializations += 1
+        return bytearray([0x32, 1, 6, 7])
 
     def call_function(self, command, **kwargs):
         if command == 0x8E:
             self.responses.append(bytes(kwargs["params"]))
-        return bytearray([0])
+            return bytearray([0])
+        return bytearray()
 
 
-def write_bridge(target, message):
+def write_bridge(target, message, commit=True):
     target._process_apdu(bytearray([0, 0xA4, 0, 0x0C, 2, 0xE1, 4]))
     target._process_apdu(bytearray([0, 0xD6, 0, 0, 2, 0, 0]))
     for offset in range(2, len(message), 48):
         chunk = message[offset:offset + 48]
         target._process_apdu(bytearray([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
-    target._process_apdu(bytearray([0, 0xD6, 0, 0, 2]) + message[:2])
+    if commit:
+        target._process_apdu(bytearray([0, 0xD6, 0, 0, 2]) + message[:2])
 
 
 @pytest.mark.parametrize("padding", ["", "x" * 180])
@@ -335,6 +342,7 @@ def test_startup_full_refresh_precedes_partial_refresh_for_nfc_write(monkeypatch
 
     assert updates == ["init", "full", "partial"]
     assert targets[0].refresh_receipt == "current-write"
+    assert targets[0].nfc.initializations == 1
 
 
 @pytest.mark.parametrize("busy_values", [[1], [0]])
@@ -388,6 +396,264 @@ def test_pn532_uart_validates_frame_checksum_and_strips_response_command(monkeyp
 
     uart = SimpleNamespace(any=lambda: len(response), read=read, write=lambda _: None)
     assert PN532_UART(uart).call_function(0x86, response_length=128) == bytearray([0, 0x80, 0x11, 0, 0, 0])
+
+
+def install_clock(monkeypatch):
+    import time
+
+    clock = [0]
+    monkeypatch.setattr(time, "ticks_ms", lambda: clock[0], raising=False)
+    monkeypatch.setattr(time, "ticks_diff", lambda end, start: end - start, raising=False)
+    monkeypatch.setattr(time, "sleep_ms", lambda ms: clock.__setitem__(0, clock[0] + ms), raising=False)
+    return clock
+
+
+class ScriptedUART:
+    def __init__(self, respond):
+        self.buffer = bytearray()
+        self.commands = []
+        self.writes = []
+        self.respond = respond
+
+    def any(self):
+        return len(self.buffer)
+
+    def read(self, count=None):
+        count = len(self.buffer) if count is None else count
+        data = bytes(self.buffer[:count])
+        del self.buffer[:count]
+        return data
+
+    def write(self, data):
+        self.writes.append(bytes(data))
+        if data[:3] != b'\x00\x00\xff' or data == PN532_UART.ACK:
+            return
+        command = data[6]
+        self.commands.append(command)
+        reply = self.respond(command, bytes(data[7:-2]))
+        if reply is False:
+            self.buffer.extend(PN532_UART.ACK)
+            return
+        if reply is not None:
+            body = bytes([0xD5, command + 1]) + bytes(reply)
+            self.buffer.extend(PN532_UART.ACK + b'\x00\x00\xff' +
+                               bytes([len(body), -len(body) & 255]) + body +
+                               bytes([-sum(body) & 255, 0]))
+
+
+@pytest.mark.parametrize("software_reset", [False, True])
+def test_display_timeout_names_the_reset_phase_and_busy_gpio(monkeypatch, software_reset):
+    install_clock(monkeypatch)
+    panel = EPD_4in2()
+    reads = [0] if software_reset else []
+    panel.busy = SimpleNamespace(value=lambda: reads.pop(0) if reads else 1)
+    with pytest.raises(OSError) as exc:
+        panel.init()
+    assert exc.value.errno == errno.ETIMEDOUT
+    assert ("software reset" if software_reset else "hardware reset") in str(exc.value)
+    assert "GPIO6" in str(exc.value)
+
+
+def test_pn532_initialization_resets_wakes_and_checks_firmware(monkeypatch):
+    install_clock(monkeypatch)
+    reset_values = []
+    uart = ScriptedUART(lambda command, _: b'\x32\x01\x06\x07' if command == 2 else b'')
+    nfc = PN532_UART(uart, reset=SimpleNamespace(value=reset_values.append))
+    assert nfc.initialize() == b'\x32\x01\x06\x07'
+    assert reset_values == [1, 0, 1]
+    assert uart.writes[0].startswith(b'\x55\x55')
+    assert uart.commands == [0x02, 0x14]
+
+
+def test_pn532_initialization_rejects_missing_hardware(monkeypatch):
+    install_clock(monkeypatch)
+    uart = ScriptedUART(lambda *_: None)
+    with pytest.raises(OSError, match="GetFirmwareVersion"):
+        PN532_UART(uart).initialize()
+
+
+def test_target_configuration_failure_is_not_reported_as_ready():
+    target = NfcTarget(SimpleNamespace(call_function=lambda *args, **kwargs: None))
+    with pytest.raises(OSError, match="SetParameters"):
+        target.configure()
+
+
+def test_failed_nfc_response_does_not_render_or_issue_a_receipt():
+    nfc = FakeNfc()
+    target = NfcTarget(nfc, refresh_display=lambda _: pytest.fail("No delivered commit response"))
+    message = bridge_record()
+    write_bridge(target, message, commit=False)
+    nfc.call_function = lambda *args, **kwargs: bytearray([0x29])
+    with pytest.raises(OSError, match="TgSetData"):
+        target._process_apdu(bytearray([0, 0xD6, 0, 0, 2]) + message[:2])
+    assert target.refresh_receipt is None
+
+
+def test_stuck_panel_cannot_start_a_second_refresh(monkeypatch):
+    install_clock(monkeypatch)
+    panel = EPD_4in2()
+    panel.busy = SimpleNamespace(value=lambda: 1)
+    commands = []
+    panel._send_command = commands.append
+    with pytest.raises(OSError, match="before partial refresh"):
+        panel.EPD_4IN2_V2_PartialDisplay(panel.buffer_1Gray)
+    assert commands == []
+
+
+def test_uart_tolerates_leading_zero_padding(monkeypatch):
+    install_clock(monkeypatch)
+    body = b'\xd5\x03\x32\x01\x06\x07'
+    response = bytearray(b'\x00' + PN532_UART.ACK + b'\x00\x00\x00\xff' +
+                         bytes([len(body), -len(body) & 255]) + body +
+                         bytes([-sum(body) & 255, 0]))
+
+    def read(count):
+        data = bytes(response[:count])
+        del response[:count]
+        return data
+
+    uart = SimpleNamespace(any=lambda: len(response), read=read, write=lambda _: None)
+    assert PN532_UART(uart).call_function(2, response_length=4) == b'\x32\x01\x06\x07'
+
+
+def test_fatal_error_stops_with_traceback_without_reboot(monkeypatch, capsys):
+    spec = importlib.util.spec_from_file_location(
+        "smarttag_firmware_main", Path(__file__).parent.parent / "main.py")
+    firmware = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(firmware)
+    traces = []
+    error = OSError(errno.ETIMEDOUT, "hardware reset: BUSY GPIO6")
+    monkeypatch.setattr(firmware, "main", lambda: (_ for _ in ()).throw(error))
+    monkeypatch.setattr(sys, "print_exception", traces.append, raising=False)
+    firmware.run()
+    assert traces == [error]
+    assert "Stopped; fix the reported error" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_display_timeout_names_the_refresh_phase(monkeypatch, partial):
+    install_clock(monkeypatch)
+    panel = EPD_4in2()
+    reads = [0]
+    panel.busy = SimpleNamespace(value=lambda: reads.pop(0) if reads else 1)
+    refresh = panel.EPD_4IN2_V2_PartialDisplay if partial else panel.EPD_4IN2_V2_Display
+    with pytest.raises(OSError, match="partial refresh" if partial else "full refresh"):
+        refresh(panel.buffer_1Gray)
+
+
+def test_uart_listen_survives_phone_pause_and_verifies_two_distinct_taps(monkeypatch):
+    clock = install_clock(monkeypatch)
+    messages = [bridge_record(sync_id="first-write"),
+                bridge_record(sync_id="second-write", tag="0160654321", route="HKG-LHR")]
+    select_app = bytes([0, 0xA4, 4, 0, 7, 0xD2, 0x76, 0, 0, 0x85, 1, 1, 0])
+    receipt = b'\x80\x11\x00\x00\x00'
+    sessions = []
+    for message in messages:
+        commands = [receipt, b'\x80\x10\x00\x00\x00',
+                    b'\x00\xa4\x00\x0c\x02\xe1\x04', b'\x00\xd6\x00\x00\x02\x00\x00']
+        for offset in range(2, len(message), 48):
+            chunk = message[offset:offset + 48]
+            commands.append(bytes([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
+        commands.extend([b'\x00\xd6\x00\x00\x02' + message[:2], receipt])
+        for offset in range(0, len(message), 48):
+            commands.append(bytes([0, 0xB0, offset >> 8, offset & 255, min(48, len(message) - offset)]))
+        sessions.append(commands)
+
+    transactions = []
+    current = [None]
+    active = []
+
+    def respond(command, params):
+        if command == 2:
+            return b'\x32\x01\x06\x07'
+        if command in (0x12, 0x14):
+            return b''
+        if command == 0x8C:
+            active.extend(sessions.pop(0))
+            current[0] = select_app
+            return b'\x08' + select_app
+        if command == 0x86:
+            if not active:
+                return b'\x29'
+            current[0] = active.pop(0)
+            return b'\x00' + current[0]
+        assert command == 0x8E
+        transactions.append((current[0], params))
+        return b'\x00'
+
+    class PausedUART(ScriptedUART):
+        pending = b''
+        delayed = False
+
+        def write(self, data):
+            super().write(data)
+            if data[:3] == b'\x00\x00\xff' and len(data) > 6 and data[6] == 0x86 and not self.delayed:
+                self.pending = bytes(self.buffer[len(PN532_UART.ACK):])
+                del self.buffer[len(PN532_UART.ACK):]
+                self.release_at = clock[0] + 1200
+                self.delayed = True
+
+        def any(self):
+            if self.pending and clock[0] >= self.release_at:
+                self.buffer.extend(self.pending)
+                self.pending = b''
+            return super().any()
+
+    uart = PausedUART(respond)
+    nfc = PN532_UART(uart)
+    nfc.initialize()
+    rendered = []
+    target = NfcTarget(nfc)
+
+    def render(parsed):
+        assert target.refresh_receipt is None
+        assert transactions[-1][1] == b'\x90\x00'
+        clock[0] += 4000
+        rendered.append(parsed)
+
+    target.refresh_display = render
+    target.configure()
+    for message in messages:
+        start = len(transactions)
+        assert target.listen()[:len(message)] == message
+        exchanges = transactions[start:]
+        receipts = [reply for request, reply in exchanges if request == receipt]
+        expected_id = "first-write" if message == messages[0] else "second-write"
+        assert receipts == [b'\x65\x81', ("PA1|" + expected_id).encode() + b'\x90\x00']
+        assert b''.join(reply[:-2] for request, reply in exchanges if request[1] == 0xB0) == message
+    assert [bag["dest_code"] for bag in rendered] == ["NRT", "LHR"]
+
+
+def test_idle_activation_timeout_resets_pending_target_before_next_command(monkeypatch):
+    install_clock(monkeypatch)
+    pending = [False]
+    reset_values = []
+
+    def reset(value):
+        reset_values.append(value)
+        if value == 0:
+            pending[0] = False
+
+    def respond(command, _):
+        assert not pending[0], "A pending target command was not cancelled"
+        if command == 2:
+            return b'\x32\x01\x06\x07'
+        if command == 0x8C:
+            pending[0] = True
+            return False  # ACK received, but no phone activates the target.
+        return b''
+
+    uart = ScriptedUART(respond)
+    nfc = PN532_UART(uart, reset=SimpleNamespace(value=reset))
+    nfc.initialize()
+    target = NfcTarget(nfc)
+    target.configure()
+    target.refresh_receipt = "stale-write"
+    for _ in range(2):
+        assert target.listen(session_ms=25) is None
+        assert target.refresh_receipt is None
+    assert uart.commands.count(0x8C) == 2
+    assert reset_values.count(0) == 3
 
 
 if __name__ == "__main__":

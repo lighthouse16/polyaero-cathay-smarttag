@@ -14,6 +14,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /app/certs/rds-ca.pem
 COPY app ./app
+COPY artifacts/cathay_bag_risk_bundle.joblib ./artifacts/cathay_bag_risk_bundle.joblib
 COPY alembic ./alembic
 COPY alembic.ini ./
 RUN chmod 644 /app/certs/rds-ca.pem

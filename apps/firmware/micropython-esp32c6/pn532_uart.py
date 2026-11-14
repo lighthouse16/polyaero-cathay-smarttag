@@ -2,6 +2,7 @@
 # Minimal implementation for TgInitAsTarget / TgGetData / TgSetData
 
 from machine import UART, Pin
+import errno
 import time
 
 
@@ -28,6 +29,21 @@ class PN532_UART:
             time.sleep_ms(400)
             self.reset_pin.value(1)
             time.sleep_ms(100)
+        while self.uart.any():
+            self.uart.read()
+
+    def initialize(self):
+        self.reset()
+        self.uart.write(b'\x55\x55' + b'\x00' * 15)
+        time.sleep_ms(10)
+        version = self.call_function(0x02, response_length=4)
+        if version is None or len(version) != 4 or version[0] != 0x32:
+            raise OSError(errno.ENODEV, "PN532 GetFirmwareVersion failed; check UART mode, pins and power")
+        # Normal SAM mode; target/card emulation is selected separately.
+        sam = self.call_function(0x14, response_length=1, params=bytearray([0x01, 0x14, 0x01]))
+        if sam != bytearray():
+            raise OSError(errno.EIO, "PN532 SAMConfiguration failed")
+        return version
 
     def _write_frame(self, data: bytearray):
         """Write a frame to PN532"""
@@ -55,13 +71,17 @@ class PN532_UART:
         matched = 0
         while time.ticks_diff(time.ticks_ms(), start) < timeout:
             if self.uart.any():
-                b = self.uart.read(1)[0]
+                data = self.uart.read(1)
+                if not data:
+                    continue
+                b = data[0]
                 if b == self.ACK[matched]:
                     matched += 1
                     if matched == len(self.ACK):
                         return True
                 else:
-                    matched = 1 if b == self.ACK[0] else 0
+                    matched = 2 if matched == 2 and b == 0 else (1 if b == 0 else 0)
+            time.sleep_ms(1)
         return False
 
     def _read_frame(self, timeout: int = 1000) -> bytearray:
@@ -79,10 +99,11 @@ class PN532_UART:
                 elif idx == 1 and b == 0x00:
                     preamble[idx] = b
                     idx += 1
-                elif idx == 2 and b == 0xFF:
-                    preamble[idx] = b
-                    idx += 1
-                    break
+                elif idx == 2:
+                    if b == 0xFF:
+                        idx += 1
+                        break
+                    idx = 2 if b == 0x00 else 0
                 else:
                     idx = 0 if b != 0x00 else 1
             time.sleep_ms(1)
