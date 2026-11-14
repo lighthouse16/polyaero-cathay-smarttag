@@ -26,4 +26,4 @@ EPD_MOSI = 19
 # TIMING
 # =========================================================
 NFC_SESSION_MS = 5000        # Wait for phone activation; APDU timeout is separate.
-NFC_APDU_TIMEOUT_MS = 10000  # Allow phone scheduling gaps; matches Android transceive timeout.
+NFC_APDU_TIMEOUT_MS = 2000   # Allow phone scheduling gaps without blocking 10s on RF drop.

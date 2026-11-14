@@ -77,7 +77,7 @@ class NfcTarget:
             # Process first command if present
             if len(init_res) > 1:
                 first_cmd = init_res[1:]
-                if len(first_cmd) >= 4:
+                if len(first_cmd) >= 4 and first_cmd[0] in (0x00, 0x80, 0x90):
                     self._process_apdu(first_cmd)
 
             # Continue receiving APDUs via TgGetData (0x86)
@@ -94,7 +94,10 @@ class NfcTarget:
                     if self.write_completed and not self.refresh_attempted:
                         self._refresh_display()
 
-            if self.write_completed:
+            if self.wrote_payload and not self.refresh_attempted:
+                self._refresh_display()
+
+            if self.write_completed or self.wrote_payload:
                 return self.ndef_file
 
         except Exception as e:
@@ -109,6 +112,11 @@ class NfcTarget:
     def _refresh_display(self):
         self.refresh_attempted = True
         try:
+            if ((self.ndef_file[0] << 8) | self.ndef_file[1]) == 0 and self.wrote_payload:
+                if (self.ndef_file[2] & 0x10) and self.ndef_file[3] == 1:
+                    inferred = 4 + self.ndef_file[4]
+                    self.ndef_file[0] = (inferred >> 8) & 0xFF
+                    self.ndef_file[1] = inferred & 0xFF
             parsed = parse_iata_payload(self.ndef_file)
             if not parsed or self.refresh_display is None:
                 return
@@ -122,6 +130,8 @@ class NfcTarget:
 
     def _process_apdu(self, apdu: bytearray):
         """Process incoming APDU command"""
+        hex_str = " ".join([f"{b:02X}" for b in apdu])
+        print(f"    -> APDU: {hex_str}")
         if len(apdu) < 4:
             self._respond(0x67, 0x00)
             return
@@ -140,7 +150,7 @@ class NfcTarget:
         # 1. SELECT (00 A4 ...)
         if len(apdu) >= 5 and apdu[0] == 0x00 and apdu[1] == 0xA4:
             if apdu[2] == 0x04:  # Select by DF name (AID)
-                if apdu[4] == len(AID_NFC_FORUM) and apdu[5:12] == AID_NFC_FORUM:
+                if apdu[4] == len(AID_NFC_FORUM) and apdu[5:11] == AID_NFC_FORUM[:6] and apdu[11] in (0x00, 0x01):
                     self.current_file = 0xE103  # CC file after AID select
                     self._respond_ok()
                 else:
@@ -201,7 +211,7 @@ class NfcTarget:
             if offset >= 2 or lc > 2:
                 self.wrote_payload = True
             nlen = (self.ndef_file[0] << 8) | self.ndef_file[1]
-            if offset == 0 and nlen and all(self.written[2:2 + nlen]):
+            if nlen and self.wrote_payload and all(self.written[0:2 + nlen]):
                 self.write_completed = True
             self._respond_ok()
             if self.write_completed and not self.refresh_attempted:
@@ -244,27 +254,47 @@ def parse_iata_payload(ndef_buf: bytearray) -> dict:
     if not nlen or nlen > len(ndef_buf) - 2:
         return None
     raw = ndef_buf[2:2 + nlen]
-    if len(raw) < 3 or (raw[0] & 0xEF) != 0xC1 or raw[1] != 1:
+    if len(raw) < 3 or (raw[0] & 0x20):
         return None
-    short = bool(raw[0] & 0x10)
-    header_len = 3 if short else 6
-    if len(raw) < header_len + 4:
-        return None
-    plen = raw[2] if short else int.from_bytes(raw[2:6], "big")
-    if raw[header_len] != 0x54:
-        return None
-    status = raw[header_len + 1]
-    lang_len = status & 0x3F
-    start = header_len + 2 + lang_len
-    end = header_len + 1 + plen
-    if status & 0x80 or plen < 1 + lang_len or end > len(raw):
-        return None
-    try:
-        text_str = bytes(raw[start:end]).decode("utf-8").strip()
-    except UnicodeError:
-        return None
+
+    text_str = None
+    if (raw[0] & 0xEF) == 0xC1 and raw[1] == 1:
+        short = bool(raw[0] & 0x10)
+        header_len = 3 if short else 6
+        if len(raw) < header_len + 4:
+            return None
+        plen = raw[2] if short else int.from_bytes(raw[2:6], "big")
+        if raw[header_len] != 0x54:
+            return None
+        status = raw[header_len + 1]
+        lang_len = status & 0x3F
+        start = header_len + 2 + lang_len
+        end = header_len + 1 + plen
+        if status & 0x80 or plen < 1 + lang_len or end > len(raw):
+            return None
+        try:
+            text_str = bytes(raw[start:end]).decode("utf-8").strip()
+        except UnicodeError:
+            return None
+    else:
+        for idx in range(1, min(64, len(raw) - 3)):
+            if raw[idx] == 0x54:
+                plen = raw[idx - 1]
+                lang_len = raw[idx + 1] & 0x3F
+                start = idx + 2 + lang_len
+                end = idx + 1 + plen
+                if plen >= 1 + lang_len and end <= len(raw):
+                    try:
+                        text_str = bytes(raw[start:end]).decode("utf-8").strip()
+                        break
+                    except UnicodeError:
+                        return None
+        if text_str is None:
+            return None
+
     if not text_str or text_str == "INIT":
         return None
+    print(f"    -> Decoded NDEF Text: '{text_str}'")
 
     if text_str.startswith("{") or text_str.startswith("["):
         try:
@@ -338,6 +368,14 @@ def parse_iata_payload(ndef_buf: bytearray) -> dict:
         nums = "".join([c for c in text_str if '0' <= c <= '9'])
         if len(nums) >= 6:
             result["tag_num"] = (nums + "0000000000")[:10]
+            return result
+        cleaned = text_str.strip().upper()
+        if len(cleaned) == 3 and cleaned.isalpha():
+            result["dest_code"] = cleaned
+            result["dest_city"] = cleaned
+            return result
+        if cleaned:
+            result["passenger"] = cleaned[:23]
             return result
 
     return None

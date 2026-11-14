@@ -16,7 +16,11 @@ class EPD_4in2:
         self.cs = Pin(EPD_CS, Pin.OUT, value=1)
         self.dc = Pin(EPD_DC, Pin.OUT, value=0)
         self.rst = Pin(EPD_RST, Pin.OUT, value=1)
-        self.busy = Pin(EPD_BUSY, Pin.IN)
+        self.busy = (
+            Pin(EPD_BUSY, Pin.IN, Pin.PULL_UP)
+            if hasattr(Pin, "PULL_UP")
+            else Pin(EPD_BUSY, Pin.IN)
+        )
         self.busy_gpio = EPD_BUSY
         self.spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
                        sck=Pin(EPD_SCK), mosi=Pin(EPD_MOSI))
@@ -62,21 +66,24 @@ class EPD_4in2:
             (0x4F, [0, 0]),
         ):
             self._send_command(command)
-            self._send_data(bytearray(data))
+            for b in data:
+                self._send_data(bytearray([b]))
 
     def init(self):
+        for _ in range(3):
+            self.rst.value(1)
+            time.sleep_ms(20)
+            self.rst.value(0)
+            time.sleep_ms(2)
         self.rst.value(1)
-        time.sleep_ms(100)
-        self.rst.value(0)
-        time.sleep_ms(2)
-        self.rst.value(1)
-        time.sleep_ms(100)
+        time.sleep_ms(20)
         self._wait_busy(phase="hardware reset")
         self._send_command(0x12)  # Software reset, not display refresh on V2.
         self._wait_busy(phase="software reset")
         for command, data in ((0x21, [0x40, 0]), (0x3C, [0x05]), (0x11, [0x03])):
             self._send_command(command)
-            self._send_data(bytearray(data))
+            for b in data:
+                self._send_data(bytearray([b]))
         self._set_window()
         self._wait_busy(phase="RAM window setup")
 
@@ -89,17 +96,19 @@ class EPD_4in2:
 
     def EPD_4IN2_V2_Display(self, buffer):
         self._wait_busy(phase="before full refresh")
-        for ram in (0x24, 0x26):
-            self._set_window()
-            self._send_command(ram)
-            self._send_data(buffer)
+        self._set_window()
+        self._send_command(0x24)
+        self._send_data(buffer)
+        self._send_command(0x26)
+        self._send_data(buffer)
         self._refresh(0xF7)
 
     def EPD_4IN2_V2_PartialDisplay(self, buffer):
         self._wait_busy(phase="before partial refresh")
-        for command, data in ((0x3C, [0x80]), (0x21, [0, 0])):
+        for command, data in ((0x3C, [0x80]), (0x21, [0, 0]), (0x3C, [0x80])):
             self._send_command(command)
-            self._send_data(bytearray(data))
+            for b in data:
+                self._send_data(bytearray([b]))
         self._set_window()
         self._send_command(0x24)
         self._send_data(buffer)
