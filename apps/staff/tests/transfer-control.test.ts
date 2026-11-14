@@ -1,23 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { validateTransferSnapshot, aggregateInboundFlights, aggregateOutboundConnections, bagsForConnection, findBagConnection, timeToActMinutes, bagRiskScore, transferMetrics } from "../src/lib/transferControl";
+import { validateTransferSnapshot, aggregateOutboundFlights, aggregateInboundConnections, bagsForConnection, findBagConnection, timeToActMinutes, bagRiskScore, transferMetrics } from "../src/lib/transferControl";
 import { transferFixture, fixtureNow } from "./fixtures/transferFixture";
 
 describe("authoritative transfer contracts", () => {
-  it("counts 46 incoming bags once across 28 + 18 outbound bags", () => {
+  it("counts 28 + 18 outbound bags across incoming feeder connections", () => {
     const s = validateTransferSnapshot(transferFixture());
-    expect(aggregateInboundFlights(s, fixtureNow)[0].transferBagCount).toBe(46);
-    expect(aggregateOutboundConnections(s, "in-14", fixtureNow).map(r => r.transferBagCount)).toEqual([28, 18]);
-    expect(bagsForConnection(s, "in-14", "out-nrt")).toHaveLength(28);
-    expect(findBagConnection(s, "0160892014")?.outboundLegId).toBe("out-nrt");
+    expect(aggregateOutboundFlights(s, fixtureNow).map(r => r.transferBagCount)).toEqual([28, 18]);
+    expect(aggregateInboundConnections(s, "out-nrt", fixtureNow).map(r => r.transferBagCount)).toEqual([15, 13]);
+    expect(aggregateInboundConnections(s, "out-lhr", fixtureNow).map(r => r.transferBagCount)).toEqual([18]);
+    expect(bagsForConnection(s, "in-14", "out-nrt")).toHaveLength(15);
+    expect(findBagConnection(s, "0160892014")).toMatchObject({ outboundLegId: "out-nrt", inboundLegId: "in-14" });
   });
   it("keeps independent flight92 and bag82; never averages mixed legacy scores", () => {
     const s = validateTransferSnapshot(transferFixture());
-    expect(aggregateInboundFlights(s, fixtureNow)[0].riskScore).toBe(92);
+    expect(aggregateOutboundFlights(s, fixtureNow)[0].riskScore).toBe(92);
     expect(bagRiskScore(s, "0160892014", fixtureNow)).toBe(82);
     expect(bagRiskScore(s, s.bags[1].tag_number, fixtureNow)).toBeNull();
-    expect(aggregateOutboundConnections(s, "in-14", fixtureNow)[0].riskScore).toBeNull();
+    expect(aggregateInboundConnections(s, "out-nrt", fixtureNow)[0].riskScore).toBeNull();
     s.bags.forEach(b => { b.risk_score = 0; });
-    expect(aggregateInboundFlights(s, fixtureNow)[0].riskScore).toBe(92);
+    expect(aggregateOutboundFlights(s, fixtureNow)[0].riskScore).toBe(92);
   });
   it("copies allowlisted bags, blanks PII and ignores client verification flags", () => {
     const raw = transferFixture();
@@ -49,20 +50,20 @@ describe("authoritative transfer contracts", () => {
     s.connections[1].status = "missed";
     s.connections[2].deadline = null;
     s.connections[3].deadline!.at = "2026-11-14T15:45:00Z";
-    expect(aggregateInboundFlights(s, fixtureNow)[0].earliestActionAt).toBe("2026-11-14T15:45:00Z");
+    expect(aggregateOutboundFlights(s, fixtureNow)[0].earliestActionAt).toBe("2026-11-14T15:45:00Z");
   });
   it("stale snapshot suppresses counts, deadlines and risk", () => {
     const s = validateTransferSnapshot(transferFixture());
     const expired = new Date("2026-11-14T16:00:00Z");
     expect(transferMetrics(s, expired)).toEqual({ total: null, actionRequired: null, atRisk: null, onTrack: null, unknown: null, success: null });
     expect(bagRiskScore(s, "0160892014", expired)).toBeNull();
-    expect(aggregateInboundFlights(s, expired)[0]).toMatchObject({ riskScore: null, earliestActionAt: null, unknownCount: 46 });
+    expect(aggregateOutboundFlights(s, expired)[0]).toMatchObject({ riskScore: null, earliestActionAt: null, unknownCount: 28 });
   });
   it("stale relation becomes unknown; stale evidence suppresses score", () => {
     const s = validateTransferSnapshot(transferFixture());
     s.connections[0].provenance.validUntil = "2026-11-14T15:39:00Z";
     s.flightRisks[0].evidence[0].validUntil = "2026-11-14T15:39:00Z";
-    expect(aggregateInboundFlights(s, fixtureNow)[0]).toMatchObject({ unknownCount: 1, actionRequiredCount: 0, riskScore: null });
+    expect(aggregateOutboundFlights(s, fixtureNow)[0]).toMatchObject({ unknownCount: 1, actionRequiredCount: 0, riskScore: null });
   });
   it("uses supplied disjoint attention, not missing scans, late scans, bare bag scores", () => {
     const s = validateTransferSnapshot(transferFixture());
@@ -122,16 +123,16 @@ describe("authoritative transfer contracts", () => {
   });
   it("stale counterpart leg suppresses action, deadline and independent scores", () => {
     const s = validateTransferSnapshot(transferFixture());
-    s.legs[1].provenance.validUntil = "2026-11-14T15:39:00Z";
-    expect(aggregateInboundFlights(s, fixtureNow)[0]).toMatchObject({ actionRequiredCount: 0, unknownCount: 28 });
-    expect(aggregateOutboundConnections(s, "in-14", fixtureNow)[0].earliestActionAt).toBeNull();
+    s.legs[0].provenance.validUntil = "2026-11-14T15:39:00Z";
+    expect(aggregateOutboundFlights(s, fixtureNow)[0]).toMatchObject({ actionRequiredCount: 0, unknownCount: 15 });
+    expect(aggregateInboundConnections(s, "out-nrt", fixtureNow)[0].earliestActionAt).toBeNull();
     expect(bagRiskScore(s, "0160892014", fixtureNow)).toBeNull();
   });
   it("newer flight and bag inputs invalidate older assessment", () => {
     const s = validateTransferSnapshot(transferFixture());
-    s.legs[0].provenance.observedAt = "2026-11-14T15:36:00Z";
+    s.legs[1].provenance.observedAt = "2026-11-14T15:36:00Z";
     s.bags[0].updated_at = "2026-11-14T15:36:00Z";
-    expect(aggregateInboundFlights(s, fixtureNow)[0].riskScore).toBeNull();
+    expect(aggregateOutboundFlights(s, fixtureNow)[0].riskScore).toBeNull();
     expect(bagRiskScore(s, "0160892014", fixtureNow)).toBeNull();
   });
   it("assessment cannot include later observed evidence", () => {
@@ -147,17 +148,18 @@ describe("authoritative transfer contracts", () => {
   });
   it("unknown schedules and deadlines remain null, never manufactured", () => {
     const s = transferFixture();
-    s.legs[0].scheduledDepartureAt = null; s.legs[0].scheduledArrivalAt = null;
+    s.legs[1].scheduledDepartureAt = null; s.legs[1].scheduledArrivalAt = null;
+    s.legs[1].estimatedDepartureAt = null;
     s.connections.forEach(c => { c.deadline = null; });
-    expect(aggregateInboundFlights(validateTransferSnapshot(s), fixtureNow)[0]).toMatchObject({ earliestActionAt: null, leg: { scheduledArrivalAt: null } });
+    expect(aggregateOutboundFlights(validateTransferSnapshot(s), fixtureNow)[0]).toMatchObject({ earliestActionAt: null, leg: { scheduledDepartureAt: null } });
   });
   it("missing risk inputs, expired deadlines and success evidence remain unavailable", () => {
     const s = validateTransferSnapshot(transferFixture());
-    s.flightRisks[0].missingInputs = ["inbound_arrival"];
+    s.flightRisks[0].missingInputs = ["outbound_departure"];
     s.bagRisks[0].missingInputs = ["custody_scan"];
     s.connections[0].deadline!.provenance.validUntil = "2026-11-14T15:39:00Z";
     s.transferSuccess!.provenance.validUntil = "2026-11-14T15:39:00Z";
-    expect(aggregateInboundFlights(s, fixtureNow)[0].riskScore).toBeNull();
+    expect(aggregateOutboundFlights(s, fixtureNow)[0].riskScore).toBeNull();
     expect(bagRiskScore(s, "0160892014", fixtureNow)).toBeNull();
     expect(timeToActMinutes(s.connections[0].deadline, fixtureNow)).toBeNull();
     expect(transferMetrics(s, fixtureNow).success).toBeNull();
@@ -180,8 +182,8 @@ describe("authoritative transfer contracts", () => {
   });
   it("stable flight identity separates operating dates, not repeated numbers", () => {
     const s = transferFixture();
-    s.legs.push({ ...s.legs[0], id: "in-15", operatingDate: "2026-11-15" });
-    s.connections[45].inboundLegId = "in-15";
-    expect(aggregateInboundFlights(validateTransferSnapshot(s), fixtureNow).map(r => r.transferBagCount)).toEqual([45, 1]);
+    s.legs.push({ ...s.legs[2], id: "out-lhr-next", operatingDate: "2026-11-15" });
+    s.connections[45].outboundLegId = "out-lhr-next";
+    expect(aggregateOutboundFlights(validateTransferSnapshot(s), fixtureNow).map(r => r.transferBagCount)).toEqual([28, 17, 1]);
   });
 });

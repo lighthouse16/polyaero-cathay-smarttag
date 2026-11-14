@@ -136,7 +136,7 @@ export interface TransferControlSnapshot {
   };
 }
 
-export interface InboundFlightSummary {
+export interface OutboundFlightSummary {
   leg: FlightLeg;
   transferBagCount: number;
   actionRequiredCount: number;
@@ -147,7 +147,7 @@ export interface InboundFlightSummary {
   riskScore: number | null;
 }
 
-export type OutboundConnectionSummary = InboundFlightSummary;
+export type InboundConnectionSummary = OutboundFlightSummary;
 
 export interface TransferMetrics {
   total: number | null;

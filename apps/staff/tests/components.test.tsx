@@ -62,4 +62,21 @@ describe("truthful component output", () => {
     expect(html).toContain("Load (90%)");
     expect(html).not.toContain("width:90%");
   });
+  it("formats custody events without duplicate airport codes or raw scanner enums", () => {
+    const withEvent: LiveBag = {
+      ...bag,
+      events: [{
+        id: "ev-1",
+        event_type: "IN_TRANSFER",
+        timestamp: "2026-11-14T10:55:50Z",
+        location_code: "HKG",
+        station_name: "HKG",
+        scanner_type: "MANUAL_OVERRIDE",
+      }],
+    };
+    const html = renderToStaticMarkup(<BaggageInvestigationPanel bag={withEvent} bagRisk={82} timeToAct={15} connectionLabel="CX255 / CX616" />);
+    expect(html).not.toContain("HKG · HKG");
+    expect(html).not.toContain("MANUAL_OVERRIDE");
+    expect(html).toContain("Staff Override");
+  });
 });

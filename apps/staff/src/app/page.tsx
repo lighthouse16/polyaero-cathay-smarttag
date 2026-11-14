@@ -1,13 +1,15 @@
 "use client";
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { SidebarView, TransferControlSnapshot } from "../lib/types";
-import { aggregateInboundFlights, findBagConnection, transferMetrics, validateTransferSnapshot, isTransferSnapshotFresh } from "../lib/transferControl";
+import { aggregateOutboundFlights, findBagConnection, transferMetrics, validateTransferSnapshot, isTransferSnapshotFresh } from "../lib/transferControl";
 import { OperationsHeader } from "../components/layout/OperationsHeader";
-import { IncomingFlightQueue, stationTime } from "../components/transfer/IncomingFlightQueue";
+import { OutboundFlightQueue, stationTime } from "../components/transfer/OutboundFlightQueue";
 import { FlightWorkbench } from "../components/transfer/FlightWorkbench";
 import { emptySelection, transferSelection } from "../components/transfer/selection";
 import { GlobalSearchModal } from "../components/search/GlobalSearchModal";
 import { BaggageTraceView, PerformanceView } from "../components/views/SecondaryViews";
+import { RefreshIcon } from "../components/icons/DashboardIcons";
+import { AnimatedNumber } from "../components/ui/AnimatedNumber";
 
 export default function StaffDashboardPage() {
   const [snapshot, setSnapshot] = useState<TransferControlSnapshot | null>(null);
@@ -58,40 +60,187 @@ export default function StaffDashboardPage() {
   const clock = now ?? new Date(0);
   const stale = !!error || !snapshot || !isTransferSnapshotFresh(snapshot, clock);
   const metrics = snapshot ? transferMetrics(snapshot, clock) : null;
-  const flights = snapshot ? aggregateInboundFlights(snapshot, clock) : [];
+  const flights = snapshot ? aggregateOutboundFlights(snapshot, clock) : [];
   const displayMetrics = stale ? null : metrics;
   const bags = snapshot?.bags ?? [];
   function locateBag(tag: string) {
     setSearchOpen(false);
     const relation = snapshot ? findBagConnection(snapshot, tag) : null;
-    if (!relation) { setContextError(`Incoming / onward flight context unavailable for bag ${tag}. No flight association inferred.`); return; }
+    if (!relation) { setContextError(`Outbound / incoming flight context unavailable for bag ${tag}. No flight association inferred.`); return; }
     setContextError(null);
     setView("transfer-control");
-    select({ type: "inbound", id: relation.inboundLegId });
     select({ type: "outbound", id: relation.outboundLegId });
+    select({ type: "inbound", id: relation.inboundLegId });
     select({ type: "bag", id: tag });
   }
+  const [statusFilter, setStatusFilter] = useState("");
+
+  function toggleKpiFilter(kind: "action" | "status", value?: string) {
+    if (stale) return;
+    if (kind === "action") {
+      setStatusFilter("");
+      setActionOnly((prev) => !prev);
+      return;
+    }
+    setActionOnly(false);
+    setStatusFilter((prev) => (prev === value ? "" : value ?? ""));
+  }
+
+  const kpiCards = [
+    {
+      label: "Action required",
+      value: displayMetrics?.actionRequired,
+      detail: "Bags requiring intervention",
+      isPercent: false,
+      interactive: !stale,
+      active: !stale && actionOnly,
+      onToggle: () => toggleKpiFilter("action"),
+    },
+    {
+      label: "At risk",
+      value: displayMetrics?.atRisk,
+      detail: "Bags flagged at risk",
+      isPercent: false,
+      interactive: !stale,
+      active: !stale && !actionOnly && statusFilter === "At risk",
+      onToggle: () => toggleKpiFilter("status", "At risk"),
+    },
+    {
+      label: "On track",
+      value: displayMetrics?.onTrack,
+      detail: "Bags reported on track",
+      isPercent: false,
+      interactive: !stale,
+      active: !stale && !actionOnly && statusFilter === "On track",
+      onToggle: () => toggleKpiFilter("status", "On track"),
+    },
+    {
+      label: "Transfer success %",
+      value: displayMetrics?.success,
+      detail:
+        snapshot?.transferSuccess && !stale
+          ? `${snapshot.transferSuccess.successful} / ${snapshot.transferSuccess.eligible} eligible bags · ${stationTime(snapshot.transferSuccess.windowStart)}–${stationTime(snapshot.transferSuccess.windowEnd)} HKT`
+          : "Eligible population / window unavailable",
+      isPercent: true,
+      interactive: false,
+      active: false,
+      onToggle: undefined,
+    },
+  ];
+
   return <div className="staff-app">
     <a href="#staff-main" className="skip-link">Skip to main content</a>
-    <OperationsHeader station="HKG · T1" activeView={view} onSelectView={next => { setView(next); setActionOnly(false); }} onOpenSearch={() => setSearchOpen(true)} actionRequiredCount={displayMetrics?.actionRequired ?? null} onOpenAlerts={() => { setView("transfer-control"); setActionOnly(true); }} />
+    <OperationsHeader
+      station="HKG · T1"
+      activeView={view}
+      onSelectView={next => {
+        setView(next);
+        setActionOnly(false);
+        setStatusFilter("");
+      }}
+      onOpenSearch={() => setSearchOpen(true)}
+      actionRequiredCount={displayMetrics?.actionRequired ?? null}
+      onOpenAlerts={() => {
+        setView("transfer-control");
+        setActionOnly(true);
+        setStatusFilter("");
+        requestAnimationFrame(() => {
+          document.getElementById("outbound-queue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }}
+    />
     <main id="staff-main" className="staff-main">
       {error && <div className="data-notice" role="alert">{error}<button onClick={() => void fetchSnapshot()}>Retry</button></div>}
       {contextError && <div className="data-notice" role="status">{contextError}<button onClick={() => setContextError(null)}>Dismiss</button></div>}
-      {view === "transfer-control" && <>
-        <div className="page-heading"><div><h1 tabIndex={-1}>Transfer Control</h1><p>Prioritize incoming flights, then inspect onward connections and individual bags.</p></div><div className="snapshot-time">{loading ? "Loading snapshot…" : snapshot ? `Received ${stationTime(snapshot.generatedAt)} HKT` : "Snapshot unavailable"}</div></div>
-        <div className="kpi-grid">{[
-          { label: "Action required", value: displayMetrics?.actionRequired, detail: "Bags requiring intervention" },
-          { label: "At risk", value: displayMetrics?.atRisk, detail: "Bags flagged at risk" },
-          { label: "On track", value: displayMetrics?.onTrack, detail: "Bags reported on track" },
-          { label: "Transfer success %", value: displayMetrics?.success, detail: snapshot?.transferSuccess && !stale ? `${snapshot.transferSuccess.successful} / ${snapshot.transferSuccess.eligible} eligible bags · ${stationTime(snapshot.transferSuccess.windowStart)}–${stationTime(snapshot.transferSuccess.windowEnd)} HKT` : "Eligible population / window unavailable" },
-        ].map(metric => <section className="card-surface metric-card" key={metric.label}><h2>{metric.label}</h2><strong className="tabular-nums">{metric.value == null ? "—" : metric.label.endsWith("%") ? `${metric.value.toFixed(1)}%` : metric.value.toLocaleString("en-GB")}</strong><p>{metric.detail}</p></section>)}</div>
-        <div className="availability-line" role="status">{stale ? loading ? "Loading authoritative transfer records." : snapshot?.missingInputs.join(" · ") || "Authoritative transfer associations unavailable." : `${metrics?.total ?? 0} eligible transfer bags · ${metrics?.unknown ?? 0} with attention unavailable`}{actionOnly && <button className="text-button" onClick={() => setActionOnly(false)}>Clear action-required filter</button>}</div>
-        <IncomingFlightQueue flights={flights} now={clock} onSelect={id => select({ type: "inbound", id })} unavailable={stale} loading={loading} actionOnly={actionOnly} />
-      </>}
+      {view === "transfer-control" && <div key="transfer-control" className="view-stage">
+        <h1 className="sr-only" tabIndex={-1}>Transfer Control</h1>
+        <div className="page-heading" style={{ justifyContent: "flex-end", marginBottom: 14 }}>
+          <div className="snapshot-meta">
+            <button
+              type="button"
+              className="refresh-btn"
+              onClick={() => void fetchSnapshot()}
+              disabled={loading}
+              aria-label="Refresh operational snapshot"
+              title="Refresh operational snapshot"
+            >
+              <span className={loading ? "refresh-icon-wrap is-spinning" : "refresh-icon-wrap"} aria-hidden="true">
+                <RefreshIcon size={14} color="currentColor" />
+              </span>
+              <span>{loading ? "Refreshing" : "Refresh"}</span>
+            </button>
+          </div>
+        </div>
+        <div className="kpi-grid">{kpiCards.map((metric, idx) => (
+          <section
+            className="card-surface metric-card"
+            key={metric.label}
+            style={{ "--card-index": idx } as React.CSSProperties}
+            data-interactive={metric.interactive ? "true" : undefined}
+            data-active={metric.active ? "true" : undefined}
+          >
+            <div className="metric-card-top">
+              <h2>{metric.label}</h2>
+              {metric.interactive && metric.onToggle && (
+                <button
+                  type="button"
+                  className="metric-card-toggle"
+                  aria-pressed={metric.active}
+                  aria-label={`${metric.active ? "Clear filter for" : "Filter queue by"} ${metric.label}`}
+                  onClick={metric.onToggle}
+                >
+                  {metric.active ? "Filtered" : "Filter"}
+                </button>
+              )}
+            </div>
+            <strong className="tabular-nums">
+              {metric.isPercent ? (
+                <AnimatedNumber value={metric.value} decimals={1} suffix="%" />
+              ) : (
+                <AnimatedNumber value={metric.value} />
+              )}
+            </strong>
+            <p>{metric.detail}</p>
+          </section>
+        ))}</div>
+        <div className="availability-line" role="status">
+          <span>
+            {stale
+              ? loading
+                ? "Loading authoritative transfer records."
+                : snapshot?.missingInputs.join(" · ") || "Authoritative transfer associations unavailable."
+              : `${metrics?.total ?? 0} eligible transfer bags · ${metrics?.unknown ?? 0} with attention unavailable`}
+          </span>
+          {actionOnly && (
+            <button className="text-button" onClick={() => setActionOnly(false)}>
+              Clear action-required filter
+            </button>
+          )}
+          {!actionOnly && statusFilter && (
+            <button className="text-button" onClick={() => setStatusFilter("")}>
+              Clear {statusFilter.toLowerCase()} filter
+            </button>
+          )}
+        </div>
+        <OutboundFlightQueue
+          flights={flights}
+          now={clock}
+          onSelect={id => select({ type: "outbound", id })}
+          unavailable={stale}
+          loading={loading}
+          actionOnly={actionOnly}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(next) => {
+            setActionOnly(false);
+            setStatusFilter(next);
+          }}
+          onClearActionOnly={() => setActionOnly(false)}
+        />
+      </div>}
       {view === "baggage-trace" && <BaggageTraceView bags={bags} selectedTagNumber={selection.bag ?? ""} onSelectBag={locateBag} onSwitchToTransferControl={() => setView("transfer-control")} />}
       {view === "performance" && <PerformanceView bags={bags} selectedTagNumber={selection.bag ?? ""} onSelectBag={locateBag} onSwitchToTransferControl={() => setView("transfer-control")} />}
     </main>
-    <GlobalSearchModal open={searchOpen && !selection.inbound} bags={bags} onClose={() => setSearchOpen(false)} onSelectBag={locateBag} />
+    <GlobalSearchModal open={searchOpen && !selection.outbound} bags={bags} onClose={() => setSearchOpen(false)} onSelectBag={locateBag} />
     {snapshot && <FlightWorkbench snapshot={snapshot} selection={selection} now={clock} stale={stale} onSelection={select} />}
   </div>;
 }

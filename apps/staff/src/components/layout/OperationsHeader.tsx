@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { SidebarView } from "../../lib/types";
 import { formatHongKongClock } from "../../lib/utils";
+import { useSlidingIndicator } from "../ui/useSlidingIndicator";
 import {
   BarChartIcon,
   BellIcon,
@@ -37,12 +38,26 @@ export function OperationsHeader({
   onOpenAlerts,
 }: OperationsHeaderProps) {
   const [clock, setClock] = useState<ReturnType<typeof formatHongKongClock> | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const navKey = activeView === "exceptions" ? "transfer-control" : activeView;
+  const indicator = useSlidingIndicator(navKey, navRef, `.${styles.navButton}`);
 
   useEffect(() => {
     const updateClock = () => setClock(formatHongKongClock(new Date()));
     updateClock();
-    const timer = setInterval(updateClock, 15_000);
+    const timer = setInterval(updateClock, 1_000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const next = window.scrollY > 6;
+      setScrolled((prev) => (prev === next ? prev : next));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const countKnown = actionRequiredCount !== null &&
@@ -50,7 +65,7 @@ export function OperationsHeader({
   const clockLabel = clock ? `${clock.dateLine}, ${clock.tzLine}` : "Station clock loading";
 
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-scrolled={scrolled ? "true" : undefined}>
       <div className={styles.brand}>
         <Image
           src="/cathay/cathay-en.svg"
@@ -62,19 +77,35 @@ export function OperationsHeader({
         />
       </div>
 
-      <nav className={styles.navigation} aria-label="Ground Operations">
+      <nav
+        ref={navRef}
+        className={styles.navigation}
+        data-indicator-ready={indicator.ready ? "true" : undefined}
+        aria-label="Ground Operations"
+      >
         {NAV_ITEMS.map(({ id, label, Icon }) => (
           <button
             key={id}
             type="button"
+            data-tab-key={id}
             className={styles.navButton}
             aria-current={activeView === id ? "page" : undefined}
             onClick={() => onSelectView(id)}
           >
-            <Icon size={16} color="#2D2D2D" />
+            <Icon size={16} color="currentColor" />
             {label}
           </button>
         ))}
+        {indicator.ready && (
+          <span
+            aria-hidden="true"
+            className={styles.navInkBar}
+            style={{
+              width: `${indicator.width}px`,
+              transform: `translate3d(${indicator.left}px, 0, 0)`,
+            }}
+          />
+        )}
       </nav>
 
       <div className={styles.tools}>
@@ -86,13 +117,13 @@ export function OperationsHeader({
           aria-keyshortcuts="Control+K Meta+K"
           title="Search baggage"
         >
-          <SearchIcon size={16} color="#2D2D2D" />
+          <SearchIcon size={16} color="currentColor" />
           <span className={styles.searchLabel}>Search bag or flight</span>
         </button>
         <div className={styles.station}>
           <span>{station}</span>
           <span className={styles.mobileClock} aria-label={clockLabel}>
-            {clock ? clock.dateLine.slice(-5) : "—"}
+            {clock ? clock.dateLine.slice(-8) : "—"}
           </span>
         </div>
         <div className={styles.clock} aria-label={clockLabel}>
@@ -103,11 +134,12 @@ export function OperationsHeader({
           <button
             type="button"
             className={styles.alerts}
+            data-has-alerts={actionRequiredCount! > 0 ? "true" : undefined}
             onClick={onOpenAlerts}
             aria-label={`Filter ${actionRequiredCount} bags requiring action`}
             title="Show bags requiring action"
           >
-            <BellIcon size={18} color="#2D2D2D" />
+            <BellIcon size={18} color="currentColor" />
             <span className={styles.alertCount}>{actionRequiredCount}</span>
           </button>
         )}

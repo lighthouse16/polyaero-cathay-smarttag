@@ -1,7 +1,7 @@
 import type {
   BagRiskAssessment, BagTransferConnection, FlightLeg, FlightRiskAssessment,
-  HandlingDeadline, InboundFlightSummary, LiveBag, OperationalProvenance,
-  OutboundConnectionSummary, TransferControlSnapshot, TransferMetrics,
+  HandlingDeadline, InboundConnectionSummary, LiveBag, OperationalProvenance,
+  OutboundFlightSummary, TransferControlSnapshot, TransferMetrics,
 } from "./types";
 import { validateBags } from "./dashboard";
 
@@ -155,7 +155,7 @@ export function bagRiskScore(snapshot: TransferControlSnapshot, bagTag: string, 
   const latestInput = bag && connection ? Math.max(Date.parse(bag.updated_at), Date.parse(connection.provenance.observedAt), ...relatedLegs.map(l => Date.parse(l.provenance.observedAt)), ...bag.events.map(e => Date.parse(e.timestamp))) : Infinity;
   return connection && isConnectionFresh(snapshot, connection, now) && assessment?.assessedAt && latestInput <= now.getTime() && latestInput <= Date.parse(assessment.assessedAt) ? assessedScore(assessment, now) : null;
 }
-function summary(snapshot: TransferControlSnapshot, leg: FlightLeg, records: BagTransferConnection[], now: Date, riskScore: number | null): InboundFlightSummary {
+function summary(snapshot: TransferControlSnapshot, leg: FlightLeg, records: BagTransferConnection[], now: Date, riskScore: number | null): OutboundFlightSummary {
   const current = isTransferSnapshotFresh(snapshot, now) && fresh(leg.provenance, now);
   const attention = records.map(c => current && isConnectionFresh(snapshot, c, now) ? c.attention : "unknown");
   const deadlines = current ? records.filter(c => c.status === "pending" && (c.attention === "action_required" || c.attention === "at_risk") && isConnectionFresh(snapshot, c, now) && timeToActMinutes(c.deadline, now) !== null).map(c => c.deadline!.at).sort((a, b) => Date.parse(a) - Date.parse(b)) : [];
@@ -163,15 +163,17 @@ function summary(snapshot: TransferControlSnapshot, leg: FlightLeg, records: Bag
     atRiskCount: attention.filter(a => a === "at_risk").length, onTrackCount: attention.filter(a => a === "on_track").length,
     unknownCount: attention.filter(a => a === "unknown").length, earliestActionAt: deadlines[0] ?? null, riskScore: current ? riskScore : null };
 }
-export function aggregateInboundFlights(snapshot: TransferControlSnapshot, now: Date): InboundFlightSummary[] {
-  return snapshot.legs.filter(l => snapshot.connections.some(c => c.inboundLegId === l.id)).map(leg => {
+/** Aggregates departing HKG flights that receive transfer bags, scored from flightRisks. */
+export function aggregateOutboundFlights(snapshot: TransferControlSnapshot, now: Date): OutboundFlightSummary[] {
+  return snapshot.legs.filter(l => snapshot.connections.some(c => c.outboundLegId === l.id)).map(leg => {
     const assessment = snapshot.flightRisks.find(r => r.flightLegId === leg.id);
     const score = assessment?.assessedAt && Date.parse(leg.provenance.observedAt) <= Date.parse(assessment.assessedAt) ? assessedScore(assessment, now) : null;
-    return summary(snapshot, leg, snapshot.connections.filter(c => c.inboundLegId === leg.id), now, score);
+    return summary(snapshot, leg, snapshot.connections.filter(c => c.outboundLegId === leg.id), now, score);
   });
 }
-export function aggregateOutboundConnections(snapshot: TransferControlSnapshot, inboundLegId: string, now: Date): OutboundConnectionSummary[] {
-  return snapshot.legs.filter(l => snapshot.connections.some(c => c.inboundLegId === inboundLegId && c.outboundLegId === l.id)).map(leg => summary(snapshot, leg, snapshot.connections.filter(c => c.inboundLegId === inboundLegId && c.outboundLegId === leg.id), now, null));
+/** Aggregates incoming feeder flights connecting onto a specific outbound leg. */
+export function aggregateInboundConnections(snapshot: TransferControlSnapshot, outboundLegId: string, now: Date): InboundConnectionSummary[] {
+  return snapshot.legs.filter(l => snapshot.connections.some(c => c.outboundLegId === outboundLegId && c.inboundLegId === l.id)).map(leg => summary(snapshot, leg, snapshot.connections.filter(c => c.outboundLegId === outboundLegId && c.inboundLegId === leg.id), now, null));
 }
 export function bagsForConnection(snapshot: TransferControlSnapshot, inboundLegId: string, outboundLegId: string): LiveBag[] {
   const tags = new Set(snapshot.connections.filter(c => c.inboundLegId === inboundLegId && c.outboundLegId === outboundLegId).map(c => c.bagTag));

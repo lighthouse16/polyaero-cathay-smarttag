@@ -20,6 +20,10 @@ describe("frozen Cathay operational design", () => {
     const css = read("app/globals.css") + read("components/layout/OperationsHeader.module.css") + read("components/investigation/BaggageInvestigationPanel.module.css");
     expect(css).toContain("--brand-primary-darkcyan-default: #367878");
     expect(css).toContain("--brand-primary-darkcyan-active: #163230");
+    expect(css).toContain("--brand-primary-darkcyan-light: #F1F4F1");
+    expect(css).toContain("--brand-primary-darkgreen-active: #002527");
+    expect(css).toContain("--brand-secondary-gold-default: #886521");
+    expect(css).toContain("width: 108px");
     expect(css).toContain("border-bottom: 2px solid var(--brand-primary-darkcyan-active)");
     expect(css).toContain("outline: 2px solid var(--brand-primary-darkcyan-default)");
     expect(css.toUpperCase()).not.toContain("#005D63");

@@ -18,7 +18,8 @@ function extendValidity(value: unknown) {
 }
 extendValidity(shifted);
 for (const leg of shifted.legs) {
-  leg.operatingDate = new Intl.DateTimeFormat("en-CA", { timeZone: leg.origin === "BKK" ? "Asia/Bangkok" : "Asia/Hong_Kong", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(leg.scheduledDepartureAt));
+  const tz = leg.origin === "BKK" ? "Asia/Bangkok" : leg.origin === "SIN" ? "Asia/Singapore" : "Asia/Hong_Kong";
+  leg.operatingDate = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(leg.scheduledDepartureAt));
 }
 const directory = path.join(process.cwd(), ".next", "qa-fixtures");
 mkdirSync(directory, { recursive: true });
