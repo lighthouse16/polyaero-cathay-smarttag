@@ -25,7 +25,7 @@ const DEFAULT_BAG_DIR: Record<BagSortKey, SortDir> = {
 function bagStatusTone(status: string): "action" | "risk" | "track" {
   const s = (status || "").toUpperCase();
   if (s === "MISROUTED" || s === "MISSING" || s === "RECOVERY_IN_PROGRESS") return "action";
-  if (s === "IN_TRANSFER" || s === "AWAITING_SYNC") return "risk";
+  if (s === "AWAITING_SYNC") return "risk";
   return "track";
 }
 
@@ -150,6 +150,8 @@ export function ConnectionBagTable({
       <div className="table-toolbar">
         <div className="toolbar-search-wrap">
           <input
+            id="connection-bag-search"
+            name="connection-bag-search"
             type="search"
             aria-label="Search connection bag tags"
             placeholder="Search full bag tag"
@@ -168,6 +170,8 @@ export function ConnectionBagTable({
           )}
         </div>
         <select
+          id="connection-bag-status"
+          name="connection-bag-status"
           aria-label="Filter bag status"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -180,6 +184,8 @@ export function ConnectionBagTable({
           ))}
         </select>
         <select
+          id="connection-bag-sort"
+          name="connection-bag-sort"
           aria-label="Sort connection bags"
           value={sort}
           onChange={(e) => {
@@ -268,7 +274,7 @@ export function ConnectionBagTable({
                     style={{ "--score-pct": `${pct}%` } as React.CSSProperties}
                     className="score-cell"
                   >
-                    {risk ?? "—"}
+                    {risk === null || risk === undefined ? "—" : `${risk}%`}
                   </td>
                   <td>{formatTimeToAct(time)}</td>
                   <td>

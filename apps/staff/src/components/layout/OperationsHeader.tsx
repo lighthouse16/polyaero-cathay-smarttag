@@ -11,6 +11,7 @@ import {
   LayersIcon,
   LuggageIcon,
   SearchIcon,
+  UserCircleIcon,
 } from "../icons/DashboardIcons";
 import styles from "./OperationsHeader.module.css";
 
@@ -120,29 +121,42 @@ export function OperationsHeader({
           <SearchIcon size={16} color="currentColor" />
           <span className={styles.searchLabel}>Search bag or flight</span>
         </button>
-        <div className={styles.station}>
-          <span>{station}</span>
-          <span className={styles.mobileClock} aria-label={clockLabel}>
-            {clock ? clock.dateLine.slice(-8) : "—"}
-          </span>
-        </div>
+        {station ? (
+          <div className={styles.station}>
+            <span>{station}</span>
+            <span className={styles.mobileClock} aria-label={clockLabel}>
+              {clock ? clock.dateLine.slice(-8) : "—"}
+            </span>
+          </div>
+        ) : null}
         <div className={styles.clock} aria-label={clockLabel}>
           <span>{clock?.dateLine ?? "—"}</span>
           <span className={styles.timezone}>{clock?.tzLine ?? "HKG station clock"}</span>
         </div>
-        {countKnown && (
+        <div className={styles.userActions}>
           <button
             type="button"
             className={styles.alerts}
-            data-has-alerts={actionRequiredCount! > 0 ? "true" : undefined}
+            data-has-alerts={countKnown && actionRequiredCount! > 0 ? "true" : undefined}
             onClick={onOpenAlerts}
-            aria-label={`Filter ${actionRequiredCount} bags requiring action`}
-            title="Show bags requiring action"
+            aria-label={
+              countKnown && actionRequiredCount! > 0
+                ? `Filter ${actionRequiredCount} bags requiring action`
+                : "Notifications"
+            }
+            title="Notifications"
           >
-            <BellIcon size={18} color="currentColor" />
-            <span className={styles.alertCount}>{actionRequiredCount}</span>
+            <BellIcon size={20} color="currentColor" />
           </button>
-        )}
+          <button
+            type="button"
+            className={styles.profile}
+            aria-label="Staff profile"
+            title="Staff profile"
+          >
+            <UserCircleIcon size={22} color="currentColor" />
+          </button>
+        </div>
       </div>
     </header>
   );

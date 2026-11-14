@@ -1,0 +1,312 @@
+.thought-line {
+  --tl-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --tl-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --tl-font: 14px;
+  --tl-color: currentColor;
+  --tl-glyph: currentColor;
+  --tl-settle: 350ms;
+  --tl-blur: 2px;
+  --tl-shimmer: 1.8s;
+  --tl-done: 0.8;
+  --tl-timer: 0.58;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+  color: var(--tl-color);
+  font-family: inherit;
+  font-size: var(--tl-font);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.thought-line__head {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  margin: 0;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  outline: none;
+  cursor: default;
+}
+
+.thought-line__head[data-toggle] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.thought-line__head[data-toggle]:hover .thought-line__text--done,
+.thought-line__head[data-toggle]:hover .thought-line__chevron {
+  color: var(--tl-color);
+  opacity: 1;
+}
+
+.thought-line__head[data-toggle]:focus-visible {
+  outline: 2px solid var(--brand-primary-darkcyan-default, #367878);
+  outline-offset: 2px;
+}
+
+.thought-line__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.15em;
+  color: var(--tl-glyph);
+}
+
+.thought-line__glyph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.thought-line__dot {
+  display: block;
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.thought-line__label {
+  display: inline-grid;
+  align-items: center;
+}
+
+.thought-line__text {
+  grid-area: 1 / 1;
+  opacity: 0;
+  filter: blur(var(--tl-blur));
+  transform: translateY(-2px);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--tl-settle) var(--tl-ease-out),
+    filter var(--tl-settle) var(--tl-ease-out),
+    transform var(--tl-settle) var(--tl-ease-out),
+    visibility 0s linear var(--tl-settle);
+}
+
+.thought-line__text--done {
+  transform: translateY(2px);
+  opacity: 0;
+  color: color-mix(in srgb, var(--tl-color) 82%, transparent);
+}
+
+.thought-line__text[data-active] {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--tl-settle) var(--tl-ease-out),
+    filter var(--tl-settle) var(--tl-ease-out),
+    transform var(--tl-settle) var(--tl-ease-out),
+    visibility 0s;
+}
+
+.thought-line__text--done[data-active] {
+  opacity: var(--tl-done);
+}
+
+.thought-line__breath {
+  display: inline-block;
+}
+
+.thought-line__breath[data-shimmer] {
+  color: transparent;
+  background-image: linear-gradient(
+    102deg,
+    color-mix(in srgb, var(--tl-color) 48%, transparent) 22%,
+    var(--tl-color) 50%,
+    color-mix(in srgb, var(--tl-color) 48%, transparent) 78%
+  );
+  background-size: 240% 100%;
+  background-position: 120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: thought-line-shimmer var(--tl-shimmer) var(--tl-ease-in-out) infinite;
+}
+
+@keyframes thought-line-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+.thought-line__timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--tl-color) 62%, transparent);
+  transition:
+    transform var(--tl-settle) var(--tl-ease-out),
+    color var(--tl-settle) var(--tl-ease-out);
+  will-change: transform;
+}
+
+.thought-line__timer[data-done] {
+  color: color-mix(in srgb, var(--tl-color) 55%, transparent);
+}
+
+.thought-line__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--tl-color) 58%, transparent);
+  transform: rotate(-90deg);
+  transition:
+    opacity 180ms var(--tl-ease-out),
+    transform 220ms var(--tl-ease-out),
+    width 180ms var(--tl-ease-out),
+    color 180ms var(--tl-ease-out);
+}
+
+.thought-line__chevron[data-on] {
+  width: 1em;
+  opacity: 0.72;
+}
+
+.thought-line[data-open] .thought-line__chevron[data-on] {
+  transform: rotate(0deg);
+}
+
+.thought-line__trace {
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--tl-settle) var(--tl-ease-out),
+    opacity var(--tl-settle) var(--tl-ease-out);
+}
+
+.thought-line__trace[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.thought-line__fold {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.thought-line__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42em;
+  margin: 0.42em 0 0.25em 0.52em;
+  padding: 0.08em 0 0.08em 0.85em;
+  border-left: 1.5px solid var(--border-hairline, #e6e7e8);
+}
+
+.thought-line__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+  font-size: 0.88em;
+  font-weight: 450;
+  line-height: 1.42;
+  color: color-mix(in srgb, var(--tl-color) 72%, transparent);
+  transition:
+    opacity 220ms var(--tl-ease-out),
+    transform 220ms var(--tl-ease-out),
+    color 220ms var(--tl-ease-out);
+}
+
+@starting-style {
+  .thought-line__step {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+.thought-line__step:not([data-done]) {
+  color: var(--tl-color);
+  font-weight: 500;
+}
+
+.thought-line__step-text {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.thought-line__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1em;
+  height: 1.42em;
+  color: var(--brand-primary-darkcyan-default, #367878);
+}
+
+.thought-line__pulse {
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 999px;
+  background: var(--tl-glyph);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tl-glyph) 18%, transparent);
+  animation: thought-line-pulse 1.35s var(--tl-ease-in-out) infinite;
+}
+
+@keyframes thought-line-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.thought-line__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thought-line__breath[data-shimmer],
+  .thought-line__pulse {
+    animation: none;
+  }
+  .thought-line__breath[data-shimmer] {
+    color: var(--tl-color);
+    background-image: none;
+  }
+  .thought-line__text,
+  .thought-line__timer,
+  .thought-line__chevron,
+  .thought-line__trace,
+  .thought-line__step {
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { OutboundFlightQueue, formatTimeToAct } from "../src/components/transfer/OutboundFlightQueue";
 import { FlightWorkbench } from "../src/components/transfer/FlightWorkbench";
 import { ConnectionBagTable } from "../src/components/transfer/ConnectionBagTable";
+import { formatLiveTimeToAct, getRiskTier, stationClockSeconds } from "../src/components/transfer/WorkbenchMetrics";
 import type { TransferControlSnapshot } from "../src/lib/types";
 import { transferFixture, fixtureNow } from "./fixtures/transferFixture";
 import { aggregateOutboundFlights, validateTransferSnapshot } from "../src/lib/transferControl";
@@ -78,5 +79,28 @@ describe("flight-first truthful UI", () => {
     expect(html).toContain("Time to Act");
     expect(html).not.toContain("PNR");
     expect(html).not.toContain("Passenger");
+  });
+  it("formats live second-precision countdown/overdue readouts and workbench telemetry", () => {
+    expect(formatLiveTimeToAct(null)).toMatchObject({ text: "—", badge: null, urgency: "none", meterPct: 0 });
+    expect(formatLiveTimeToAct(14 * 60_000 + 5_000)).toMatchObject({ text: "14m 05s", badge: "urgent", urgency: "urgent" });
+    expect(formatLiveTimeToAct(65 * 60_000 + 2_000)).toMatchObject({ text: "1h 05m 02s", badge: "remaining", urgency: "active" });
+    expect(formatLiveTimeToAct(-10 * 60_000 - 24_000)).toMatchObject({ text: "10m 24s", badge: "overdue", urgency: "overdue", meterPct: 100 });
+    expect(getRiskTier(92)).toBe("critical");
+    expect(stationClockSeconds("2026-11-14T08:15:30Z")).toBe("16:15:30");
+
+    const data = validateTransferSnapshot(transferFixture());
+    const html = renderToStaticMarkup(
+      <FlightWorkbench
+        snapshot={data}
+        selection={{ outbound: "out-nrt", inbound: null, bag: null }}
+        now={fixtureNow}
+        stale={false}
+        onSelection={() => {}}
+      />,
+    );
+    expect(html).toContain("wb-metrics");
+    expect(html).toContain("wb-stacked-track");
+    expect(html).toContain("Cutoff ");
+    expect(html).toContain("15m 00s");
   });
 });

@@ -1,8 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { SidebarView, TransferControlSnapshot } from "../lib/types";
-import { aggregateOutboundFlights, findBagConnection, transferMetrics, isTransferSnapshotFresh } from "../lib/transferControl";
-import { fetchLiveTransferSnapshot } from "../lib/liveTransferAdapter";
+import { aggregateOutboundFlights, findBagConnection, transferMetrics, validateTransferSnapshot, isTransferSnapshotFresh } from "../lib/transferControl";
 import { OperationsHeader } from "../components/layout/OperationsHeader";
 import { OutboundFlightQueue, stationTime } from "../components/transfer/OutboundFlightQueue";
 import { FlightWorkbench } from "../components/transfer/FlightWorkbench";
@@ -11,6 +10,7 @@ import { GlobalSearchModal } from "../components/search/GlobalSearchModal";
 import { BaggageTraceView, PerformanceView } from "../components/views/SecondaryViews";
 import { RefreshIcon } from "../components/icons/DashboardIcons";
 import { AnimatedNumber } from "../components/ui/AnimatedNumber";
+import { OperationsCopilotDrawer } from "../components/copilot/OperationsCopilotDrawer";
 
 export default function StaffDashboardPage() {
   const [snapshot, setSnapshot] = useState<TransferControlSnapshot | null>(null);
@@ -21,13 +21,16 @@ export default function StaffDashboardPage() {
   const [selection, select] = useReducer(transferSelection, emptySelection);
   const [searchOpen, setSearchOpen] = useState(false);
   const [actionOnly, setActionOnly] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const [contextError, setContextError] = useState<string | null>(null);
   const busy = useRef(false);
   const fetchSnapshot = useCallback(async (signal?: AbortSignal) => {
     if (busy.current) return;
     busy.current = true;
     try {
-      const next = await fetchLiveTransferSnapshot(signal);
+      const response = await fetch("/api/v1/transfer-control", { cache: "no-store", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error(`Transfer snapshot request failed (${response.status})`);
+      const next = validateTransferSnapshot(await response.json());
       if (signal?.aborted) return;
       setSnapshot(next);
       setError(null);
@@ -50,12 +53,31 @@ export default function StaffDashboardPage() {
     function shortcut(event: KeyboardEvent) {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
       event.preventDefault();
-      if (selection.inbound) document.querySelector<HTMLInputElement>("[data-workbench-search]")?.focus();
+      if (selection.outbound) document.querySelector<HTMLInputElement>("[data-workbench-search]")?.focus();
       else setSearchOpen(v => !v);
     }
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
-  }, [selection.inbound]);
+  }, [selection.outbound]);
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (hash === "transfer-control" || hash === "baggage-trace" || hash === "performance") {
+      setView(hash);
+      return;
+    }
+    const saved = window.sessionStorage.getItem("staff_active_view");
+    if (saved === "transfer-control" || saved === "baggage-trace" || saved === "performance") {
+      setView(saved);
+    }
+  }, []);
+  const changeView = useCallback((nextView: SidebarView) => {
+    setView(nextView);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("staff_active_view", nextView);
+      window.history.replaceState(null, "", `#${nextView}`);
+    }
+  }, []);
+
   const clock = now ?? new Date(0);
   const stale = !!error || !snapshot || !isTransferSnapshotFresh(snapshot, clock);
   const metrics = snapshot ? transferMetrics(snapshot, clock) : null;
@@ -130,17 +152,17 @@ export default function StaffDashboardPage() {
   return <div className="staff-app">
     <a href="#staff-main" className="skip-link">Skip to main content</a>
     <OperationsHeader
-      station="HKG · T1"
+      station=""
       activeView={view}
       onSelectView={next => {
-        setView(next);
+        changeView(next);
         setActionOnly(false);
         setStatusFilter("");
       }}
       onOpenSearch={() => setSearchOpen(true)}
       actionRequiredCount={displayMetrics?.actionRequired ?? null}
       onOpenAlerts={() => {
-        setView("transfer-control");
+        changeView("transfer-control");
         setActionOnly(true);
         setStatusFilter("");
         requestAnimationFrame(() => {
@@ -236,10 +258,48 @@ export default function StaffDashboardPage() {
           onClearActionOnly={() => setActionOnly(false)}
         />
       </div>}
-      {view === "baggage-trace" && <BaggageTraceView bags={bags} selectedTagNumber={selection.bag ?? ""} onSelectBag={locateBag} onSwitchToTransferControl={() => setView("transfer-control")} />}
-      {view === "performance" && <PerformanceView bags={bags} selectedTagNumber={selection.bag ?? ""} onSelectBag={locateBag} onSwitchToTransferControl={() => setView("transfer-control")} />}
+      {view === "baggage-trace" && <BaggageTraceView bags={bags} selectedTagNumber={selection.bag ?? ""} onSelectBag={locateBag} onSwitchToTransferControl={() => changeView("transfer-control")} />}
+      {view === "performance" && (
+        <PerformanceView
+          bags={bags}
+          selectedTagNumber={selection.bag ?? ""}
+          onSelectBag={locateBag}
+          onSwitchToTransferControl={() => changeView("transfer-control")}
+          snapshot={snapshot}
+          now={clock}
+          onInspectOutboundFlight={(outboundLegId) => {
+            changeView("transfer-control");
+            select({ type: "outbound", id: outboundLegId });
+          }}
+        />
+      )}
     </main>
     <GlobalSearchModal open={searchOpen && !selection.outbound} bags={bags} onClose={() => setSearchOpen(false)} onSelectBag={locateBag} />
-    {snapshot && <FlightWorkbench snapshot={snapshot} selection={selection} now={clock} stale={stale} onSelection={select} />}
+    {snapshot && (
+      <FlightWorkbench
+        snapshot={snapshot}
+        selection={selection}
+        now={clock}
+        stale={stale}
+        onSelection={select}
+        copilotOpen={copilotOpen}
+        onCopilotOpenChange={setCopilotOpen}
+        onRefreshSnapshot={() => fetchSnapshot()}
+      />
+    )}
+    {!selection.outbound && (
+      <OperationsCopilotDrawer
+        open={copilotOpen}
+        onOpenChange={setCopilotOpen}
+        snapshot={snapshot}
+        now={clock}
+        activeView={view}
+        onLocateBag={locateBag}
+        onSelectOutboundFlight={(legId) => {
+          changeView("transfer-control");
+          select({ type: "outbound", id: legId });
+        }}
+      />
+    )}
   </div>;
 }

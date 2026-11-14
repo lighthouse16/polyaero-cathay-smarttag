@@ -157,3 +157,212 @@ export interface TransferMetrics {
   unknown: number | null;
   success: number | null;
 }
+
+export type PerformanceWindow = "24h" | "7d" | "30d";
+
+export type RecoveryStageKey =
+  | "detected"
+  | "actioned"
+  | "located"
+  | "loaded"
+  | "transferred";
+
+export type RiskCauseAttributionMode =
+  | "primary_exclusive"
+  | "multi_factor_mentions"
+  | "unavailable";
+
+export interface MetricComparison {
+  delta: number;
+  unit: "percent" | "pp" | "count" | "minutes";
+  direction: "up" | "down" | "flat";
+  polarity: "positive_good" | "negative_good" | "neutral";
+  baselineLabel: string;
+  provenance: OperationalProvenance;
+}
+
+/** Single transfer-bag recovery case, keyed so repeat scans never inflate counts. */
+export interface RecoveryEpisodeRecord {
+  episodeId: string;
+  bagTag: string;
+  connectionId: string;
+  inboundLegId: string;
+  outboundLegId: string;
+  outboundFlightNumber: string;
+  outboundOperatingDate: string;
+  origin: string;
+  destination: string;
+  station: string;
+  detectedAt: string;
+  actionedAt: string | null;
+  locatedAt: string | null;
+  loadedAt: string | null;
+  transferredAt: string | null;
+  loadingCutoffAt: string | null;
+  outcome: "recovered" | "missed" | "pending" | "unknown";
+  primaryRiskCause: string | null;
+  riskFactors: string[];
+  provenance: OperationalProvenance;
+}
+
+export interface EligibleTransferRecord {
+  bagTag: string;
+  connectionId: string;
+  outboundLegId: string;
+  outboundFlightNumber: string;
+  outboundOperatingDate: string;
+  origin: string;
+  destination: string;
+  station: string;
+  observedAt: string;
+  transferred: boolean | null;
+  provenance: OperationalProvenance;
+}
+
+export interface CounterfactualAssumptions {
+  counterfactualModelVersion: string;
+  missedConnectionBaselineRate: number;
+  methodologyNote: string;
+  provenance: OperationalProvenance;
+}
+
+export interface LaborAssumptions {
+  minutesSavedPerHandledCase: number;
+  methodologyNote: string;
+  provenance: OperationalProvenance;
+}
+
+export interface CostAssumptions {
+  currency: string;
+  costPerAvoidedMisconnection: number;
+  methodologyNote: string;
+  provenance: OperationalProvenance;
+}
+
+export interface PerformanceFilterState {
+  window: PerformanceWindow;
+  station: string;
+  outboundLegId: string;
+}
+
+export interface PerformanceKpiMetric {
+  id: "highRisk" | "actioned" | "recoveredBeforeCutoff" | "transferSuccess";
+  label: string;
+  value: number | null;
+  unit: "count" | "percent";
+  decimals?: number;
+  numerator: number | null;
+  denominator: number | null;
+  definition: string;
+  exclusionNote: string | null;
+  availabilityNote: string | null;
+  comparison: MetricComparison | null;
+}
+
+export interface RecoveryFunnelStage {
+  key: RecoveryStageKey;
+  label: string;
+  count: number | null;
+  stepConversionPct: number | null;
+  cumulativePct: number | null;
+  definition: string;
+  availabilityNote: string | null;
+}
+
+export interface RecoveryTrendBucket {
+  bucketKey: string;
+  label: string;
+  rangeLabel: string;
+  detectedCount: number | null;
+  recoveredCount: number | null;
+  eligibleTransferCount: number | null;
+  successfulTransferCount: number | null;
+  successRatePct: number | null;
+}
+
+export interface OutboundFlightImpactRow {
+  legKey: string;
+  outboundLegId: string;
+  flightNumber: string;
+  operatingDate: string;
+  route: string;
+  transferBags: number | null;
+  highRiskBags: number | null;
+  recoveredBeforeCutoff: number | null;
+  missedBags: number | null;
+  pendingBags: number | null;
+  saveRatePct: number | null;
+  inActiveSnapshot: boolean;
+}
+
+export interface RiskCauseSlice {
+  category: string;
+  count: number;
+  sharePct: number | null;
+}
+
+export interface RiskCauseBreakdownSummary {
+  mode: RiskCauseAttributionMode;
+  totalCases: number | null;
+  items: RiskCauseSlice[];
+  availabilityNote: string | null;
+}
+
+export interface OperationalEfficiencySummary {
+  medianAlertToActionMin: number | null;
+  alertToActionSampleSize: number;
+  medianActionToLocateMin: number | null;
+  actionToLocateSampleSize: number;
+  resolvedBeforeCutoffCount: number | null;
+  resolvedBeforeCutoffPct: number | null;
+  resolvedBeforeCutoffDenominator: number | null;
+  pendingExcludedCount: number;
+  availabilityNote: string | null;
+}
+
+export interface BusinessImpactItem {
+  id: "avoidedMisconnections" | "staffHoursSaved" | "costAvoided";
+  label: string;
+  kind: "observed" | "estimated";
+  value: number | null;
+  currency?: string;
+  unit: "count" | "hours" | "currency";
+  decimals?: number;
+  assumptionNote: string | null;
+  availabilityNote: string | null;
+  comparison: MetricComparison | null;
+}
+
+export interface OutboundFlightOption {
+  legKey: string;
+  outboundLegId: string;
+  flightNumber: string;
+  operatingDate: string;
+  route: string;
+}
+
+export interface RecoveryPerformanceReport {
+  availability: "available" | "partial" | "unavailable";
+  source: string;
+  generatedAt: string;
+  validUntil: string | null;
+  window: PerformanceWindow;
+  windowStart: string | null;
+  windowEnd: string | null;
+  station: string;
+  supportedWindows: PerformanceWindow[];
+  supportedStations: string[];
+  outboundFilterOptions: OutboundFlightOption[];
+  missingInputs: string[];
+  statusNote: string | null;
+  kpis: PerformanceKpiMetric[];
+  funnel: RecoveryFunnelStage[];
+  funnelNote: string | null;
+  trend: RecoveryTrendBucket[];
+  trendNote: string | null;
+  outboundImpact: OutboundFlightImpactRow[];
+  outboundImpactDefinition: string;
+  riskCauses: RiskCauseBreakdownSummary;
+  efficiency: OperationalEfficiencySummary;
+  businessImpact: BusinessImpactItem[];
+}

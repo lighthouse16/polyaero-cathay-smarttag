@@ -1,0 +1,1827 @@
+.performanceStage {
+  --performance-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: var(--font-sans);
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ── Top Header & Cohort Controls Bar ── */
+.filterHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.controlsCluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.selectPill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(22 50 48 / 3%);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.selectPill:hover {
+  border-color: var(--border-strong);
+}
+
+.selectPill:focus-within {
+  border-color: var(--brand-primary-darkcyan-default);
+  outline: 2px solid rgb(54 120 120 / 16%);
+  outline-offset: 0;
+}
+
+.selectLeadingIcon {
+  position: absolute;
+  left: 11px;
+  display: inline-flex;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.selectTrailingChevron {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.selectControl {
+  appearance: none;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 30px 0 32px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 112px;
+}
+
+.selectControl:focus {
+  outline: none;
+}
+
+.selectFlightPill .selectControl {
+  min-width: 170px;
+  max-width: 260px;
+}
+
+button.refreshPill {
+  height: 36px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgb(22 50 48 / 3%);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.cohortMetaStrip {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 7px 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.cohortMetaStrip strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.metaItem {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.metaDot {
+  color: var(--border-strong);
+}
+
+.metaNote {
+  color: var(--text-secondary);
+}
+
+/* ── Shared Card Anatomy ── */
+.chartCard {
+  position: relative;
+  container-type: inline-size;
+  overflow: visible;
+  border: 1px solid #E6E7E8;
+  box-shadow: 0 1px 3px rgb(22 50 48 / 4%);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardTitleWrap {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.cardSubtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.cardMicroNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ── Info Disclosure Button & Popover ── */
+.infoWrap {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+}
+
+.infoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.chartCard:has(.infoBtn[aria-expanded="true"]),
+.kpiCard:has(.infoBtn[aria-expanded="true"]) { z-index: 2; }
+
+.infoBtn:focus-visible {
+  outline: 2px solid var(--brand-primary-darkcyan-default);
+  outline-offset: 2px;
+}
+
+.infoBtn:hover {
+  background: #F3F4F4;
+  color: var(--text-primary);
+}
+
+.infoPopover {
+  position: absolute;
+  top: 48px;
+  left: 12px;
+  right: 12px;
+  z-index: 40;
+  width: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-card);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-primary);
+  text-align: left;
+  white-space: normal;
+}
+
+/* ── KPI Row (4 Cards) ── */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kpiCard {
+  position: relative;
+  overflow: visible;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  min-height: 100px;
+  background: #FFFFFF;
+  border: 1px solid #E6E7E8;
+  box-shadow: 0 2px 4px rgb(22 50 48 / 5%);
+  animation: cardReveal 320ms var(--performance-ease) both;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.kpiCard:nth-child(2) { animation-delay: 40ms; }
+.kpiCard:nth-child(3) { animation-delay: 80ms; }
+.kpiCard:nth-child(4) { animation-delay: 120ms; }
+.kpiCard:hover, .kpiCard:focus-within {
+  border-color: #BCBEC0;
+  box-shadow: 0 4px 12px rgb(22 50 48 / 7%);
+}
+
+.kpiIconFrame {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+  color: #2D2D2D;
+}
+
+.kpiBody {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.kpiLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.kpiValueRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.kpiValue {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 2.4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.kpiValueMuted {
+  color: var(--text-secondary);
+}
+
+.deltaTag {
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.deltaPositive {
+  color: #246346;
+}
+
+.deltaNegative {
+  color: var(--brand-secondary-gold-default);
+}
+
+.deltaNeutral {
+  color: var(--text-secondary);
+}
+
+.kpiCaption {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* ── Upper 2-Column Analytical Grid (Funnel + Trend) ── */
+.upperGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.funnelDesktop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.funnelStagesGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+}
+
+.funnelStageBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  min-width: 0;
+  animation: stageReveal 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.funnelStageBtn:focus-visible {
+  outline: 2px solid var(--brand-primary-darkcyan-default);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.funnelLabel {
+  min-height: 30px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.funnelStageBtnActive .funnelLabel {
+  color: var(--brand-primary-darkcyan-active);
+  font-weight: 700;
+}
+
+.funnelCount {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.12;
+}
+
+.funnelCountMuted {
+  color: var(--text-secondary);
+}
+
+.funnelChevronTrack {
+  display: block;
+  width: 100%;
+  height: 36px;
+}
+
+.chevronSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+.chevronSvgActive {
+  transform: translateY(-1px);
+  filter: contrast(1.06);
+}
+
+.funnelConversionsRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 2px 10% 0;
+  text-align: center;
+}
+
+.funnelConversionCell {
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.funnelMobile {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.funnelMobileRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.funnelMobileMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.funnelMobileName {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.funnelMobileNums {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.funnelMobileStep {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.funnelMobileTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-hairline);
+  overflow: hidden;
+}
+
+.funnelMobileFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 320ms ease;
+}
+
+.funnelFootnote {
+  min-height: 54px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-hairline);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.funnelFootnote strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── Recovery Trend Combo Chart ── */
+.trendHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.trendHeaderActions {
+  width: 100%;
+  justify-content: space-between;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.trendLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.legendSwatchBar {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legendSwatchLine {
+  position: relative;
+  width: 16px;
+  height: 2px;
+  background: var(--brand-primary-darkcyan-default);
+}
+
+.legendSwatchLine::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: -2.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--brand-primary-darkcyan-default);
+  border: 1.5px solid var(--surface-card);
+  box-sizing: border-box;
+}
+
+.modeToggle {
+  display: inline-flex;
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #F4F5F5;
+}
+
+.modeBtn {
+  min-height: 32px;
+  transition: background-color 160ms ease, color 160ms ease;
+  border: 0;
+  background: transparent;
+  padding: 4px 10px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.modeBtnActive {
+  background: #163230;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.trendPlotWrap {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+}
+
+.trendSvg {
+  display: block;
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+}
+
+.axisTick {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  fill: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.trendSlot {
+  cursor: pointer;
+}
+
+.trendSlot:focus { outline: none; }
+.trendSlot:focus-visible > rect:first-child {
+  stroke: #367878;
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+
+.barRectAnimated {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: barRise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.linePathAnimated {
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 0;
+  animation: lineReveal 580ms ease-out both;
+}
+
+.chartTooltip {
+  min-height: 52px;
+  margin-top: 6px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border-hairline);
+  font-size: 12px;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  align-content: flex-start;
+}
+
+.emptyPlotOverlay {
+  position: absolute;
+  inset: 20px 44px 30px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 90%);
+  border: 1px dashed var(--border-strong);
+}
+
+.emptyPlotTitle {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.emptyPlotDesc {
+  margin: 4px 0 0;
+  max-width: 380px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.trendTableWrap {
+  max-height: 235px;
+  overflow: auto;
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+}
+
+.compactTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.compactTable th,
+.compactTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-hairline);
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.compactTable .numCol { text-align: right; }
+
+.compactTable thead th {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  background: #F4F5F5;
+}
+
+/* ── Lower Region (Outbound Table Left + Stacked Cause/Efficiency + Business Impact Right) ── */
+.lowerGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.lowerRightStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.middleRightSplit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.impactTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 2px;
+}
+
+.impactTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.flightColumn { width: 17%; }
+.routeColumn { width: 17%; }
+
+.impactTable th {
+  padding: 9px 6px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-hairline);
+  white-space: normal;
+  line-height: 1.3;
+  background: #F4F5F6;
+}
+
+.impactTable td {
+  padding: 8px 6px;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.impactTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.impactRowInteractive {
+  cursor: pointer;
+}
+
+.impactRowInteractive:hover td {
+  background: #F3F4F4;
+}
+
+.sortThBtn {
+  display: inline-flex;
+  min-height: 32px;
+  max-width: 100%;
+  text-align: inherit;
+  line-height: 1.3;
+  white-space: normal;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sortThBtn svg { flex-shrink: 0; }
+
+.sortThBtn:hover {
+  color: var(--text-primary);
+}
+
+.sortThRight {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.numCol {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.flightDrillBtn {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flightDrillBtn:hover {
+  color: var(--brand-primary-darkcyan-default);
+}
+
+.flightNumberText {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.flightDateSub {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.routeCell {
+  white-space: normal;
+  color: var(--text-secondary);
+}
+
+.saveRateCell {
+  font-weight: 700;
+}
+
+.emptyTableBox {
+  padding: 28px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-hairline);
+  background: #F4F5F5;
+  text-align: center;
+}
+
+/* ── Risk-Cause Breakdown ── */
+.causeBody {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+}
+
+.donutWrap {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  flex-shrink: 0;
+}
+
+.donutSvg {
+  width: 156px;
+  height: 156px;
+  display: block;
+}
+
+.donutArc {
+  cursor: pointer;
+  transition: stroke-width 150ms ease;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 28px;
+  pointer-events: none;
+}
+
+.donutCenterNum {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.08;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.donutCenterNumMuted {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.08;
+  color: var(--text-secondary);
+}
+
+.donutCenterSub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.causeLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.causeLegendRow {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.causeLegendActive {
+  background: #F3F4F4;
+}
+
+.causeLabelGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.causeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.causeName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.causePct {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.mentionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mentionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mentionTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.mentionStat {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.mentionTrack {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--border-hairline);
+  overflow: hidden;
+}
+
+.mentionFill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.causeUnavailable {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 auto;
+}
+
+.emptyDonutRing {
+  width: 112px;
+  height: 112px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 14px solid var(--border-hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Operational Efficiency ── */
+.efficiencyList {
+  display: flex;
+  flex-direction: column;
+}
+
+.efficiencyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.efficiencyRow:first-child {
+  padding-top: 2px;
+}
+
+.efficiencyRow:last-child {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+.efficiencyLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.efficiencyIconFrame {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+}
+
+.efficiencyLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.efficiencySample {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.efficiencyMetric {
+  text-align: right;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+.efficiencyValue {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.efficiencyPctSub {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* ── Business Impact Bottom Strip ── */
+.businessHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.modeledTag {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+}
+
+.businessGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.businessCell {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 12px;
+  border-right: 1px solid var(--border-hairline);
+}
+
+.businessCell:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.businessIconFrame {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.businessContent {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.businessLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.businessLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.businessValueRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.businessBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.businessValue {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.provenanceBadge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+}
+
+.businessNote {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* Motion stays compositor-friendly; no scroll interception. */
+.kpiSkeleton {
+  display: inline-block;
+  width: 92px;
+  height: 32px;
+  border-radius: 3px;
+  background: #E6E7E8;
+  animation: loadingPulse 1.2s ease-in-out infinite alternate;
+}
+.refreshPill { min-width: 100px; justify-content: center; }
+.refreshingIcon { animation: refreshSpin 900ms linear infinite; }
+@keyframes refreshSpin { to { transform: rotate(360deg); } }
+@keyframes loadingPulse { to { opacity: 0.45; } }
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Keyframes ── */
+@keyframes barRise {
+  from {
+    opacity: 0.25;
+    transform: scaleY(0.18);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes lineReveal {
+  from {
+    stroke-dashoffset: 1400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes stageReveal {
+  from {
+    opacity: 0.78;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive Breakpoints ── */
+@media (max-width: 1400px) and (min-width: 961px) {
+  .kpiCard { gap: 12px; padding: 16px 14px; }
+  .kpiIconFrame { width: 38px; height: 38px; }
+}
+
+@media (max-width: 1200px) {
+  .lowerGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 960px) {
+  .kpiRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .upperGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 960px) {
+  .controlsCluster {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .middleRightSplit {
+    grid-template-columns: 1fr;
+  }
+
+  .businessGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .businessCell {
+    padding-right: 0;
+    padding-bottom: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .businessCell:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .funnelDesktop {
+    display: none;
+  }
+
+  .funnelMobile {
+    display: flex;
+  }
+
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+
+  .causeBody {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .selectFlightPill .selectControl {
+    max-width: none;
+  }
+
+  .emptyPlotOverlay {
+    inset: 14px;
+  }
+
+  .impactTable {
+    min-width: 540px;
+  }
+}
+
+@container (max-width: 370px) {
+  .causeBody, .causeUnavailable { flex-direction: column; align-items: stretch; }
+  .donutWrap, .emptyDonutRing { align-self: center; }
+  .efficiencyRow { flex-wrap: wrap; gap: 6px; }
+  .efficiencyMetric { margin-left: 40px; }
+}
+
+@media (max-width: 480px) {
+  .chartCard { padding: 12px; }
+  .impactTable th, .impactTable td { padding: 8px 6px; }
+  .sortThBtn { font-size: 12px; gap: 3px; }
+  .impactTable td { font-size: 12px; }
+  .flightDateSub { font-size: 11.5px; }
+  .selectPill { max-width: 100%; }
+  .selectControl, .selectFlightPill .selectControl { min-width: 0; width: 100%; }
+  .selectFlightPill { flex: 1 1 100%; }
+  .controlsCluster { width: 100%; }
+}
+
+@media (pointer: coarse) {
+  .infoBtn, .sortThBtn, .flightDrillBtn, .modeBtn { min-height: 44px; }
+  .infoBtn { min-width: 44px; }
+}
+
+/* ── Industry Executive Polish & Interactive Telemetry Refinements ── */
+.performanceStage[data-updating="true"] {
+  opacity: 0.92;
+  transition: opacity 160ms ease;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.liveCohortBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #E2E4E6;
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.windowSegmented {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hairline);
+  background: #F4F5F6;
+  gap: 2px;
+}
+
+.windowSegBtn {
+  position: relative;
+  z-index: 1;
+  min-height: 28px;
+  min-width: 44px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.windowSegBtn:hover {
+  color: var(--text-primary);
+}
+
+.windowSegBtnActive {
+  color: #FFFFFF;
+  background: var(--brand-primary-darkcyan-active);
+  font-weight: 700;
+}
+
+.windowSegmented[data-indicator-ready="true"] .windowSegBtnActive {
+  background: transparent;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.windowSegThumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 6px;
+  background: var(--brand-primary-darkcyan-active);
+  pointer-events: none;
+  transition: transform 240ms var(--performance-ease), width 240ms var(--performance-ease);
+}
+
+.clearCohortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: #FFFFFF;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.clearCohortBtn:hover {
+  border-color: var(--text-primary);
+  background: #F6F7F7;
+}
+
+/* KPI proportional micro-meter */
+.kpiMeterTrack {
+  width: 100%;
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: #ECEEEF;
+  overflow: hidden;
+}
+
+.kpiMeterFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand-primary-darkcyan-default);
+  transition: width 360ms var(--performance-ease);
+}
+
+.kpiCard[data-kpi-id="highRisk"] .kpiMeterFill {
+  background: #002527;
+}
+.kpiCard[data-kpi-id="actioned"] .kpiMeterFill {
+  background: #163230;
+}
+.kpiCard[data-kpi-id="recoveredBeforeCutoff"] .kpiMeterFill {
+  background: #2C4036;
+}
+.kpiCard[data-kpi-id="transferSuccess"] .kpiMeterFill {
+  background: #367878;
+}
+
+.deltaTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+}
+.deltaPositive {
+  color: var(--brand-primary-darkcyan-active);
+}
+.deltaNegative {
+  color: var(--brand-secondary-gold-default);
+}
+
+/* Funnel stage step badges & telemetry strip */
+.funnelSummaryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.funnelSummaryBadge strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.funnelStepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: color 150ms ease;
+}
+
+.funnelStageBtnActive .funnelStepNum {
+  background: transparent;
+  color: var(--brand-primary-darkcyan-active);
+  font-weight: 700;
+}
+
+.funnelChevronTrack {
+  height: 42px;
+}
+
+.funnelConvArrow {
+  color: #9DA3A7;
+}
+
+.funnelTelemetryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: #F9F9F9;
+}
+
+.funnelStatBox {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.funnelStatLabel {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.funnelStatValue {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Trend chart live readout chips */
+.tooltipPeriod {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tooltipMetrics {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.tooltipMetricChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltipSubCount {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Outbound Impact search + save-rate micro-bar */
+.impactSearchBox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 175px;
+  max-width: 220px;
+}
+
+.impactSearchIcon {
+  position: absolute;
+  left: 10px;
+  display: inline-flex;
+  pointer-events: none;
+}
+
+.impactSearchBox input {
+  width: 100%;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 26px 0 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: #F9F9F9;
+  font-size: 12px;
+  color: var(--text-primary);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.impactSearchBox input:focus {
+  outline: none;
+  background: #FFFFFF;
+  border-color: var(--brand-primary-darkcyan-default);
+}
+
+.impactSearchBox input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.impactSearchClear {
+  position: absolute;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  min-width: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #EAECEC;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.saveRateWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 54px;
+}
+
+.saveRateTrack {
+  width: 48px;
+  height: 3px;
+  border-radius: 999px;
+  background: #E6E7E8;
+  overflow: hidden;
+}
+
+.saveRateFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms var(--performance-ease);
+}
+
+/* Risk-Cause Breakdown interactive bars */
+.causeLegendMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.causeStatsWrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.causeCountSub {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.causeBarTrack {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: #ECEEEF;
+  overflow: hidden;
+}
+
+.causeBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 320ms var(--performance-ease);
+}
+
+/* Operational Efficiency SLA micro-bars */
+.efficiencyRow {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.efficiencyTopLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.efficiencyMeterTrack {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: #ECEEEF;
+  overflow: hidden;
+}
+
+.efficiencyMeterFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 320ms var(--performance-ease);
+}
+
+.provenanceBadgeActive {
+  border-color: transparent;
+  background: transparent;
+  color: var(--brand-primary-darkcyan-active);
+}
+
+@media (max-width: 680px) {
+  .funnelTelemetryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpiCard,
+  .kpiSkeleton,
+  .refreshingIcon,
+  .funnelStageBtn,
+  .barRectAnimated,
+  .linePathAnimated {
+    animation: none !important;
+  }
+
+  .chevronSvg,
+  .funnelMobileFill,
+  .donutArc,
+  .kpiMeterFill,
+  .windowSegThumb,
+  .saveRateFill,
+  .causeBarFill,
+  .efficiencyMeterFill {
+    transition: none !important;
+  }
+}
