@@ -23,15 +23,16 @@ export function formatHongKongClock(date: Date): {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
       hour12: false,
     }).format(date);
     return {
-      dateLine: formatted.replace(/, (\d{2}:\d{2})$/, " $1"),
+      dateLine: formatted.replace(/, (\d{2}:\d{2}:\d{2})$/, " $1"),
       tzLine: "UTC+8 · HKG",
     };
   } catch {
     return {
-      dateLine: date.toISOString().slice(0, 16).replace("T", " "),
+      dateLine: date.toISOString().slice(0, 19).replace("T", " "),
       tzLine: "UTC",
     };
   }

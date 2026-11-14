@@ -1,614 +1,177 @@
 "use client";
-
-import React, { useId, useMemo, useState } from "react";
+import React, { useId, useState } from "react";
 import type { LiveBag } from "../../lib/types";
-import {
-  formatStatusLabel,
-  formatTimeHHMM,
-  isAtRiskBag,
-  isExceptionBag,
-  scannerBadgeLabel,
-} from "../../lib/utils";
-import {
-  AlertTriangleIcon,
-  CheckCircleIcon,
-  SearchIcon,
-} from "../icons/DashboardIcons";
+import { formatStatusLabel, scannerBadgeLabel } from "../../lib/utils";
+import { ChevronRightIcon, CloseIcon } from "../icons/DashboardIcons";
+import { stationTime } from "../transfer/OutboundFlightQueue";
+import { HighlightMatch } from "../ui/HighlightMatch";
 
-interface SecondaryViewProps {
+interface Props {
   bags: LiveBag[];
   selectedTagNumber: string;
-  onSelectBag: (tagNumber: string) => void;
+  onSelectBag: (tag: string) => void;
   onSwitchToTransferControl: () => void;
 }
 
-export function ExceptionsView({
-  bags,
-  selectedTagNumber,
-  onSelectBag,
-}: SecondaryViewProps) {
-  const exceptions = useMemo(
-    () =>
-      bags
-        .filter((b) => isExceptionBag(b) || b.risk_score >= 65)
-        .sort((a, b) => b.risk_score - a.risk_score),
-    [bags],
-  );
-
-  return (
-    <section aria-label="Active Exceptions and Priority Intercepts">
-      <div style={{ marginBottom: "18px" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "clamp(22px, 2.6vw, 34px)",
-            fontWeight: 700,
-            color: "#000000",
-            lineHeight: 1.15,
-            letterSpacing: "-0.025em",
-          }}
-        >
-          Active Exceptions &amp; Priority Intercepts
-        </h1>
-        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
-          Baggage records currently flagged for exception handling or elevated
-          risk score.
-        </p>
-      </div>
-
-      {exceptions.length === 0 ? (
-        <div
-          className="card-surface"
-          style={{ padding: "36px 24px", textAlign: "center" }}
-        >
-          <CheckCircleIcon size={28} color="#006564" />
-          <div
-            style={{
-              fontSize: "15px",
-              fontWeight: 700,
-              marginTop: "10px",
-              color: "#000000",
-            }}
-          >
-            Zero active exceptions
-          </div>
-          <div style={{ fontSize: "13px", color: "#000000", marginTop: "4px" }}>
-            No baggage records in current station snapshot are flagged as
-            exceptions.
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {exceptions.map((bag) => {
-            const active = bag.tag_number === selectedTagNumber;
-            return (
-              <button
-                key={bag.tag_number}
-                type="button"
-                aria-pressed={active}
-                aria-label={`Select exception bag ${bag.tag_number} for ${bag.passenger_name}`}
-                onClick={() => onSelectBag(bag.tag_number)}
-                className="card-surface focus-ring"
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "16px 18px",
-                  borderColor: active
-                    ? "#004B4A"
-                    : isExceptionBag(bag)
-                      ? "#D8D3CB"
-                      : "#E8E5DE",
-                  backgroundColor: active ? "#F3F1EC" : "#FFFFFF",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "16px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "12px",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "34px",
-                      height: "34px",
-                      borderRadius: "9px",
-                      backgroundColor: "#F3F1EC",
-                      border: "1px solid #D8D3CB",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <AlertTriangleIcon size={17} color="#87323A" />
-                  </span>
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span
-                        className="tabular-nums"
-                        style={{
-                          fontSize: "15px",
-                          fontWeight: 700,
-                          color: "#000000",
-                        }}
-                      >
-                        {bag.tag_number}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "#000000",
-                        }}
-                      >
-                        {bag.passenger_name}
-                      </span>
-                      <span
-                        style={{
-                          padding: "2px 8px",
-                          borderRadius: "999px",
-                          backgroundColor: "#F3F1EC",
-                          border: "1px solid #D8D3CB",
-                          color: "#000000",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {formatStatusLabel(bag.status)}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "12.5px",
-                        color: "#000000",
-                        marginTop: "4px",
-                      }}
-                    >
-                      {bag.flight_number} ({bag.departure_airport} →{" "}
-                      {bag.arrival_airport}) · {bag.last_known_location}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "#000000",
-                        marginTop: "4px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {bag.passenger_risk_summary || bag.recommended_action}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{ textAlign: "right", flexShrink: 0 }}
-                  className="tabular-nums"
-                >
-                  <div
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: 700,
-                      color: "#000000",
-                    }}
-                  >
-                    {bag.risk_score}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#000000" }}>
-                    Risk score
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
+function traceTone(status: string): "action" | "risk" | "track" {
+  const s = (status || "").toUpperCase();
+  if (s === "MISROUTED" || s === "MISSING" || s === "RECOVERY_IN_PROGRESS") return "action";
+  if (s === "IN_TRANSFER" || s === "AWAITING_SYNC") return "risk";
+  return "track";
 }
 
-export function BaggageTraceView({
-  bags,
-  selectedTagNumber,
-  onSelectBag,
-}: SecondaryViewProps) {
+export function BaggageTraceView({ bags, selectedTagNumber, onSelectBag }: Props) {
   const [query, setQuery] = useState("");
-  const searchInputId = useId();
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return bags;
-    return bags.filter((b) =>
-      `${b.tag_number} ${b.tag_code} ${b.booking_reference} ${b.passenger_name} ${b.flight_number}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [bags, query]);
+  const id = useId();
+  const filtered = bags.filter((b) =>
+    `${b.tag_number} ${b.tag_code} ${b.flight_number}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
 
   return (
-    <section aria-label="Baggage Trace and Scan Audit">
-      <div style={{ marginBottom: "16px" }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "clamp(22px, 2.6vw, 34px)",
-            fontWeight: 700,
-            color: "#000000",
-            lineHeight: 1.15,
-            letterSpacing: "-0.025em",
-          }}
-        >
-          Baggage Trace &amp; Scan Audit
-        </h1>
-        <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
-          Recorded baggage events across reported Optical, RFID, PN532 NFC, and
-          Staff Override entries.
-        </p>
+    <section className="view-stage" aria-labelledby="trace-title">
+      <div className="page-heading">
+        <div>
+          <h1 id="trace-title">Baggage Trace</h1>
+          <p>Source-reported custody records · HKT (UTC+8)</p>
+        </div>
+        <div className="snapshot-time">
+          {query.trim() ? `${filtered.length} of ${bags.length} records` : `${bags.length} records`}
+        </div>
       </div>
-
-      <div
-        className="card-surface"
-        style={{
-          padding: "12px 14px",
-          marginBottom: "14px",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-        }}
-      >
-        <SearchIcon size={16} color="#006564" />
-        <label htmlFor={searchInputId} className="sr-only">
-          Trace baggage by bag tag, NFC UID, PNR, flight, or passenger
-        </label>
-        <input
-          id={searchInputId}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Trace by 10-digit bag tag, NFC UID, PNR, flight, or passenger..."
-          style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            fontSize: "13.5px",
-            color: "#000000",
-            backgroundColor: "transparent",
-          }}
-        />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {results.map((bag) => {
-          const active = bag.tag_number === selectedTagNumber;
-          return (
-            <button
-              key={bag.tag_number}
-              type="button"
-              aria-pressed={active}
-              aria-label={`Inspect trace for bag ${bag.tag_number}, ${bag.passenger_name}`}
-              onClick={() => onSelectBag(bag.tag_number)}
-              className="card-surface focus-ring"
-              style={{
-                width: "100%",
-                textAlign: "left",
-                padding: "14px 16px",
-                cursor: "pointer",
-                borderColor: active ? "#004B4A" : "#E8E5DE",
-                backgroundColor: active ? "#EFEEE9" : "#FFFFFF",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "8px",
-                  flexWrap: "wrap",
-                  gap: "8px",
-                }}
+      <div className="card-surface">
+        <div className="table-toolbar trace-toolbar">
+          <label htmlFor={id} className="sr-only">
+            Search bag tag, tag UID or flight
+          </label>
+          <div className="toolbar-search-wrap">
+            <input
+              id={id}
+              type="search"
+              placeholder="Search bag tag, tag UID or flight"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                className="clear-field-btn"
+                aria-label="Clear baggage trace filter"
+                onClick={() => setQuery("")}
               >
-                <div>
-                  <span
-                    className="tabular-nums"
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "14px",
-                      color: "#000000",
+                <CloseIcon size={12} color="#66686A" />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="operational-scroll">
+          <table className="operational-table">
+            <thead>
+              <tr>
+                <th scope="col">Bag ID</th>
+                <th scope="col">Reported flight</th>
+                <th scope="col">Status</th>
+                <th scope="col">Last reported event</th>
+                <th scope="col">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((b) => {
+                const event = [...b.events].sort(
+                  (a, c) => Date.parse(c.timestamp) - Date.parse(a.timestamp),
+                )[0];
+                return (
+                  <tr
+                    key={b.tag_number}
+                    tabIndex={0}
+                    className="interactive-row"
+                    aria-selected={selectedTagNumber === b.tag_number}
+                    onClick={() => onSelectBag(b.tag_number)}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        (e.currentTarget.nextElementSibling as HTMLElement | null)?.focus();
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        (e.currentTarget.previousElementSibling as HTMLElement | null)?.focus();
+                      } else if (e.key === "Enter" || e.key === " ") {
+                        if ((e.target as HTMLElement).tagName !== "BUTTON") {
+                          e.preventDefault();
+                          onSelectBag(b.tag_number);
+                        }
+                      }
                     }}
                   >
-                    {bag.tag_number}
-                  </span>
-                  <span style={{ margin: "0 8px", color: "#000000" }}>·</span>
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      fontSize: "13px",
-                      color: "#000000",
-                    }}
-                  >
-                    {bag.passenger_name}
-                  </span>
-                </div>
-                <span
-                  style={{
-                    fontSize: "11.5px",
-                    fontWeight: 600,
-                    color: "#000000",
-                  }}
-                >
-                  {bag.flight_number} ({bag.departure_airport} →{" "}
-                  {bag.arrival_airport})
-                </span>
-              </div>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {(bag.events || []).map((evt) => (
-                  <div
-                    key={evt.id}
-                    style={{
-                      fontSize: "11.5px",
-                      padding: "4px 9px",
-                      borderRadius: "7px",
-                      backgroundColor: "#FAF9F5",
-                      border: "1px solid #E8E5DE",
-                      color: "#000000",
-                    }}
-                  >
-                    <strong className="tabular-nums">
-                      {formatTimeHHMM(evt.timestamp)}
-                    </strong>{" "}
-                    · {formatStatusLabel(evt.event_type)} (
-                    {scannerBadgeLabel(evt.scanner_type)})
-                  </div>
-                ))}
-              </div>
-            </button>
-          );
-        })}
+                    <td>
+                      <button
+                        className="row-link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectBag(b.tag_number);
+                        }}
+                      >
+                        <HighlightMatch text={b.tag_number} query={query} />
+                      </button>
+                    </td>
+                    <td>
+                      <HighlightMatch text={b.flight_number} query={query} />
+                    </td>
+                    <td>
+                      <span className="status-pill" data-tone={traceTone(b.status)}>
+                        {formatStatusLabel(b.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {event ? `${stationTime(event.timestamp)} · ${formatStatusLabel(event.event_type)}` : "—"}
+                    </td>
+                    <td>
+                      <span className="status-cell-wrap">
+                        <span>
+                          {event ? `${scannerBadgeLabel(event.scanner_type)} · reported` : "Unavailable"}
+                        </span>
+                        <ChevronRightIcon size={14} className="row-chevron" />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!filtered.length && (
+            <p className="table-empty" role="status">
+              No authorized baggage records available for current search.
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-export function PerformanceView({
-  bags,
-  onSwitchToTransferControl,
-}: SecondaryViewProps) {
-  const stats = useMemo(() => {
-    const total = bags.length;
-    const exceptions = bags.filter(isExceptionBag).length;
-    const atRisk = bags.filter(isAtRiskBag).length;
-    const avgRisk =
-      total > 0
-        ? Math.round(bags.reduce((s, b) => s + b.risk_score, 0) / total)
-        : 0;
-    const totalEvents = bags.reduce((s, b) => s + (b.events?.length ?? 0), 0);
-    return { total, exceptions, atRisk, avgRisk, totalEvents };
-  }, [bags]);
-
+export function PerformanceView({ bags, onSwitchToTransferControl }: Props) {
   return (
-    <section aria-label="Station Snapshot Summary">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          marginBottom: "18px",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
+    <section className="view-stage" aria-labelledby="performance-title">
+      <div className="page-heading">
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "clamp(22px, 2.6vw, 34px)",
-              fontWeight: 700,
-              color: "#000000",
-              lineHeight: 1.15,
-              letterSpacing: "-0.025em",
-            }}
-          >
-            Station Snapshot Metrics
-          </h1>
-          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#000000" }}>
-            Current snapshot counts from loaded station records. Historical
-            recovery durations and verified completion rates are unavailable.
-          </p>
+          <h1 id="performance-title">Performance</h1>
+          <p>Current authorized snapshot only. Historical operational metrics unavailable.</p>
         </div>
-        <button
-          type="button"
-          onClick={onSwitchToTransferControl}
-          className="focus-ring touch-target"
-          style={{
-            padding: "8px 14px",
-            borderRadius: "8px",
-            border: "none",
-            backgroundColor: "#004B4A",
-            color: "#FFFFFF",
-            fontSize: "12.5px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
+      </div>
+      <div className="card-surface performance-summary">
+        <h2>Snapshot coverage</h2>
+        <p>
+          {bags.length
+            ? `${bags.length} baggage records · ${bags.reduce((n, b) => n + b.events.length, 0)} source-reported events`
+            : "Authorized baggage records unavailable"}
+        </p>
+        <p>
+          Historical transfer outcomes, recovery durations and station-wide eligible population require upstream
+          integration.
+        </p>
+        <button className="back-button" onClick={onSwitchToTransferControl}>
           Back to Transfer Control
         </button>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))",
-          gap: "14px",
-          marginBottom: "18px",
-        }}
-      >
-        <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
-            Records in Snapshot
-          </div>
-          <div
-            className="tabular-nums"
-            style={{
-              fontSize: "30px",
-              fontWeight: 700,
-              color: "#000000",
-              marginTop: "4px",
-            }}
-          >
-            {stats.total}
-          </div>
-          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
-            {stats.totalEvents} scan events logged
-          </div>
-        </div>
-
-        <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
-            Flagged At-Risk
-          </div>
-          <div
-            className="tabular-nums"
-            style={{
-              fontSize: "30px",
-              fontWeight: 700,
-              color: "#000000",
-              marginTop: "4px",
-            }}
-          >
-            {stats.atRisk}
-          </div>
-          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
-            {stats.exceptions} active exceptions
-          </div>
-        </div>
-
-        <div className="card-surface" style={{ padding: "16px 18px" }}>
-          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
-            Mean Risk Score
-          </div>
-          <div
-            className="tabular-nums"
-            style={{
-              fontSize: "30px",
-              fontWeight: 700,
-              color: "#000000",
-              marginTop: "4px",
-            }}
-          >
-            {stats.avgRisk}/100
-          </div>
-          <div style={{ fontSize: "11px", color: "#000000", marginTop: "2px" }}>
-            Model estimate on active records
-          </div>
-        </div>
-
-        <div
-          className="card-surface"
-          style={{ padding: "16px 18px", backgroundColor: "#FAF9F5" }}
-        >
-          <div style={{ fontSize: "12px", color: "#000000", fontWeight: 600 }}>
-            Recovery Duration / Rate
-          </div>
-          <div
-            style={{
-              fontSize: "15px",
-              fontWeight: 700,
-              color: "#000000",
-              marginTop: "8px",
-            }}
-          >
-            Unavailable
-          </div>
-          <div style={{ fontSize: "11px", color: "#000000", marginTop: "3px" }}>
-            Requires end-to-end physical telemetry
-          </div>
-        </div>
-      </div>
-
-      <div className="card-surface" style={{ padding: "18px 20px" }}>
-        <h3
-          style={{
-            margin: "0 0 12px",
-            fontSize: "14.5px",
-            fontWeight: 700,
-            color: "#000000",
-          }}
-        >
-          Risk Score Distribution (Current Snapshot)
-        </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {[...bags]
-            .sort((a, b) => b.risk_score - a.risk_score)
-            .map((bag) => (
-              <div
-                key={bag.tag_number}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "110px 1fr 48px",
-                  alignItems: "center",
-                  gap: "12px",
-                  fontSize: "12.5px",
-                }}
-              >
-                <span
-                  className="tabular-nums"
-                  style={{ fontWeight: 600, color: "#000000" }}
-                >
-                  {bag.tag_number}
-                </span>
-                <div
-                  role="progressbar"
-                  aria-valuenow={bag.risk_score}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Risk score for bag ${bag.tag_number}`}
-                  style={{
-                    height: "8px",
-                    borderRadius: "999px",
-                    backgroundColor: "#ECEAE3",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${bag.risk_score}%`,
-                      height: "100%",
-                      borderRadius: "999px",
-                      backgroundColor:
-                        bag.risk_score >= 70
-                          ? "#87323A"
-                          : bag.risk_score >= 40
-                            ? "#856432"
-                            : "#006564",
-                    }}
-                  />
-                </div>
-                <span
-                  className="tabular-nums"
-                  style={{
-                    textAlign: "right",
-                    fontWeight: 700,
-                    color: "#000000",
-                  }}
-                >
-                  {bag.risk_score}
-                </span>
-              </div>
-            ))}
-        </div>
       </div>
     </section>
   );

@@ -222,12 +222,28 @@ are sent. Remove the environment variable afterward. Reruns never reset member
 passwords. Refresh tokens, verification codes, and WebAuthn credentials are
 intentionally left to genuine authentication flows.
 
+<<<<<<< HEAD
 **Dashboard boundary:** authenticated member baggage reads and sync now use
 PostgreSQL and the shared flight catalogue. Legacy staff scan/recovery and
 what-if simulators remain separate prototype paths. Their recovery-case and
 carousel state is not made persistent by this flight-data migration; a staff
 portal integration must respect member ownership rather than using anonymous
 requests to the member baggage API.
+=======
+**Dashboard:** `/api/v1/baggage` lists PostgreSQL baggage rows, including all ten
+seeded bags; the two spare tags are inventory, not baggage. It no longer appends
+the two hardcoded demo bags. Detail accepts a baggage UUID, tag code, tag UUID or
+barcode. Scan, sync, risk and passenger recovery updates persist in PostgreSQL.
+Shared NFC/app events also update the baggage status, so tag display and the
+dashboard stay consistent. Unregistered tags return 404 instead of demo data.
+
+Risk assessments, predicted carousel assignments and recovery details are stored
+in `baggage.operational_data`. Unassessed seed bags have no risk score or carousel
+assignment; these are not fabricated from status. Run `alembic upgrade head`
+before deploying this API version. The additive migration preserves existing
+seed rows; no reseeding is required. `/baggage/reset` returns 409 rather than
+deleting persistent records. Empty databases return an empty list.
+>>>>>>> origin/main
 
 Seed integration tests use real PostgreSQL in a fresh randomly named schema per
 test, removed afterward. They never use the application's `DATABASE_URL`.
@@ -305,11 +321,12 @@ apps/api/
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | /health | Health check |
-| POST | /api/v1/baggage | Create baggage record |
-| GET | /api/v1/baggage/{id} | Get baggage by ID |
-| GET | /api/v1/baggage | List baggage |
-| PATCH | /api/v1/baggage/{id} | Update baggage |
-| DELETE | /api/v1/baggage/{id} | Delete baggage |
+| GET | /api/v1/baggage | List PostgreSQL baggage |
+| GET | /api/v1/baggage/{identifier} | Get baggage by UUID, tag code or barcode |
+| POST | /api/v1/baggage/sync | Sync a registered tag with a booked itinerary |
+| POST | /api/v1/baggage/{identifier}/scan | Persist a milestone and event |
+| POST | /api/v1/baggage/{identifier}/risk/apply | Persist a model risk assessment |
+| POST | /api/v1/baggage/{identifier}/passenger/choice | Persist demo recovery choice |
 | POST | /api/v1/tags | Create SmartTag |
 | GET | /api/v1/tags/{id} | Get tag by ID |
 | GET | /api/v1/tags | List tags |
@@ -349,11 +366,10 @@ apps/api/
 
 ## One-day Google Cloud Run demo with AWS RDS
 
-This is a public, demo-data-only deployment, not a production release. The
-existing baggage store is in memory and resets on instance replacement, even
-with the single-instance limit. Authentication/ownership gaps from the audit
-remain. Gmail/SMS delivery and public passkey origins are not configured by
-this deployment.
+This is a public, demo-data-only deployment, not a production release. Baggage
+and operational updates persist in AWS RDS across instance replacements.
+Authentication/ownership gaps from the audit remain. Gmail/SMS delivery and
+public passkey origins are not configured by this deployment.
 
 Select a Google Cloud project with billing enabled and open Cloud Shell.
 During PR review, get the deployment branch directly from GitHub:

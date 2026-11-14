@@ -1,11 +1,20 @@
 import ssl
+from pathlib import Path
 from types import SimpleNamespace
 
 import certifi
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 import app.main as main
 from app.core import database
+
+
+def test_deployment_migrations_have_one_head():
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    scripts = ScriptDirectory.from_config(config)
+    assert scripts.get_current_head() is not None
 
 
 def test_database_tls_verifies_server_identity(monkeypatch):
