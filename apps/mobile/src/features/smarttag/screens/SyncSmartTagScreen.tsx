@@ -141,17 +141,11 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
 
     if (outcome.finalState === 'SUCCESS') {
       clearLastNfcTap();
-      // 1. Sync booking to Copilot first so live backend bag record exists
-      await syncBookingToCopilot({
-        tagNumber: bag.baggage.tagNumber,
-        tagCode: bag.smartTag.tagUid,
-        flightNumber: itinerary.flight.flightNumber,
-        origin: itinerary.flight.origin,
-        destination: itinerary.flight.destination,
-        initialStatus: 'TAGGED',
+      smartTagController.navigateTo('result', {
+        itineraryId: itinerary.id,
+        bagSetupId: bag.id,
       });
 
-      // Only verified hardware writes are reported as physical NFC taps.
       const tapPayload = {
         tagUid: bag.smartTag.tagUid,
         baggageTagNumber: bag.baggage.tagNumber,
@@ -163,14 +157,19 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         status: 'TAGGED',
         timestamp: Date.now() / 1000,
       };
-      if (outcome.mode === 'PHYSICAL_HARDWARE') {
-        await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
-      }
-
-      smartTagController.navigateTo('result', {
-        itineraryId: itinerary.id,
-        bagSetupId: bag.id,
-      });
+      void (async () => {
+        await syncBookingToCopilot({
+          tagNumber: bag.baggage.tagNumber,
+          tagCode: bag.smartTag.tagUid,
+          flightNumber: itinerary.flight.flightNumber,
+          origin: itinerary.flight.origin,
+          destination: itinerary.flight.destination,
+          initialStatus: 'TAGGED',
+        });
+        if (outcome.mode === 'PHYSICAL_HARDWARE') {
+          await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
+        }
+      })();
     } else if (outcome.failure) {
       setFailure(outcome.failure);
     }

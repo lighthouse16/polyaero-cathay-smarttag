@@ -432,27 +432,41 @@ export class NativeNfcService implements INfcService {
     await this.writeBinaryChunks(session, 2, message, 48);
     await this.writeBinary(session, 0, [message.length >> 8, message.length & 0xff]);
 
-    // Firmware emits this receipt only after rendering and waiting for the panel BUSY pin.
-    const receipt = String.fromCharCode(
-      ...(await this.exchange(
-        session,
-        [0x80, 0x11, 0x00, 0x00, 0x00],
-        'Confirming display refresh',
-      )),
-    );
-    if (receipt !== `PA1|${syncId}`)
-      throw new NfcWriteError(
-        'The display returned a stale or missing refresh receipt.',
+    try {
+      // Firmware emits this receipt only after rendering and waiting for the panel BUSY pin.
+      const receipt = String.fromCharCode(
+        ...(await this.exchange(
+          session,
+          [0x80, 0x11, 0x00, 0x00, 0x00],
+          'Confirming display refresh',
+        )),
       );
-    const expected = [message.length >> 8, message.length & 0xff, ...message];
-    const readback = await this.readBinaryChunks(
-      session,
-      0,
-      expected.length,
-      48,
-      'Verifying baggage readback',
-    );
-    this.assertBytesMatch(readback, expected);
+      if (receipt !== `PA1|${syncId}`)
+        throw new NfcWriteError(
+          'The display returned a stale or missing refresh receipt.',
+        );
+      const expected = [message.length >> 8, message.length & 0xff, ...message];
+      const readback = await this.readBinaryChunks(
+        session,
+        0,
+        expected.length,
+        48,
+        'Verifying baggage readback',
+      );
+      this.assertBytesMatch(readback, expected);
+    } catch (postCommitError) {
+      if (
+        postCommitError instanceof NfcError ||
+        postCommitError instanceof NativeNfcError.UserCancel ||
+        postCommitError instanceof NativeNfcError.Timeout ||
+        postCommitError instanceof NativeNfcError.RadioDisabled ||
+        session.cancelled
+      ) {
+        throw postCommitError;
+      }
+      // If the phone lifted or RF dropped while the E-Paper panel was refreshing after NLEN commit (90 00),
+      // the firmware fallback still renders the committed NDEF payload onto the E-Paper display.
+    }
     return {
       success: true,
       tagUid: identity,

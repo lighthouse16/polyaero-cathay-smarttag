@@ -6,7 +6,7 @@ on:
       api_url:
         description: 'Backend API base URL baked into the APK (EXPO_PUBLIC_API_URL)'
         required: false
-        default: 'http://10.12.5.250:8000/api/v1'
+        default: 'https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1'
   push:
     branches:
       - main
@@ -81,7 +81,7 @@ jobs:
       - name: Build Signed Release APK
         working-directory: apps/mobile/android
         env:
-          EXPO_PUBLIC_API_URL: ${{ inputs.api_url || 'http://10.12.5.250:8000/api/v1' }}
+          EXPO_PUBLIC_API_URL: ${{ inputs.api_url || 'https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1' }}
           NODE_ENV: production
         run: |
           chmod +x gradlew
