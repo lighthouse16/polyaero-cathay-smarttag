@@ -42,6 +42,69 @@ uv run uvicorn app.main:app --reload --port 8000
 
 API docs available at: http://localhost:8000/api/v1/docs
 
+### Seed Linked Demo Data
+
+The seed command targets the **current API/Alembic PostgreSQL schema**, not the
+older, incompatible `supabase` schema. Run migrations first. From the repository
+root, preview the dataset without opening a database connection:
+
+```powershell
+Set-Location apps\api
+uv run python -m app.seed --date 2026-11-14
+```
+
+Check that `DATABASE_URL` in the environment or `.env` points to your intended
+development database, then explicitly apply:
+
+```powershell
+uv run python -m app.seed --date 2026-11-14 --apply
+```
+
+Omit `--date` to use today's UTC date. Each date represents a synthetic snapshot
+at 00:00 UTC: four members (all membership tiers), eight flights with cabin
+availability/prices and return routes, twelve bookings (upcoming, past,
+cancelled), twelve tags (ten bound and two unlinked, including inactive
+inventory), ten baggage records, and fifty ordered events. Journeys cover
+check-in through collection, plus misrouted, missing, and recovery-in-progress
+bags. Tags are explicitly simulated; this does not claim a physical NFC write
+or e-paper refresh.
+
+IDs, booking references, tag codes, and timestamps are deterministic for the
+same date. Rerunning inserts only missing IDs, never updates existing records or
+deletes data, and commits all tables in one transaction. A conflicting email,
+membership number, PNR, or tag code owned by another ID fails and rolls back the
+whole run rather than silently linking unrelated records. Changing the date
+adds a new snapshot while sharing the same four members.
+
+Members use reserved `example.com` addresses (`seed.passenger.1@example.com`
+through `.4`) and membership numbers `9900000001` through `9900000004`.
+No password is set by default. To enable demo password sign-in, set
+`SEED_USER_PASSWORD` privately in your shell before the **first** apply; it must
+have at least eight characters and at most 72 UTF-8 bytes. Only bcrypt hashes
+are stored, SQL parameter logging is disabled during apply, and no messages
+are sent. Remove the environment variable afterward. Reruns never reset member
+passwords. Refresh tokens, verification codes, and WebAuthn credentials are
+intentionally left to genuine authentication flows.
+
+**Dashboard boundary:** `/api/v1/baggage` currently lists `LIVE_BAGS` from memory.
+These persistent rows are available to database-backed trips, tags, SmartTag
+preparation, and flight search, but will not appear in that dashboard until its
+read path is connected to PostgreSQL. The API schema does not yet persist the
+dashboard's risk predictions, carousel assignments, or recovery-case details;
+those require a later schema/read-path change, not fabricated seed columns.
+
+Seed integration tests use real PostgreSQL in a fresh randomly named schema per
+test, removed afterward. They never use the application's `DATABASE_URL`.
+Point `SEED_TEST_DATABASE_URL` at an isolated PostgreSQL database using the
+synchronous `postgresql+psycopg://` driver, then run:
+
+```powershell
+uv run --frozen --extra dev pytest tests\test_seed.py -q
+```
+
+Without that variable, database tests skip; preview/password-validation tests
+still run.
+
 ### Run Tests
 
 ```bash
