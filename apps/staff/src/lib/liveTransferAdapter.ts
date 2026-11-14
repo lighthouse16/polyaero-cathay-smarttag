@@ -49,26 +49,19 @@ export interface BackendBag {
   events?: BackendScanEvent[];
 }
 
-interface TagDisplayPayload {
-  tag: string;
-  tag_code: string;
-  bag_number: string | null;
-  pnr: string | null;
-  flight: string | null;
-  origin: string | null;
-  destination: string | null;
-  departure?: string | null;
-  gate?: string | null;
-  passenger: string | null;
-  cabin: string | null;
-  weight_kg: number | null;
-  barcode: string | null;
-  status: string;
-  banner: string;
-  is_rush: boolean;
-  sync_state: string;
-  updated_at: string;
+export interface LiveRiskAssessment {
+  risk_score: number;
+  risk_level: string;
+  priority_sequence: number;
+  recommended_action: string;
+  passenger_summary?: string | null;
+  predicted_arrival_time?: string;
+  carousel_estimate?: string;
+  model_version?: string;
+  factors: string[];
 }
+
+const DEFAULT_API_BASE = "https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1";
 
 const FEEDER_POOL = [
   { flightNumber: "CX467", origin: "TPE" },
@@ -78,80 +71,9 @@ const FEEDER_POOL = [
   { flightNumber: "CX365", origin: "PVG" },
 ];
 
-function utcDateTag(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${day}`;
-}
-
-function mapDisplayToBackendBag(d: TagDisplayPayload, idx: number): BackendBag | null {
-  const tagNumber = (d.bag_number || d.barcode || d.tag_code || "").trim();
-  const flightNumber = (d.flight || "").trim().toUpperCase();
-  const origin = (d.origin || "").trim().toUpperCase();
-  const destination = (d.destination || "").trim().toUpperCase();
-  if (!tagNumber || !flightNumber || !origin || !destination) return null;
-
-  const isOutboundFromHkg = origin === "HKG";
-  const outboundFlight = isOutboundFromHkg ? flightNumber : "CX255";
-  const outboundDest = isOutboundFromHkg ? destination : "NRT";
-  const statusUpper = (d.status || "TAGGED").toUpperCase();
-  const isRush =
-    Boolean(d.is_rush) ||
-    ["MISROUTED", "MISSING", "RECOVERY_IN_PROGRESS"].includes(statusUpper);
-
-  return {
-    id: d.tag || `seed_bag_${idx}`,
-    tag_number: tagNumber,
-    tag_code: d.tag_code || `SEED-${idx}`,
-    tag_interface: "SMARTTAG_EINK_EXCLUSIVE",
-    booking_reference: d.pnr || `SD${idx}`,
-    passenger_name: d.passenger || `PASSENGER/${idx + 1}`,
-    tier_status: idx % 4 === 3 ? "DIAMOND" : idx % 4 === 2 ? "GOLD" : "SILVER",
-    cabin_class: d.cabin || "ECONOMY",
-    flight_number: outboundFlight,
-    departure_airport: "HKG",
-    arrival_airport: outboundDest,
-    departure_time: d.departure || new Date(Date.now() + (2 + idx) * 3600_000).toISOString(),
-    seat_number: `${12 + idx}A`,
-    weight_kg: d.weight_kg ?? 20 + idx,
-    connection_minutes: isRush ? 38 : 95,
-    status: statusUpper,
-    last_known_location: isOutboundFromHkg
-      ? `HKG-T1-GATE-${d.gate || "24"}`
-      : `${origin}-INBOUND-${flightNumber}`,
-    carousel_assigned: `Carousel ${(idx % 6) + 2}`,
-    is_rush_bag: isRush,
-    risk_score:
-      statusUpper === "MISSING"
-        ? 91
-        : statusUpper === "MISROUTED"
-          ? 84
-          : statusUpper === "RECOVERY_IN_PROGRESS"
-            ? 74
-            : 22 + idx * 3,
-    risk_level: isRush ? "HIGH_PRIORITY" : "LOW",
-    recommended_action: isRush
-      ? "APPROVE RAMP INTERCEPT & OFFER PASSENGER RECOVERY OPTIONS"
-      : "STANDARD DIGITAL ITINERARY FLOW",
-    copilot_approval_status: isRush ? "PENDING_STAFF_APPROVAL" : "AUTO_CLEARED",
-    passenger_recovery_choice: null,
-    eink_banner: d.banner || statusUpper.replace(/_/g, " "),
-    updated_at: d.updated_at || new Date().toISOString(),
-    events: [
-      {
-        id: `evt_${d.tag_code}_${idx}`,
-        event_type: statusUpper,
-        timestamp: d.updated_at || new Date().toISOString(),
-        location_code: isOutboundFromHkg ? `HKG-T1-GATE-${d.gate || "24"}` : `${origin}-FEEDER`,
-        station_name: isOutboundFromHkg
-          ? `HKIA T1 Gate ${d.gate || "24"} (${d.tag_code})`
-          : `Inbound Feeder ${flightNumber} (${origin} -> HKG)`,
-        scanner_type: "NFC_TAP",
-        notes: `${d.tag_code} · PNR ${d.pnr || "SEED"} · ${d.banner || statusUpper}`,
-      },
-    ],
-  };
+export function getLiveApiBase(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  return (envUrl && envUrl.length > 0 ? envUrl : DEFAULT_API_BASE).replace(/\/$/, "");
 }
 
 export function buildLiveTransferSnapshot(
@@ -173,9 +95,10 @@ export function buildLiveTransferSnapshot(
   const seenTags = new Set<string>();
   const seenIds = new Set<string>();
   const deduped = backendBags.filter((b, idx) => {
-    const t = String(b.tag_number || "").trim();
+    const t = String(b.tag_number || b.tag_code || b.id || "").trim();
     if (!t || seenTags.has(t)) return false;
     seenTags.add(t);
+    b.tag_number = t;
     if (!b.id || seenIds.has(b.id)) {
       b.id = `bag_${t}_${idx}`;
     }
@@ -195,9 +118,12 @@ export function buildLiveTransferSnapshot(
     const depIso = new Date(depMs).toISOString();
     const opDate = depIso.slice(0, 10);
 
-    const outFlight = (b.flight_number || "CX888").toUpperCase();
-    const outOrigin = (b.departure_airport || "HKG").toUpperCase();
-    const outDest = (b.arrival_airport || "YVR").toUpperCase();
+    const rawOrigin = (b.departure_airport || "HKG").toUpperCase();
+    const rawDest = (b.arrival_airport || "YVR").toUpperCase();
+    const isOutboundFromHkg = rawOrigin === "HKG";
+    const outFlight = isOutboundFromHkg ? (b.flight_number || "CX888").toUpperCase() : "CX255";
+    const outOrigin = "HKG";
+    const outDest = isOutboundFromHkg && rawDest !== "HKG" ? rawDest : "NRT";
     const outLegId = `out-${outFlight}-${opDate}`;
 
     if (!legsMap.has(outLegId)) {
@@ -205,8 +131,8 @@ export function buildLiveTransferSnapshot(
         id: outLegId,
         flightNumber: outFlight,
         operatingDate: opDate,
-        origin: outOrigin === outDest ? "HKG" : outOrigin,
-        destination: outOrigin === outDest ? "NRT" : outDest,
+        origin: outOrigin,
+        destination: outDest,
         scheduledDepartureAt: depIso,
         scheduledArrivalAt: null,
         estimatedDepartureAt: depIso,
@@ -267,8 +193,8 @@ export function buildLiveTransferSnapshot(
       tier_status: b.tier_status || "",
       cabin_class: b.cabin_class || "",
       flight_number: outFlight,
-      departure_airport: outOrigin === outDest ? "HKG" : outOrigin,
-      arrival_airport: outOrigin === outDest ? "NRT" : outDest,
+      departure_airport: outOrigin,
+      arrival_airport: outDest,
       departure_time: depIso,
       seat_number: b.seat_number || "",
       weight_kg: typeof b.weight_kg === "number" ? b.weight_kg : 22.0,
@@ -335,23 +261,10 @@ export function buildLiveTransferSnapshot(
 
   const flightRisks: FlightRiskAssessment[] = [...legsMap.values()].map((leg) => {
     const scores = flightBagsMap.get(leg.id);
-    if (!scores || scores.length === 0) {
-      return {
-        flightLegId: leg.id,
-        status: "assessed",
-        score: 20,
-        modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
-        assessedAt: generatedAt,
-        validUntil,
-        evidence: [makeProv(`fltrisk:${leg.id}`, "cathay-bag-risk-v3.0-hkg-feeder")],
-        missingInputs: [],
-      };
-    }
-    const maxScore = Math.max(...scores);
     return {
       flightLegId: leg.id,
       status: "assessed",
-      score: maxScore,
+      score: scores && scores.length > 0 ? Math.max(...scores) : 20,
       modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
       assessedAt: generatedAt,
       validUntil,
@@ -360,7 +273,7 @@ export function buildLiveTransferSnapshot(
     };
   });
 
-  const rawSnapshot: TransferControlSnapshot = {
+  return validateTransferSnapshot({
     availability: "available",
     generatedAt,
     validUntil,
@@ -372,16 +285,7 @@ export function buildLiveTransferSnapshot(
     flightRisks,
     bagRisks,
     transferSuccess: null,
-  };
-
-  return validateTransferSnapshot(rawSnapshot);
-}
-
-const DEFAULT_API_BASE = "https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1";
-
-export function getLiveApiBase(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  return (envUrl && envUrl.length > 0 ? envUrl : DEFAULT_API_BASE).replace(/\/$/, "");
+  });
 }
 
 export async function fetchLiveTransferSnapshot(
@@ -392,56 +296,21 @@ export async function fetchLiveTransferSnapshot(
     typeof signalOrBase === "string" && signalOrBase.trim()
       ? signalOrBase.trim().replace(/\/$/, "")
       : getLiveApiBase();
-  const todayTag = utcDateTag(new Date());
-  const yesterdayTag = utcDateTag(new Date(Date.now() - 86_400_000));
-  const seedIndices = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09"];
 
-  const [baggageRes, ...seedResults] = await Promise.all([
-    fetch(`${cleanBase}/baggage`, { cache: "no-store", ...(signal ? { signal } : {}) }),
-    ...seedIndices.map(async (idx) => {
-      for (const dayStr of [todayTag, yesterdayTag]) {
-        try {
-          const r = await fetch(`${cleanBase}/tags/SEED-${dayStr}-${idx}/display`, {
-            cache: "no-store",
-            ...(signal ? { signal } : {}),
-          });
-          if (r.ok) {
-            return (await r.json()) as TagDisplayPayload;
-          }
-        } catch {
-          // ignore individual seed miss
-        }
-      }
-      return null;
-    }),
-  ]);
-
-  if (!baggageRes.ok) {
-    throw new Error(`Live baggage API returned HTTP ${baggageRes.status}`);
+  const res = await fetch(`${cleanBase}/baggage`, {
+    cache: "no-store",
+    ...(signal ? { signal } : {}),
+  });
+  if (!res.ok) {
+    throw new Error(`Live baggage API returned HTTP ${res.status}`);
   }
 
-  const liveDemoBags = (await baggageRes.json()) as BackendBag[];
-  const seededBags: BackendBag[] = seedResults
-    .map((item, idx) => (item ? mapDisplayToBackendBag(item, idx) : null))
-    .filter((b): b is BackendBag => b !== null);
-
+  const backendBags = (await res.json()) as BackendBag[];
   return buildLiveTransferSnapshot(
-    [...liveDemoBags, ...seededBags],
+    backendBags,
     new Date(),
-    `Live Cloud Run (${cleanBase})`,
+    `Live PostgreSQL RDS (${cleanBase})`,
   );
-}
-
-export interface LiveRiskAssessment {
-  risk_score: number;
-  risk_level: string;
-  priority_sequence: number;
-  recommended_action: string;
-  passenger_summary?: string | null;
-  predicted_arrival_time?: string;
-  carousel_estimate?: string;
-  model_version?: string;
-  factors: string[];
 }
 
 export async function recordLiveBagScan(
@@ -465,22 +334,10 @@ export async function recordLiveBagScan(
       ...payload,
     }),
   });
-  if (res.ok) {
-    return (await res.json()) as BackendBag;
+  if (!res.ok) {
+    throw new Error(`Scan update failed with HTTP ${res.status}`);
   }
-  // Fallback for RDS-seeded tags not yet in in-memory LIVE_BAGS
-  return {
-    id: `bag_${tagNumber}`,
-    tag_number: tagNumber,
-    passenger_name: "SEEDED PASSENGER",
-    flight_number: "CX888",
-    departure_airport: "HKG",
-    arrival_airport: "YVR",
-    departure_time: new Date().toISOString(),
-    status: payload.event_type.toUpperCase(),
-    last_known_location: payload.location_code,
-    updated_at: new Date().toISOString(),
-  };
+  return (await res.json()) as BackendBag;
 }
 
 export async function applyLiveBagRisk(
@@ -502,17 +359,8 @@ export async function applyLiveBagRisk(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(features),
   });
-  if (res.ok) {
-    return (await res.json()) as LiveRiskAssessment;
+  if (!res.ok) {
+    throw new Error(`Risk update failed with HTTP ${res.status}`);
   }
-  // Fallback to public ML prediction endpoint for RDS-seeded tags
-  const predictRes = await fetch(`${cleanBase}/baggage/risk/predict`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(features),
-  });
-  if (!predictRes.ok) {
-    throw new Error(`Risk prediction failed with HTTP ${predictRes.status}`);
-  }
-  return (await predictRes.json()) as LiveRiskAssessment;
+  return (await res.json()) as LiveRiskAssessment;
 }
