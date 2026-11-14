@@ -5,7 +5,6 @@ import { BaggageInvestigationPanel } from "../src/components/investigation/Bagga
 import { SmartTagStatusPanel } from "../src/components/investigation/SmartTagStatusPanel";
 import { RiskFactorsList } from "../src/components/investigation/RiskFactorsList";
 import { OperationalMetricCard } from "../src/components/transfer/OperationalMetricCard";
-import { BaggageRiskTable } from "../src/components/transfer/BaggageRiskTable";
 import type { LiveBag } from "../src/lib/types";
 const bag: LiveBag = {
   id: "b",
@@ -33,91 +32,34 @@ const bag: LiveBag = {
   events: [],
 };
 describe("truthful component output", () => {
-  it("renders SmartTag E-paper bezel with status telemetry", () => {
+  it("SmartTag records never become physical telemetry", () => {
     const html = renderToStaticMarkup(<SmartTagStatusPanel bag={bag} />);
-    expect(html).toContain("SmartTag (E-paper)");
-    expect(html).toContain("Online");
-    expect(html).toContain("98%");
-    expect(html).toContain("v3.0");
+    expect(html).toContain("Hardware confirmation unavailable");
+    for (const fake of ["Online", "98%", "v3.0", "14:32"]) expect(html).not.toContain(fake);
   });
-  it("case retains zero buffer without labeling direct", () => {
-    const html = renderToStaticMarkup(
-      <BaggageInvestigationPanel
-        bag={bag}
-        isSyncing={false}
-        onRequestAction={() => {}}
-        onEvaluateRisk={() => {}}
-      />,
-    );
+  it("case uses separate assessed risk and real deadline, not connection buffer", () => {
+    const html = renderToStaticMarkup(<BaggageInvestigationPanel bag={bag} bagRisk={null} timeToAct={null} connectionLabel="CX616 / CX255" onClose={() => {}} />);
+    expect(html).toContain(bag.tag_number);
+    expect(html).toContain("Close baggage case");
+    expect(html).not.toContain("0 min");
+    expect(html).not.toContain("WONG");
+    expect(html).not.toContain("CX4M1P");
+    expect(html).not.toContain("Recommended action");
+    expect(html).not.toContain("<dialog");
+    expect(html).toMatch(/data-testid="llm-region"[^>]*><\/div>/);
+  });
+  it("case retains genuine zero deadline and distinct score", () => {
+    const html = renderToStaticMarkup(<BaggageInvestigationPanel bag={bag} bagRisk={37} timeToAct={0} connectionLabel="CX616 / CX255" />);
     expect(html).toContain("0 min");
-    expect(html).not.toContain(">Direct<");
+    expect(html).toContain("37");
+    expect(html).not.toContain("82");
+    expect(html).toContain('role="tablist"');
+    for (const tab of ["Overview", "Journey", "SmartTag", "History"]) expect(html).toContain(tab);
   });
-  it("missing buffer is unavailable, not direct", () => {
-    const html = renderToStaticMarkup(
-      <BaggageInvestigationPanel
-        bag={{ ...bag, connection_minutes: undefined }}
-        isSyncing={false}
-        onRequestAction={() => {}}
-        onEvaluateRisk={() => {}}
-      />,
-    );
-    expect(html).toContain("Unavailable");
-    expect(html).not.toContain(">Direct<");
-  });
-  it("omits sparkline when no historical samples supplied", () =>
-    expect(
-      renderToStaticMarkup(
-        <OperationalMetricCard
-          title="Tracked"
-          value={2}
-          sublabel="Snapshot"
-          icon={null}
-          accentColor="#006564"
-        />,
-      ),
-    ).not.toContain("<svg"));
-  it("keeps textual factors qualitative even when text includes percent", () => {
-    const html = renderToStaticMarkup(
-      <RiskFactorsList bag={{ ...bag, risk_factors: ["Load (90%)"] }} />,
-    );
+  it("omits sparkline without genuine history", () => expect(renderToStaticMarkup(<OperationalMetricCard title="Tracked" value={2} sublabel="Snapshot" icon={null} accentColor="#2D2D2D" />)).not.toContain("<svg"));
+  it("keeps textual factors qualitative", () => {
+    const html = renderToStaticMarkup(<RiskFactorsList bag={{ ...bag, risk_factors: ["Load (90%)"] }} />);
     expect(html).toContain("Load (90%)");
     expect(html).not.toContain("width:90%");
-  });
-  it("renders close button when onClose provided and handles dismissal", () => {
-    const htmlWithClose = renderToStaticMarkup(
-      <BaggageInvestigationPanel
-        bag={bag}
-        isSyncing={false}
-        onRequestAction={() => {}}
-        onEvaluateRisk={() => {}}
-        onClose={() => {}}
-      />,
-    );
-    expect(htmlWithClose).toContain("aria-label=\"Close baggage case\"");
-
-    const htmlWithoutClose = renderToStaticMarkup(
-      <BaggageInvestigationPanel
-        bag={bag}
-        isSyncing={false}
-        onRequestAction={() => {}}
-        onEvaluateRisk={() => {}}
-      />,
-    );
-    expect(htmlWithoutClose).not.toContain("aria-label=\"Close baggage case\"");
-  });
-  it("table keeps zero-minute buffer and actionable accessible selection", () => {
-    const html = renderToStaticMarkup(
-      <BaggageRiskTable
-        bags={[bag]}
-        selectedTagNumber={bag.tag_number}
-        onSelectBag={() => {}}
-        externalFlightFilter={null}
-        onClearExternalFlight={() => {}}
-      />,
-    );
-    expect(html).toContain("0 min");
-    expect(html).toContain("Select 0160892014");
-    expect(html).toContain("Connection Risk (1)");
-    expect(html).toContain("Flight (In");
   });
 });
