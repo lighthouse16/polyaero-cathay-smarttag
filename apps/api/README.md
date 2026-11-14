@@ -34,6 +34,47 @@ uv run alembic upgrade head
 uv run alembic revision --autogenerate -m "migration description"
 ```
 
+### OTP Email via SMTP
+
+Email verification uses Python's SMTP client with verified **implicit TLS**
+(Gmail port **465**), not the Gmail OAuth API. Enable Google 2-Step Verification
+on the sending account, then create an App Password if your account permits it.
+Use that app password, not your normal Google password. OAuth client IDs,
+client secrets, and refresh tokens are no longer used.
+
+Set these values privately in `apps\api\.env` or the deployed API's secret
+configuration:
+
+```dotenv
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USERNAME=your-sender@gmail.com
+SMTP_APP_PASSWORD=
+```
+
+Fill `SMTP_APP_PASSWORD` with the generated password (without display spaces).
+The authenticated address is also the From address. This transport always uses
+implicit TLS; do not configure port 587, which requires STARTTLS instead.
+No extra dependency is needed. Keep the password out of Git, logs, and
+`EXPO_PUBLIC_*`; use a secret manager for production.
+
+Restart/redeploy the API after changing configuration. No database migration
+or mobile APK rebuild is needed for this email change. Existing OTP expiry,
+verification, and resend-cooldown rules remain unchanged. SMTP runs in a worker
+thread so network waits do not block the API's event loop.
+
+Missing credentials or rejected/failed SMTP delivery return HTTP 503 rather
+than claiming a code was sent or printing email OTPs in logs. A failed delivery
+can still leave a generated challenge and its existing resend cooldown; wait
+for the cooldown before retrying. SMS remains the existing development-only
+stub, not an SMS delivery provider.
+
+Run the isolated SMTP and OTP route regression tests (no real mail or DB writes):
+
+```powershell
+uv run --frozen --extra dev pytest tests\test_email.py -q
+```
+
 ### Run Development Server
 
 ```bash
@@ -41,6 +82,62 @@ uv run uvicorn app.main:app --reload --port 8000
 ```
 
 API docs available at: http://localhost:8000/api/v1/docs
+
+### Flight Status and Prototype Boarding Passes
+
+Run `uv run alembic upgrade head` before deploying this version. Existing and
+seeded flights start at `UNKNOWN`, with no staff report timestamp. Status comes
+from our database, **not a live airline feed**.
+
+- `GET /api/v1/flights/status?flight_number=CX255&departure_date=2026-11-14`
+  is public and returns all matching flights on their scheduled UTC departure
+  date. No match returns an empty list. Responses include scheduled, estimated,
+  and actual timestamps, terminal/gate, `status_reported_at`, and
+  `source: STAFF_REPORTED_DATABASE`.
+- `PATCH /api/v1/flights/{flight_id}/status` requires `X-Flight-Staff-Key`.
+  Configure a strong `FLIGHT_STATUS_STAFF_KEY` privately on the API server and
+  trusted staff integration; never put it in mobile/public environment files.
+  Missing server configuration disables updates (503); absent/wrong credentials
+  return 401. Use HTTPS outside local development.
+
+Example PATCH JSON:
+
+```json
+{
+  "operational_status": "DELAYED",
+  "estimated_departure_time": "2026-11-14T09:00:00Z",
+  "estimated_arrival_time": "2026-11-14T21:00:00Z",
+  "gate": "24"
+}
+```
+
+Allowed statuses: `UNKNOWN`, `SCHEDULED`, `DELAYED`, `BOARDING`, `DEPARTED`,
+`ARRIVED`, `CANCELLED`. Operational timestamps must include a timezone; arrival
+must be later than departure when both are supplied or already stored. Omitted
+fields are preserved; explicit `null` clears optional timestamps, terminal, or
+gate. Each successful update records the server's UTC report time. No status is
+inferred automatically from the clock. The shared staff key is not a member
+role or an individual staff audit trail; a staff dashboard UI is not added here.
+
+`GET /api/v1/bookings/{booking_id}/boarding-pass` requires member bearer
+authentication and booking ownership. Only checked-in, upcoming bookings are
+eligible; cancelled/departed/arrived flights are refused. Ineligible bookings
+return 409; absent or unowned bookings return 404.
+
+The response is explicitly `PROTOTYPE - NOT VALID FOR BOARDING` with
+`valid_for_boarding: false`, the member's name, reservation/cabin, and current
+database flight details. Seat is null because this schema has no seat assignment.
+No airline ticket, boarding barcode, QR code, or real pass is issued. Successful
+responses use `Cache-Control: no-store`. New bookings are not checked in by
+default; this endpoint does not perform check-in.
+
+Regression tests require an isolated PostgreSQL database:
+
+```powershell
+uv run --frozen --extra dev pytest tests\test_flight_status_boarding.py tests\test_seed.py -q
+```
+
+Set `SEED_TEST_DATABASE_URL` as documented below; without it, database tests skip.
 
 ### Seed Linked Demo Data
 
@@ -104,6 +201,31 @@ uv run --frozen --extra dev pytest tests\test_seed.py -q
 
 Without that variable, database tests skip; preview/password-validation tests
 still run.
+
+#### Seed the deployed AWS database from Cloud Shell
+
+Build and push a new API image from the seed branch; the running API image may
+predate `app.seed`. Use a separate image tag so the deployed API is unchanged.
+Upload `seed_cloudrun.py` to Cloud Shell, then run:
+
+```bash
+python3 ~/seed_cloudrun.py --project polyaero \
+  --image asia-east2-docker.pkg.dev/polyaero/smarttag-demo/api:seed-12e353d \
+  --date 2026-11-14
+```
+
+The helper creates `smarttag-demo-seed` using the existing
+`smarttag-demo-migrate` job's database credentials, TLS settings, network and
+runtime identity. It runs a preview, prints the database target, privately
+prompts for a demo login password, and requires `apply` before writing. Preview
+does not validate connectivity. Check the execution logs for committed row
+counts; existing seed members never have their passwords changed.
+
+This is for the hackathon database only. It does not modify the API or migration
+job or rotate their keys. Credentials are visible to authorized viewers of job
+configuration. The password is removed from the current seed job configuration
+after applying, including on execution failure, but prior execution metadata
+may retain it. Use a unique demo-only password, never a personal password.
 
 ### Run Tests
 
