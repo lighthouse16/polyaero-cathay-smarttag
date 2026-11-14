@@ -1,5 +1,6 @@
 """Baggage milestone helpers shared by IoT taps, app sync, and staff scans."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -45,6 +46,7 @@ def normalize_status(value: str) -> str:
     status = value.strip().upper()
     alias = {
         "PRIORITY_TRANSFER": "MISROUTED",
+        "CLAIMED": "COLLECTED",
     }
     status = alias.get(status, status)
     if status not in EVENT_TYPES:
@@ -92,9 +94,22 @@ async def record_event(
     scanner_type: str = "NFC_TAP",
     notes: str | None = None,
 ) -> BaggageEvent:
+    from app.services.dashboard_baggage import ensure_baggage
+
     status = normalize_status(event_type)
+    bag = await ensure_baggage(db, tag)
+    now = datetime.now(UTC)
     if status in MILESTONES:
         tag.tag_status = status
+        if bag is not None:
+            bag.status = status
+            bag.operational_data = {
+                key: value for key, value in (bag.operational_data or {}).items()
+                if key != "eink_banner"
+            }
+    tag.updated_at = now
+    if bag is not None:
+        bag.updated_at = now
     event = BaggageEvent(
         tag_id=tag.id,
         booking_id=booking_id or tag.booking_id,
@@ -104,6 +119,7 @@ async def record_event(
         reader_id=reader_id,
         scanner_type=scanner_type,
         notes=notes,
+        created_at=now,
     )
     db.add(event)
     return event

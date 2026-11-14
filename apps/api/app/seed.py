@@ -279,7 +279,7 @@ def main() -> None:
     for model, rows in build_seed_data(args.date).items():
         print(f"{model.__tablename__}: {len(rows)} planned")
     print("No refresh tokens, verification codes, or passkeys will be seeded.")
-    print("Dashboard /baggage still uses in-memory demo data, not these database rows.")
+    print("Dashboard /baggage reads these PostgreSQL rows; spare unlinked tags are not baggage.")
     if not args.apply:
         print("Preview only; no database connection. Add --apply to insert.")
         return
