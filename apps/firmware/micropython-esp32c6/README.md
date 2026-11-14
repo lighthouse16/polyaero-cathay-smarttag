@@ -112,6 +112,23 @@ It is not compatible with older or three-colour panels.
 
 ## Deploy
 
+### VS Code / Pylance
+
+From the repository root, install the editor-only MicroPython stubs:
+
+```powershell
+python -m pip install --target apps\firmware\micropython-esp32c6\.typings -r apps\firmware\micropython-esp32c6\requirements.txt
+```
+
+Open `polyaero.code-workspace` with VS Code's **File > Open Workspace from File**.
+It gives the firmware its own Pylance environment using the local
+`pyrightconfig.json`, including `machine`, `framebuf`, and `time.sleep_ms`.
+The backend keeps its normal desktop Python definitions. Reload the window if
+existing warnings remain.
+
+These are type definitions, not desktop hardware libraries. Do not copy
+`.typings/` to the ESP32 or add it to Python's runtime import path.
+
 **Prerequisites:**
 ```bash
 pip install mpremote

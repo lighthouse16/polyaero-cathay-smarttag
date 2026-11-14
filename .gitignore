@@ -84,3 +84,6 @@ __pycache__/
 **/.env
 .expo/
 apps/api/data/
+
+# Local MicroPython editor stubs
+apps/firmware/micropython-esp32c6/.typings/
