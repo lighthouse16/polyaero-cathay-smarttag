@@ -26,6 +26,7 @@ import {
   CompareBarsIcon,
   CopyIcon,
   DocumentLinesIcon,
+  GripDotsIcon,
   MicrophoneIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -93,6 +94,22 @@ function makeMessageId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+function clampPosition(x: number, y: number, width: number, height: number): Position {
+  if (typeof window === "undefined") return { x, y };
+  const pad = 12;
+  const maxX = Math.max(pad, window.innerWidth - width - pad);
+  const maxY = Math.max(pad, window.innerHeight - height - pad);
+  return {
+    x: Math.max(pad, Math.min(maxX, x)),
+    y: Math.max(pad, Math.min(maxY, y)),
+  };
+}
+
 export function OperationsCopilotDrawer({
   open,
   onOpenChange,
@@ -112,11 +129,77 @@ export function OperationsCopilotDrawer({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
+  // Grammarly-style draggable positions
+  const [launcherPos, setLauncherPos] = useState<Position | null>(null);
+  const [drawerPos, setDrawerPos] = useState<Position | null>(null);
+  const [isDraggingLauncher, setIsDraggingLauncher] = useState(false);
+  const [isDraggingDrawer, setIsDraggingDrawer] = useState(false);
+
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const suppressClickRef = useRef(false);
+  const launcherDragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    moved: boolean;
+    currentPos: Position | null;
+  } | null>(null);
+  const drawerDragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    moved: boolean;
+    currentPos: Position | null;
+  } | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<SpeechRecognitionClient | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pinnedBottomRef = useRef(true);
+
+  // Restore cached coordinates from localStorage
+  useEffect(() => {
+    try {
+      const savedLauncher = localStorage.getItem("copilot_launcher_pos");
+      if (savedLauncher) {
+        const parsed = JSON.parse(savedLauncher) as Position;
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          setLauncherPos(parsed);
+        }
+      }
+      const savedDrawer = localStorage.getItem("copilot_drawer_pos");
+      if (savedDrawer) {
+        const parsed = JSON.parse(savedDrawer) as Position;
+        if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+          setDrawerPos(parsed);
+        }
+      }
+    } catch {
+      /* ignore storage access errors */
+    }
+  }, []);
+
+  // Re-clamp on window resize
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setLauncherPos((prev) => {
+        if (!prev || !launcherRef.current) return prev;
+        const rect = launcherRef.current.getBoundingClientRect();
+        return clampPosition(prev.x, prev.y, rect.width, rect.height);
+      });
+      setDrawerPos((prev) => {
+        if (!prev || !drawerRef.current) return prev;
+        const rect = drawerRef.current.getBoundingClientRect();
+        return clampPosition(prev.x, prev.y, rect.width, rect.height);
+      });
+    };
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, []);
 
   const isStreaming = messages.some((m) => m.status === "streaming");
 
@@ -449,15 +532,209 @@ export function OperationsCopilotDrawer({
     }
   };
 
+  // Launcher pointer drag
+  const handleLauncherPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    const el = launcherRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    launcherDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: rect.left,
+      origY: rect.top,
+      moved: false,
+      currentPos: null,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore invalid pointer id in synthetic or unsupported environments */
+    }
+  };
+
+  const handleLauncherPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = launcherDragRef.current;
+    if (!drag || !launcherRef.current) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) > 4) {
+      drag.moved = true;
+      setIsDraggingLauncher(true);
+    }
+    if (drag.moved) {
+      const el = launcherRef.current;
+      const rect = el.getBoundingClientRect();
+      const clamped = clampPosition(drag.origX + dx, drag.origY + dy, rect.width, rect.height);
+      drag.currentPos = clamped;
+      el.style.left = `${clamped.x}px`;
+      el.style.top = `${clamped.y}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      setLauncherPos(clamped);
+    }
+  };
+
+  const handleLauncherPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = launcherDragRef.current;
+    if (!drag) return;
+    const wasMoved = drag.moved;
+    const finalPos = drag.currentPos;
+    launcherDragRef.current = null;
+    setIsDraggingLauncher(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (wasMoved) {
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 100);
+      if (finalPos) {
+        try {
+          localStorage.setItem("copilot_launcher_pos", JSON.stringify(finalPos));
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  };
+
+  const handleLauncherClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onOpenChange(true);
+  };
+
+  // Drawer header pointer drag
+  const handleHeaderPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a") || target.closest("input")) {
+      return;
+    }
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    const rect = drawer.getBoundingClientRect();
+    drawerDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: rect.left,
+      origY: rect.top,
+      moved: false,
+      currentPos: null,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    setIsDraggingDrawer(true);
+  };
+
+  const handleHeaderPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = drawerDragRef.current;
+    if (!drag || !drawerRef.current) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    drag.moved = true;
+    const drawer = drawerRef.current;
+    const rect = drawer.getBoundingClientRect();
+    const clamped = clampPosition(drag.origX + dx, drag.origY + dy, rect.width, rect.height);
+    drag.currentPos = clamped;
+    drawer.style.left = `${clamped.x}px`;
+    drawer.style.top = `${clamped.y}px`;
+    drawer.style.right = "auto";
+    drawer.style.bottom = "auto";
+    setDrawerPos(clamped);
+  };
+
+  const handleHeaderPointerUp = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = drawerDragRef.current;
+    if (!drag) return;
+    const wasMoved = drag.moved;
+    const finalPos = drag.currentPos;
+    drawerDragRef.current = null;
+    setIsDraggingDrawer(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (wasMoved && finalPos) {
+      try {
+        localStorage.setItem("copilot_drawer_pos", JSON.stringify(finalPos));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const handleHeaderDoubleClick = (e: React.MouseEvent<HTMLElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) return;
+    if (drawerRef.current) {
+      drawerRef.current.style.left = "";
+      drawerRef.current.style.top = "";
+      drawerRef.current.style.right = "";
+      drawerRef.current.style.bottom = "";
+    }
+    setDrawerPos(null);
+    try {
+      localStorage.removeItem("copilot_drawer_pos");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleLauncherDoubleClick = () => {
+    if (launcherRef.current) {
+      launcherRef.current.style.left = "";
+      launcherRef.current.style.top = "";
+      launcherRef.current.style.right = "";
+      launcherRef.current.style.bottom = "";
+    }
+    setLauncherPos(null);
+    try {
+      localStorage.removeItem("copilot_launcher_pos");
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (!open) {
     if (hideLauncher) return null;
     return (
       <button
+        ref={launcherRef}
         type="button"
-        className={styles.launcherFab}
-        onClick={() => onOpenChange(true)}
-        aria-label="Open Operations Copilot"
+        className={`${styles.launcherFab} ${isDraggingLauncher ? styles.isDragging : ""}`}
+        onClick={handleLauncherClick}
+        onDoubleClick={handleLauncherDoubleClick}
+        onPointerDown={handleLauncherPointerDown}
+        onPointerMove={handleLauncherPointerMove}
+        onPointerUp={handleLauncherPointerUp}
+        onPointerCancel={handleLauncherPointerUp}
+        style={
+          launcherPos
+            ? {
+                left: `${launcherPos.x}px`,
+                top: `${launcherPos.y}px`,
+                right: "auto",
+                bottom: "auto",
+              }
+            : undefined
+        }
+        aria-label="Open Operations Copilot (Drag to reposition)"
+        title="Operations Copilot (Drag to reposition)"
       >
+        <span className={styles.launcherGrip} aria-hidden="true">
+          <GripDotsIcon size={12} color="currentColor" />
+        </span>
         <SparkleAiIcon size={18} color="currentColor" />
         <span>Operations Copilot</span>
       </button>
@@ -466,12 +743,32 @@ export function OperationsCopilotDrawer({
 
   return (
     <aside
-      className={styles.drawer}
+      ref={drawerRef}
+      className={`${styles.drawer} ${isDraggingDrawer ? styles.isDragging : ""}`}
       role="dialog"
       aria-modal="false"
       aria-label="Operations Copilot"
+      style={
+        drawerPos
+          ? {
+              left: `${drawerPos.x}px`,
+              top: `${drawerPos.y}px`,
+              right: "auto",
+              bottom: "auto",
+            }
+          : undefined
+      }
     >
-      <header className={styles.header}>
+      <header
+        className={`${styles.header} ${isDraggingDrawer ? styles.isHeaderDragging : ""}`}
+        onPointerDown={handleHeaderPointerDown}
+        onPointerMove={handleHeaderPointerMove}
+        onPointerUp={handleHeaderPointerUp}
+        onPointerCancel={handleHeaderPointerUp}
+        onDoubleClick={handleHeaderDoubleClick}
+        title="Drag header to move · Double-click to dock"
+      >
+        <div className={styles.dragHandleBar} aria-hidden="true" />
         <div className={styles.headerIdentity}>
           <span className={styles.headerGlyph}>
             <SparkleAiIcon size={22} color="currentColor" />

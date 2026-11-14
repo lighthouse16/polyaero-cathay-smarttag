@@ -7,7 +7,7 @@
   align-items: center;
   gap: 8px;
   height: 44px;
-  padding: 0 16px;
+  padding: 0 16px 0 12px;
   border-radius: 999px;
   border: 1px solid #C5D5D0;
   background: #FFFFFF;
@@ -16,7 +16,9 @@
   font-size: 13.5px;
   font-weight: 600;
   box-shadow: 0 10px 26px rgba(22, 50, 48, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
   transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 150ms ease,
     background-color 150ms ease,
@@ -28,6 +30,26 @@
   border-color: var(--brand-primary-darkcyan-default, #367878);
   background: #F6F9F8;
   box-shadow: 0 14px 32px rgba(22, 50, 48, 0.18), 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.launcherFab:active,
+.launcherFab.isDragging {
+  cursor: grabbing !important;
+  transition: none !important;
+}
+
+.launcherGrip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7B8A85;
+  opacity: 0.55;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+.launcherFab:hover .launcherGrip {
+  opacity: 0.95;
+  color: var(--brand-primary-darkcyan-active, #163230);
 }
 
 .launcherFab:focus-visible {
@@ -63,6 +85,13 @@
   animation: copilotDrawerIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.drawer.isDragging {
+  animation: none !important;
+  transition: none !important;
+  user-select: none;
+  box-shadow: 0 26px 56px rgba(22, 50, 48, 0.22), 0 6px 18px rgba(0, 0, 0, 0.09);
+}
+
 @keyframes copilotDrawerIn {
   from {
     opacity: 0;
@@ -75,6 +104,7 @@
 }
 
 .header {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -83,6 +113,32 @@
   background: linear-gradient(135deg, #FFFFFF 68%, #EFF4F2 100%);
   border-bottom: 1px solid #ECEEEF;
   flex: none;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.header:active,
+.header.isHeaderDragging {
+  cursor: grabbing !important;
+}
+
+.dragHandleBar {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: #D8E0DC;
+  pointer-events: none;
+  transition: background-color 150ms ease, width 150ms ease;
+}
+
+.header:hover .dragHandleBar {
+  background: #A0B2AC;
+  width: 44px;
 }
 
 .headerIdentity {

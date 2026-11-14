@@ -1154,3 +1154,32 @@ export function DocumentLinesIcon({
     </svg>
   );
 }
+
+export function GripDotsIcon({
+  size = 14,
+  color = "currentColor",
+  className,
+}: {
+  size?: number;
+  color?: string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill={color}
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="5" cy="3.5" r="1.4" />
+      <circle cx="11" cy="3.5" r="1.4" />
+      <circle cx="5" cy="8" r="1.4" />
+      <circle cx="11" cy="8" r="1.4" />
+      <circle cx="5" cy="12.5" r="1.4" />
+      <circle cx="11" cy="12.5" r="1.4" />
+    </svg>
+  );
+}
+
