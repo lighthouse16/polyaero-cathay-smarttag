@@ -1,0 +1,92 @@
+name: Build Android NFC APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Backend API base URL baked into the APK (EXPO_PUBLIC_API_URL)'
+        required: false
+        default: 'http://10.12.5.250:8000/api/v1'
+  push:
+    branches:
+      - feat/iot-nfc-sync
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - '.github/workflows/android-apk.yml'
+
+jobs:
+  build-android-apk:
+    name: Assemble Release APK (Cathay SmartTag NFC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Accept Android SDK Licenses
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          echo "ANDROID_HOME=$SDK_ROOT" >> $GITHUB_ENV
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null || true
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prebuild Android Native Project (NFC + Cleartext HTTP)
+        working-directory: apps/mobile
+        env:
+          CI: '1'
+        run: |
+          npx expo prebuild --platform android --clean
+          grep -q 'android.permission.NFC' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.hardware.nfc' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+
+      - name: Build Signed Release APK
+        working-directory: apps/mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: ${{ inputs.api_url || 'http://10.12.5.250:8000/api/v1' }}
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: polyaero-cathay-smarttag-nfc-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14

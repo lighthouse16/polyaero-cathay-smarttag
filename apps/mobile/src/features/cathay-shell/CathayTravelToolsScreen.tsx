@@ -12,6 +12,8 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { USE_MOCK_DATA } from '../../services/apiConfig';
+import { LiveFlightStatusContent } from './LiveFlightStatusContent';
 
 interface CathayTravelToolsScreenProps {
   onClose?: () => void;
@@ -420,6 +422,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
             <View style={styles.modalHeaderSpacer} />
           </View>
 
+          {!USE_MOCK_DATA ? <LiveFlightStatusContent /> : (
           <ScrollView style={styles.modalBody}>
             <Text style={styles.modalExplainer}>
               You can check the latest status for flights departing in the past four days, today, and the next six days.
@@ -467,6 +470,7 @@ export const CathayTravelToolsScreen: React.FC<CathayTravelToolsScreenProps> = (
               </View>
             )}
           </ScrollView>
+          )}
         </SafeAreaView>
       </Modal>
 

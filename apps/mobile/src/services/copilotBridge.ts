@@ -1,8 +1,7 @@
-import { Platform } from 'react-native';
+import { API_BASE_URL } from './apiConfig';
+import { apiRequest } from './api';
 
-export const COPILOT_API_BASE =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1');
+export const COPILOT_API_BASE = API_BASE_URL;
 
 let activePassengerTagNumber = '0160892012';
 let activePassengerTagCode = '04:A2:3B:4C:5D:6E:70';
@@ -89,6 +88,8 @@ export async function syncBookingToCopilot(params: {
   tagCode?: string;
   passengerName?: string;
   flightNumber: string;
+  flightId?: string;
+  departureTime?: string;
   origin: string;
   destination: string;
   cabinClass?: string;
@@ -99,7 +100,7 @@ export async function syncBookingToCopilot(params: {
     setActivePassengerTag(params.tagNumber, params.tagCode);
   }
   try {
-    const res = await fetch(`${COPILOT_API_BASE}/baggage/sync`, {
+    const bag = await apiRequest<LiveCopilotBag>('/baggage/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -107,16 +108,18 @@ export async function syncBookingToCopilot(params: {
         tag_code: activePassengerTagCode,
         passenger_name: (params.passengerName || activePassengerName).toUpperCase(),
         flight_number: params.flightNumber,
+        flight_id: params.flightId,
+        departure_time: params.departureTime,
         departure_airport: params.origin,
         arrival_airport: params.destination,
         cabin_class: params.cabinClass || 'BUSINESS',
         weight_kg: 22.4,
         connection_minutes: params.connectionMinutes ?? 80,
-        initial_status: params.initialStatus || 'AWAITING_SYNC',
+        sync_status: params.initialStatus || 'AWAITING_SYNC',
       }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
+    }, true);
+    setActivePassengerTag(bag.tag_number, bag.tag_code);
+    return bag;
   } catch {
     return null;
   }
@@ -125,9 +128,7 @@ export async function syncBookingToCopilot(params: {
 export async function fetchLiveCopilotBag(tagNumber?: string): Promise<LiveCopilotBag | null> {
   const target = (tagNumber || activePassengerTagNumber).replace(/\s+/g, '');
   try {
-    const res = await fetch(`${COPILOT_API_BASE}/baggage/${target}`);
-    if (!res.ok) return null;
-    return await res.json();
+    return await apiRequest<LiveCopilotBag>(`/baggage/${encodeURIComponent(target)}`, {}, true);
   } catch {
     return null;
   }
@@ -140,17 +141,68 @@ export async function choosePassengerRecovery(
 ): Promise<LiveCopilotBag | null> {
   const target = (tagNumber || activePassengerTagNumber).replace(/\s+/g, '');
   try {
-    const res = await fetch(`${COPILOT_API_BASE}/baggage/${target}/passenger/choice`, {
+    return await apiRequest<LiveCopilotBag>(`/baggage/${target}/passenger/choice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         choice,
         hotel_address: hotelAddress || null,
       }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
+    }, true);
   } catch {
     return null;
+  }
+}
+
+export interface SmartTagTapPayload {
+  tagUid: string;
+  baggageTagNumber: string;
+  flightNumber: string;
+  originAirport: string;
+  destinationAirport: string;
+  passengerInitials: string;
+  departureDate: string;
+  status: string;
+  timestamp: number;
+}
+
+export async function postSmartTagTap(
+  tagUid: string,
+  payload: SmartTagTapPayload,
+  readerId = 'MOBILE-APP',
+  locationCode = 'HKG-CHECKIN'
+): Promise<{ success: boolean; display?: any }> {
+  try {
+    const ndefPayload = JSON.stringify({
+      v: 1,
+      tag_code: tagUid,
+      booking: 'unknown',
+      flight: payload.flightNumber,
+      route: `${payload.originAirport}-${payload.destinationAirport}`,
+      barcode: payload.baggageTagNumber,
+      status: payload.status,
+      at: payload.timestamp,
+    });
+
+    const res = await fetch(`${COPILOT_API_BASE}/tags/${tagUid}/tap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reader_id: readerId,
+        location_code: locationCode,
+        ndef_payload: ndefPayload,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error('[SmartTagTap] API error:', res.status, await res.text());
+      return { success: false };
+    }
+
+    const data = await res.json();
+    return { success: true, display: data.display };
+  } catch (err) {
+    console.error('[SmartTagTap] Network error:', err);
+    return { success: false };
   }
 }

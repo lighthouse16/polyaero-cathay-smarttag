@@ -1228,6 +1228,56 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
 .trace-audit-timeline {
   list-style: none;
   margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.queue-heading p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.queue-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #E6E7E8;
+  background: #F4F5F6;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.toolbar-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.toolbar-search-wrap input {
+  width: 100%;
+  padding-right: 34px;
+}
+.toolbar-search-wrap input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.table-toolbar.trace-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+}
+.trace-toolbar .toolbar-search-wrap {
+  flex: 0 1 380px;
+  width: 100%;
+}
+.clear-field-btn {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));

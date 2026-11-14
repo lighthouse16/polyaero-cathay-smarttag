@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CathaySplashScreen } from './CathaySplashScreen';
@@ -34,6 +35,15 @@ import {
 import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { smartTagController, smartTagRepository } from '../smarttag/store';
 import { syncBookingToCopilot, setActivePassengerIdentity } from '../../services/copilotBridge';
+import { USE_MOCK_DATA } from '../../services/apiConfig';
+import { signOut } from '../../services/api';
+import { LiveBookScreen, LiveTripsScreen } from './LiveBookingScreens';
+
+const LIVE_GUEST_PROFILE: UserAuthProfile = {
+  ...INITIAL_USER_PROFILE,
+  title: '', familyName: '', givenName: '', email: '', mobile: '',
+  membershipNumber: '', memberSince: '', asiaMiles: null, pointsToNextTier: null,
+};
 
 export type OnboardingScreenId = 'splash' | 'language' | 'welcome';
 
@@ -80,6 +90,9 @@ const TAB_ITEMS: TabItemConfig[] = [
 ];
 
 const getInitialScreenState = (initialTabOverride?: CathayTabId): { onboarding: OnboardingScreenId | null; tab: CathayTabId; isAuth?: boolean; isBooked?: boolean } => {
+  if (!USE_MOCK_DATA) {
+    return { onboarding: initialTabOverride ? null : 'splash', tab: initialTabOverride || 'home', isAuth: false, isBooked: false };
+  }
   if (initialTabOverride) {
     return { onboarding: null, tab: initialTabOverride, isAuth: true, isBooked: true };
   }
@@ -124,6 +137,7 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
 
   // Global Auth & Passenger Data State
   const [user, setUser] = useState<UserAuthProfile>(() => {
+    if (!USE_MOCK_DATA) return LIVE_GUEST_PROFILE;
     const { isAuth } = getInitialScreenState(initialTabOverride);
     return isAuth ? { ...INITIAL_USER_PROFILE, isLoggedIn: true } : INITIAL_USER_PROFILE;
   });
@@ -147,9 +161,25 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
   const [showMessageCentre, setShowMessageCentre] = useState(false);
   const [isDevMenuVisible, setIsDevMenuVisible] = useState(false);
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
+
+  const openSignUp = () => {
+    if (USE_MOCK_DATA) setShowSignUpModal(true);
+    else Alert.alert('Registration not connected', 'Please use an existing backend account. This app has not yet connected the signup flow.');
+  };
+
+  const handleSignOut = () => {
+    setUser(USE_MOCK_DATA ? INITIAL_USER_PROFILE : LIVE_GUEST_PROFILE);
+    setBookings([]);
+    setLiveRefreshKey(value => value + 1);
+    if (!USE_MOCK_DATA) {
+      void signOut().catch(() => Alert.alert('Signed out on this device', 'The server could not revoke the session. Please retry when the API is reachable.'));
+    }
+  };
 
   // Check URL query params on web for instant automated QA testing (?screen=home, ?screen=book, etc.)
   useEffect(() => {
+    if (!USE_MOCK_DATA) return;
     const handleUrlChange = () => {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
@@ -273,6 +303,12 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
   const handleSignInSuccess = (profileData: Partial<UserAuthProfile>) => {
     const merged = { ...user, ...profileData, isLoggedIn: true };
     setUser(merged);
+    if (!USE_MOCK_DATA) {
+      setLiveRefreshKey(value => value + 1);
+      setShowSignInModal(false);
+      setOnboardingScreen(null);
+      return;
+    }
     const currentItin = smartTagRepository.getSnapshot().itineraries[0];
     const currentBag = currentItin
       ? (smartTagRepository.getSnapshot().bagSetupsByItinerary[currentItin.id] ?? [])[0]
@@ -357,13 +393,13 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
     return (
       <>
         <CathayMemberWelcomeScreen
-          onSignUp={() => setShowSignUpModal(true)}
+          onSignUp={openSignUp}
           onSignIn={() => setShowSignInModal(true)}
           onContinueAsGuest={() => setOnboardingScreen(null)}
         />
 
         <CathaySignUpModal
-          visible={showSignUpModal}
+          visible={USE_MOCK_DATA && showSignUpModal}
           onClose={() => setShowSignUpModal(false)}
           onComplete={handleSignUpComplete}
         />
@@ -407,14 +443,32 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
           />
         )}
 
-        {activeTab === 'book' && (
+        {activeTab === 'book' && !USE_MOCK_DATA && (
+          <LiveBookScreen
+            onOpenSignIn={() => setShowSignInModal(true)}
+            onBooked={() => {
+              setLiveRefreshKey(value => value + 1);
+              setActiveTab('trips');
+            }}
+          />
+        )}
+
+        {activeTab === 'book' && USE_MOCK_DATA && (
           <CathayBookScreen
             onFlightSelected={handleFlightBooked}
             onOpenDevMenu={() => setIsDevMenuVisible(true)}
           />
         )}
 
-        {activeTab === 'trips' && (
+        {activeTab === 'trips' && !USE_MOCK_DATA && (
+          <LiveTripsScreen
+            key={liveRefreshKey}
+            onOpenSignIn={() => setShowSignInModal(true)}
+            surname={user.familyName}
+          />
+        )}
+
+        {activeTab === 'trips' && USE_MOCK_DATA && (
           <CathayTripsScreen
             bookings={bookings}
             user={user}
@@ -428,7 +482,7 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
             user={user}
             onOpenDevMenu={() => setIsDevMenuVisible(true)}
             onOpenSignIn={() => setShowSignInModal(true)}
-            onSignOut={() => setUser(INITIAL_USER_PROFILE)}
+            onSignOut={handleSignOut}
           />
         )}
 
@@ -506,7 +560,7 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
 
       {/* Global Modals */}
       <CathaySignUpModal
-        visible={showSignUpModal}
+        visible={USE_MOCK_DATA && showSignUpModal}
         onClose={() => setShowSignUpModal(false)}
         onComplete={handleSignUpComplete}
       />
@@ -533,7 +587,7 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
       />
 
       {/* Secret Developer Evaluation Menu */}
-      <Modal visible={isDevMenuVisible} transparent animationType="fade" onRequestClose={() => setIsDevMenuVisible(false)}>
+      <Modal visible={USE_MOCK_DATA && isDevMenuVisible} transparent animationType="fade" onRequestClose={() => setIsDevMenuVisible(false)}>
         <View style={styles.devMenuOverlay}>
           <View style={styles.devMenuCard}>
             <View style={styles.devMenuHeader}>

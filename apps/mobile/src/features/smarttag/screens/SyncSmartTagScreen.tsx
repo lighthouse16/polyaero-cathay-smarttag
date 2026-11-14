@@ -37,7 +37,7 @@ import {
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { demoNfcService, getPhysicalNfcService } from '../../../services/nfc';
 import { smartTagController, smartTagRepository, useSmartTagStore } from '../store';
-import { syncBookingToCopilot } from '../../../services/copilotBridge';
+import { syncBookingToCopilot, postSmartTagTap } from '../../../services/copilotBridge';
 
 export interface SyncSmartTagScreenProps {
   onOpenDevMenu?: () => void;
@@ -120,7 +120,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     setFailure(null);
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
-    const physicalService = null;
+    const physicalService = forceDemo ? null : getPhysicalNfcService();
     if (!forceDemo && !physicalService) {
       setFailure({
         code: 'NFC_UNAVAILABLE',
@@ -134,7 +134,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       return;
     }
     const effectiveService = physicalService ?? demoNfcService;
-    demoNfcService.setMockTag(payload);
+    if (!physicalService) demoNfcService.setMockTag(payload);
     const operation = { service: effectiveService, cancelled: false };
     session.current = operation;
 
@@ -143,7 +143,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       service: effectiveService,
       payload,
       expectedTagUid: bag.smartTag.tagUid,
-      stepDelayMs: 140,
+      stepDelayMs: physicalService ? 0 : 140,
       onStep: (step) => {
         if (operation.cancelled) {
           if (step.state === 'SCANNING' || step.state === 'WRITING') throw new NfcCancelledError();
@@ -160,6 +160,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
+      // 1. Sync booking to Copilot first so live backend bag record exists
       await syncBookingToCopilot({
         tagNumber: bag.baggage.tagNumber,
         tagCode: bag.smartTag.tagUid,
@@ -168,6 +169,23 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         destination: itinerary.flight.destination,
         initialStatus: 'TAGGED',
       });
+
+      // Only verified hardware writes are reported as physical NFC taps.
+      const tapPayload = {
+        tagUid: bag.smartTag.tagUid,
+        baggageTagNumber: bag.baggage.tagNumber,
+        flightNumber: itinerary.flight.flightNumber,
+        originAirport: itinerary.flight.origin,
+        destinationAirport: itinerary.flight.destination,
+        passengerInitials: itinerary.passengerInitials,
+        departureDate: itinerary.departureDateIso,
+        status: 'TAGGED',
+        timestamp: Date.now() / 1000,
+      };
+      if (outcome.mode === 'PHYSICAL_HARDWARE') {
+        await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
+      }
+
       smartTagController.navigateTo('result', {
         itineraryId: itinerary.id,
         bagSetupId: bag.id,

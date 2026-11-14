@@ -1,15 +1,14 @@
 """Outbound verification messages.
 
-Email goes through the Gmail API using an OAuth refresh token, so no app
-password or SMTP connection is required. SMS has no provider yet: the code is
+Email uses authenticated SMTP over TLS. SMS has no provider yet: the code is
 logged and the call is a no-op.
 """
 
-import base64
+import asyncio
 import logging
+import smtplib
+import ssl
 from email.message import EmailMessage
-
-import httpx
 
 from app.core.config import get_settings
 
@@ -17,45 +16,28 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+class EmailDeliveryError(Exception):
+    pass
 
 
-def _gmail_configured() -> bool:
-    return all(
-        (
-            settings.gmail_client_id,
-            settings.gmail_client_secret,
-            settings.gmail_refresh_token,
-            settings.gmail_sender_email,
-        )
-    )
-
-
-async def _access_token(client: httpx.AsyncClient) -> str:
-    response = await client.post(
-        GOOGLE_TOKEN_URL,
-        data={
-            "client_id": settings.gmail_client_id,
-            "client_secret": settings.gmail_client_secret,
-            "refresh_token": settings.gmail_refresh_token,
-            "grant_type": "refresh_token",
-        },
-    )
-    response.raise_for_status()
-    return str(response.json()["access_token"])
-
-
-def _raw_message(to_email: str, subject: str, body: str) -> str:
-    message = EmailMessage()
-    message["To"] = to_email
-    message["From"] = settings.gmail_sender_email or ""
-    message["Subject"] = subject
-    message.set_content(body)
-    return base64.urlsafe_b64encode(message.as_bytes()).decode()
+def _send_smtp(message: EmailMessage, username: str, password: str) -> None:
+    with smtplib.SMTP_SSL(
+        settings.smtp_host,
+        settings.smtp_port,
+        timeout=15,
+        context=ssl.create_default_context(),
+    ) as client:
+        client.login(username, password)
+        client.send_message(message)
 
 
 async def send_verification_email(to_email: str, code: str) -> None:
+    username = settings.smtp_username
+    password = settings.smtp_app_password.get_secret_value() if settings.smtp_app_password else ""
+    if not username or not password:
+        raise EmailDeliveryError("Email delivery is not configured")
+
     subject = "Your Cathay verification code"
     body = (
         f"Your verification code is {code}.\n\n"
@@ -63,20 +45,17 @@ async def send_verification_email(to_email: str, code: str) -> None:
         "If you did not request this code, ignore this email."
     )
 
-    if not _gmail_configured():
-        logger.warning(
-            "Gmail OAuth not configured; verification code for %s is %s", to_email, code
-        )
-        return
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        token = await _access_token(client)
-        response = await client.post(
-            GMAIL_SEND_URL,
-            headers={"Authorization": f"Bearer {token}"},
-            json={"raw": _raw_message(to_email, subject, body)},
-        )
-        response.raise_for_status()
+    message = EmailMessage()
+    message["To"] = to_email
+    message["From"] = username
+    message["Subject"] = subject
+    message.set_content(body)
+    try:
+        await asyncio.to_thread(_send_smtp, message, username, password)
+    except (smtplib.SMTPException, OSError) as exc:
+        raise EmailDeliveryError(
+            "Unable to send verification email. Please try again later."
+        ) from exc
 
 
 async def send_verification_sms(phone_number: str, code: str) -> None:

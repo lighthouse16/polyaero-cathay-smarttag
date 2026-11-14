@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +9,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/smarttag"
+    database_ssl_ca_file: str | None = None
 
     # App
     app_name: str = "PolyAero Cathay SmartTag API"
@@ -16,7 +18,11 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:8081"
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8081", "exp://localhost:8081"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:8081",
+        "exp://localhost:8081",
+    ]
 
     # Auth
     secret_key: str = "dev-secret-change-in-production"
@@ -30,16 +36,20 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_resend_cooldown_seconds: int = 60
 
-    # Email verification (Gmail API via OAuth refresh token)
-    gmail_client_id: str | None = None
-    gmail_client_secret: str | None = None
-    gmail_refresh_token: str | None = None
-    gmail_sender_email: str | None = None
+    # Email verification (SMTP with implicit TLS and an app password)
+    smtp_host: str = Field(default="smtp.gmail.com", min_length=1)
+    smtp_port: int = Field(default=465, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_app_password: SecretStr | None = None
 
     # WebAuthn / passkeys
     webauthn_rp_id: str = "localhost"
     webauthn_rp_name: str = "PolyAero Cathay SmartTag"
     webauthn_origin: str = "http://localhost:8081"
+
+    # IoT bridge (ESP32 PN532 reader)
+    iot_device_key: str | None = None
+    flight_status_staff_key: str | None = None
 
 
 @lru_cache

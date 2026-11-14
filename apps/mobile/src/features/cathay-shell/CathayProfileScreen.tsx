@@ -151,7 +151,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
 
                 {/* 300 more Status Points to reach Silver */}
                 <Text style={styles.reachSilverText}>
-                  <Text style={styles.reachSilverBold}>{user.pointsToNextTier}</Text> more Status Points to reach Silver
+                  {user.pointsToNextTier === null ? 'Tier progress unavailable' : <><Text style={styles.reachSilverBold}>{user.pointsToNextTier}</Text> more Status Points to reach Silver</>}
                 </Text>
 
                 {/* Warm Cream Notification Strip */}
@@ -174,7 +174,7 @@ export const CathayProfileScreen: React.FC<CathayProfileScreenProps> = ({
               <Text style={styles.goldLabelText}>Asia Miles</Text>
               <View style={styles.asiaMilesRightRow}>
                 <Image source={ICON_ASIA_MILES} style={styles.asiaMilesLogoImg} resizeMode="contain" />
-                <Text style={styles.asiaMilesValueText}>{user.asiaMiles.toLocaleString()}</Text>
+                <Text style={styles.asiaMilesValueText}>{user.asiaMiles?.toLocaleString() ?? 'Not available'}</Text>
                 <Ionicons name="chevron-forward" size={20} color="#2C3034" />
               </View>
             </TouchableOpacity>

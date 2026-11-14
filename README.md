@@ -14,6 +14,7 @@ The prototype includes:
 2. **SmartTag Digital Identity & E-ink Interaction**: Contactless NFC reading, baggage tagging, and passive E-ink display buffer simulation.
 3. **Ground Staff Operations Portal**: A Next.js web application for ground staff and ramp leads to inspect, verify, and re-route baggage.
 4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
+5. **Backend API**: FastAPI with local PostgreSQL for development and an AWS RDS PostgreSQL demo deployment runbook for Google Cloud Run.
 
 ---
 
@@ -22,6 +23,7 @@ The prototype includes:
 ```text
 polyaero-cathay-smarttag/
 ├── apps/
+│   ├── api/            # FastAPI backend, Alembic migrations, Cloud Run deployment
 │   ├── mobile/         # React Native + Expo SDK 52 + Expo Router v4
 │   └── staff/          # Next.js 15 App Router Ground Staff Portal
 ├── packages/
@@ -61,6 +63,22 @@ pnpm dev:staff
 ```
 Open `http://localhost:3000` to access the ground staff dashboard.
 
+### Run the Backend API
+
+See [API setup and deployment](apps/api/README.md) for local PostgreSQL setup,
+environment variables, migrations, and Python checks.
+
+For the one-day cloud demo, the backend runs on Google Cloud Run and connects
+to AWS RDS PostgreSQL using verified TLS. The deployment script creates a
+static outbound IP for the AWS firewall and keeps secrets in Google Secret
+Manager. Local and AWS databases remain separate, even when both are named
+`smarttag`.
+
+This is not a production release: some routes still lack authorization and
+baggage demo state resets when the server instance is replaced. Do not use
+real passenger data. Cloud NAT, reserved IPs, and database resources can incur
+charges; follow the API README's cleanup instructions after the hackathon.
+
 ### Verification & Quality Gates
 ```bash
 pnpm lint        # Run ESLint across all workspaces
@@ -89,7 +107,8 @@ When reference screenshots of the official Cathay Pacific application are provid
 |:---|:---|:---|
 | **Cathay App Shell** | Static typed mock data (`@polyaero/shared`) | Remains isolated mock data (no private Cathay API access) |
 | **SmartTag Mobile Linking** | `MockNfcService` with error & cancellation tests | Native NFC integration via Expo Dev Client |
-| **Baggage Milestone Events** | Shared in-memory fixtures | Supabase PostgreSQL + Realtime WebSockets |
+| **Baggage Milestone Events** | Append-only `baggage_events` in PostgreSQL, written by app sync, staff scans, and IoT taps | Supabase PostgreSQL + Realtime WebSockets |
+| **IoT E-Paper Bridge** | ESP32-S3 + PN532 target mode + 4.2" E-Paper polling the API | Live NFC → API → E-ink loop (see [`apps/firmware/esp32-display`](apps/firmware/esp32-display)) |
 | **Ground Staff Portal** | Interactive React state with shared fixtures | Live Supabase queries & status mutations |
 
 ---
@@ -99,6 +118,7 @@ When reference screenshots of the official Cathay Pacific application are provid
 - **Passive RF E-ink**: The hardware prototype uses passive RF energy harvesting without an internal battery. In Phase 0, NFC operations are simulated via `MockNfcService`.
 - **Expo Go vs Dev Client**: Standard Expo Go does not bundle native NFC libraries (`react-native-nfc-manager`). Testing on physical E-ink tags will require an Expo Development Build (`eas build`).
 - **Barcode Readability**: Standard IATA 10-digit license plate numbers use Interleaved 2 of 5. Readability on reflective E-ink under airport lighting requires physical hardware calibration.
+- **IoT Bridge**: The ESP32 runs PN532 in target mode, so the phone writes NDEF into the bridge. The API gates taps with an optional shared `IOT_DEVICE_KEY`; the NFC UID itself is spoofable.
 
 ---
 

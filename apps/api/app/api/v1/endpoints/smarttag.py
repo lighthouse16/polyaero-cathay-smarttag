@@ -16,6 +16,7 @@ from app.schemas.smarttag import (
     SyncPayloadRequest,
     SyncPayloadResponse,
 )
+from app.services.baggage import record_event
 from app.services.mqtt import publish_display
 from app.services.smarttag import (
     build_barcode,
@@ -117,7 +118,7 @@ async def _sync(
 
     tag = await _resolve_tag(db, booking, payload.hardware_nfc_id)
     barcode = build_barcode(tag.id)
-    record = build_ndef_record(tag, flight, barcode)
+    record = build_ndef_record(tag, booking, flight, barcode)
     display = build_display_payload(tag, booking, flight, user, barcode)
 
     tag.user_id = user.id
@@ -129,6 +130,15 @@ async def _sync(
     tag.sync_state = "READY"
     tag.is_simulated = is_simulated
     tag.last_synced_at = datetime.now(UTC)
+    await record_event(
+        db,
+        tag,
+        "SYNCHRONIZED",
+        location_code=payload.hardware_nfc_id or "MOBILE-APP",
+        station_name="Cathay App SmartTag Sync",
+        scanner_type="APP",
+        notes="Simulated sync" if is_simulated else "NFC payload written",
+    )
     await db.commit()
     await db.refresh(tag)
 

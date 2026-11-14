@@ -2,15 +2,73 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 CabinClass = Literal["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]
 TripType = Literal["RETURN", "ONE_WAY", "MULTI_CITY"]
+OperationalStatus = Literal[
+    "UNKNOWN", "SCHEDULED", "DELAYED", "BOARDING", "DEPARTED", "ARRIVED", "CANCELLED"
+]
+InitialBaggageStatus = Literal["AWAITING_SYNC", "CHECKED_IN"]
+
+
+class FlightStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operational_status: OperationalStatus
+    weather_severity: int = Field(default=2, ge=1, le=5)
+    load_factor_pct: float = Field(default=86.0, ge=0, le=100, allow_inf_nan=False)
+    airport_congestion: int = Field(default=2, ge=1, le=5)
+    initial_status: InitialBaggageStatus = "AWAITING_SYNC"
+    estimated_departure_time: AwareDatetime | None = None
+    estimated_arrival_time: AwareDatetime | None = None
+    actual_departure_time: AwareDatetime | None = None
+    actual_arrival_time: AwareDatetime | None = None
+    terminal: str | None = Field(None, min_length=1, max_length=10)
+    gate: str | None = Field(None, min_length=1, max_length=10)
+
+    @model_validator(mode="after")
+    def chronological_times(self) -> "FlightStatusUpdate":
+        for departure, arrival in (
+            (self.estimated_departure_time, self.estimated_arrival_time),
+            (self.actual_departure_time, self.actual_arrival_time),
+        ):
+            if departure is not None and arrival is not None and arrival <= departure:
+                raise ValueError("Arrival must be later than departure")
+        return self
 
 
 class CabinAvailability(BaseModel):
     seats_available: int
     price: float
+
+
+class FlightStatusRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    flight_number: str
+    origin: str
+    destination: str
+    departure_time: datetime
+    arrival_time: datetime
+    operational_status: OperationalStatus
+    weather_severity: int
+    load_factor_pct: float
+    airport_congestion: int
+    initial_status: InitialBaggageStatus
+    aircraft: str | None
+    is_connecting: bool
+    connecting_carrier: str | None
+    cabins: dict[str, CabinAvailability]
+    estimated_departure_time: datetime | None
+    estimated_arrival_time: datetime | None
+    actual_departure_time: datetime | None
+    actual_arrival_time: datetime | None
+    terminal: str | None
+    gate: str | None
+    status_reported_at: datetime | None
+    source: Literal["STAFF_REPORTED_DATABASE"] = "STAFF_REPORTED_DATABASE"
 
 
 class FlightOption(BaseModel):
@@ -20,6 +78,10 @@ class FlightOption(BaseModel):
     destination_code: str
     departure_time: datetime
     arrival_time: datetime
+    weather_severity: int
+    load_factor_pct: float
+    airport_congestion: int
+    initial_status: InitialBaggageStatus
     terminal: str | None
     gate: str | None
     aircraft: str | None
@@ -60,7 +122,5 @@ class FlightSearchRequest(BaseModel):
 class FlightSearchResponse(BaseModel):
     trip_type: str
     outbound: list[FlightOption] = Field(default_factory=list)
-    return_flights: list[FlightOption] = Field(
-        default_factory=list, serialization_alias="return"
-    )
+    return_flights: list[FlightOption] = Field(default_factory=list, serialization_alias="return")
     multi_city: list[list[FlightOption]] = Field(default_factory=list)

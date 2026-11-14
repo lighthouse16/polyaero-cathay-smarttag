@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!README.md
+!app/
+!app/**
+!artifacts/
+!artifacts/cathay_bag_risk_bundle.joblib
+!alembic/
+!alembic/**
+!alembic.ini
+**/__pycache__/
+**/*.pyc

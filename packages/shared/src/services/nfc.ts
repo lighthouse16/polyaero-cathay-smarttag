@@ -88,7 +88,7 @@ export interface SmartTagWriteResult {
   bytesWritten: number;
   timestamp: string;
   isMockSimulation: boolean;
-  /** True only when a native driver verified the E-ink display buffer readback after RF write. */
+  /** True only after device-confirmed display refresh and matching baggage payload readback. */
   verifiedReadback?: boolean;
 }
 

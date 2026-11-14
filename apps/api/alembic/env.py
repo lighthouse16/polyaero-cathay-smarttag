@@ -18,7 +18,7 @@ if platform.system() == "Windows":
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import get_settings
-from app.core.database import Base
+from app.core.database import Base, get_database_connect_args
 from app.models import Baggage, Tag  # noqa: F401
 
 config = context.config
@@ -31,8 +31,7 @@ target_metadata = Base.metadata
 
 def get_database_url() -> str:
     settings = get_settings()
-    # Use asyncpg for alembic (sync) - replace asyncpg with psycopg
-    return settings.database_url.replace("+asyncpg", "")
+    return settings.database_url
 
 
 def run_migrations_offline() -> None:
@@ -57,7 +56,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section)
-    configuration = config.get_section(config.config_ini_section)
     if configuration is None:
         configuration = {}
     configuration["sqlalchemy.url"] = get_database_url()
@@ -65,6 +63,7 @@ async def run_async_migrations() -> None:
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=get_database_connect_args(),
     )
 
     async with connectable.connect() as connection:

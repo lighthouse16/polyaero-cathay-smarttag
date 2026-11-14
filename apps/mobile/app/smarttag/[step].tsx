@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { CathayAppShell } from '../../src/features/cathay-shell/CathayAppShell';
+import { USE_MOCK_DATA } from '../../src/services/apiConfig';
 import {
   SmartTagScreenRoute,
   smartTagController,
@@ -22,6 +23,7 @@ export default function SmartTagStepRoute() {
   const { step } = useLocalSearchParams<{ step?: string }>();
 
   useEffect(() => {
+    if (!USE_MOCK_DATA) return;
     let activeStep = step;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);

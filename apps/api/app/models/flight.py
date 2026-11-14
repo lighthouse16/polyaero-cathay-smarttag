@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -12,6 +12,27 @@ from app.core.database import Base
 
 class Flight(Base):
     __tablename__ = "flights"
+    __table_args__ = (
+        CheckConstraint("weather_severity BETWEEN 1 AND 5", name="ck_flights_weather"),
+        CheckConstraint("load_factor_pct BETWEEN 0 AND 100", name="ck_flights_load"),
+        CheckConstraint("airport_congestion BETWEEN 1 AND 5", name="ck_flights_congestion"),
+        CheckConstraint(
+            "initial_status IN ('AWAITING_SYNC', 'CHECKED_IN')", name="ck_flights_initial_status"
+        ),
+        CheckConstraint(
+            "operational_status IN ('UNKNOWN', 'SCHEDULED', 'DELAYED', 'BOARDING', "
+            "'DEPARTED', 'ARRIVED', 'CANCELLED')",
+            name="ck_flights_operational_status",
+        ),
+        CheckConstraint(
+            "estimated_arrival_time > estimated_departure_time",
+            name="ck_flights_estimated_times",
+        ),
+        CheckConstraint(
+            "actual_arrival_time > actual_departure_time",
+            name="ck_flights_actual_times",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     flight_number: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
@@ -19,6 +40,20 @@ class Flight(Base):
     destination: Mapped[str] = mapped_column(String(3), nullable=False, index=True)
     departure_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     arrival_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    weather_severity: Mapped[int] = mapped_column(Integer, default=2, server_default="2")
+    load_factor_pct: Mapped[float] = mapped_column(Float, default=86.0, server_default="86")
+    airport_congestion: Mapped[int] = mapped_column(Integer, default=2, server_default="2")
+    initial_status: Mapped[Literal["AWAITING_SYNC", "CHECKED_IN"]] = mapped_column(
+        String(30), default="AWAITING_SYNC", server_default="AWAITING_SYNC"
+    )
+    operational_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="UNKNOWN", server_default="UNKNOWN"
+    )
+    estimated_departure_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    estimated_arrival_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    actual_departure_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    actual_arrival_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status_reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     terminal: Mapped[str | None] = mapped_column(String(10), nullable=True)
     gate: Mapped[str | None] = mapped_column(String(10), nullable=True)
     aircraft: Mapped[str | None] = mapped_column(String(30), nullable=True)

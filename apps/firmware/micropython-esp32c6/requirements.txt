@@ -1,0 +1,17 @@
+# MicroPython firmware dependencies
+# Install via mpremote or copy directly to device
+
+# Core modules (built into MicroPython firmware):
+# - machine (Pin, SPI, UART)
+# - network (WLAN)
+# - ujson, ubinascii, gc, time
+# - framebuf
+# - urequests (may need separate install)
+
+# External libraries to copy to device:
+# micropython-urequests  (if not in firmware)
+#   mpremote mip install github:micropython/micropython-lib/urequests
+
+# For development/testing on host:
+# micropython-stubs  (type hints)
+# pytest

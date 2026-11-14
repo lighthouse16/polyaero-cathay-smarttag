@@ -16,6 +16,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await init_db()
     except Exception as exc:
+        if not settings.debug:
+            raise
         print(f"[WARN] PostgreSQL not connected ({exc}); running with live in-memory store.")
     yield
 
