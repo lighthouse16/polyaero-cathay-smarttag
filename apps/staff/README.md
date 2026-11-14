@@ -18,7 +18,8 @@ live adapter's source and are not durable or authenticated. Operator identity
 is demo metadata, not authenticated authorization.
 
 The live dashboard defaults to the Cloud Run API and reads the full database
-dataset through `GET /baggage`; it no longer guesses seed tag codes or dates.
+dataset through `GET /baggage/dashboard`; member `GET /baggage` is authenticated
+and must not be used for the staff dataset. It no longer guesses seed tag codes or dates.
 Detail previews use `GET /tags/{tag_code}/display`. Scans and risk updates use
 `POST /baggage/{tag}/scan` and `POST /baggage/{tag}/risk/apply`. A failed write is
 reported as an error, never fake local success. Manual custody scans use
@@ -42,3 +43,15 @@ Jade header/sidebar, ivory two-column workspace, TanStack grid, case tabs, nativ
 ## Release gate
 
 Draft only until screenshot comparison/E2E/accessibility QA and required ChatGPT reviewer approval pass. Monorepo typecheck has existing mobile TS2367 errors (BaggageJourneyScreen); do not suppress them or edit passenger app in this task. Production dependency audit reports existing advisories; triage before release. No production deployment or merge authorized.
+
+## Tap read-after-write rollout
+
+The adapter preserves server `is_tag_synced`, bag ID, status and event IDs through
+snapshot validation. A second uncached fetch sees a newly persisted mobile sync;
+it does not manufacture hardware confirmation. The current staff UI polls every
+five seconds while visible. Existing transfer-model feeder/deadline assumptions
+are unchanged and are not validated by a successful sync acknowledgement.
+
+Deploy the API change first, then the member mobile build, then the protected
+staff deployment. Do not set `STAFF_LIVE_BACKEND=1` on a public portal without a
+staff access boundary. No staff authentication is added by this patch.

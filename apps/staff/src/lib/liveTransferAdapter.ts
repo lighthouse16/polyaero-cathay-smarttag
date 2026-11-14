@@ -36,6 +36,7 @@ export interface BackendBag {
   weight_kg?: number;
   connection_minutes?: number;
   status: string;
+  is_tag_synced?: boolean | null;
   last_known_location?: string;
   carousel_assigned?: string;
   is_rush_bag?: boolean;
@@ -177,6 +178,7 @@ export function buildLiveTransferSnapshot(
       seat_number: b.seat_number || "",
       weight_kg: typeof b.weight_kg === "number" ? b.weight_kg : 22.0,
       status: b.status || "TAGGED",
+      ...(typeof b.is_tag_synced === "boolean" ? { is_tag_synced: b.is_tag_synced } : {}),
       last_known_location: b.last_known_location || "HKG-T1-TRANSFER",
       carousel_assigned: b.carousel_assigned || "",
       is_rush_bag: Boolean(b.is_rush_bag),
