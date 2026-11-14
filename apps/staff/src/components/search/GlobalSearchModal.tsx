@@ -1,15 +1,15 @@
 "use client";
-
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import type { LiveBag } from "../../lib/types";
-import { SearchIcon } from "../icons/DashboardIcons";
-import { formatStatusLabel, isExceptionBag } from "../../lib/utils";
+import { formatStatusLabel } from "../../lib/utils";
+import { ChevronRightIcon, CloseIcon, SearchIcon } from "../icons/DashboardIcons";
+import { HighlightMatch } from "../ui/HighlightMatch";
 
-interface GlobalSearchModalProps {
-  open: boolean;
-  bags: LiveBag[];
-  onClose: () => void;
-  onSelectBag: (tagNumber: string) => void;
+function statusTone(status: string): "action" | "risk" | "track" {
+  const s = (status || "").toUpperCase();
+  if (s === "MISROUTED" || s === "MISSING" || s === "RECOVERY_IN_PROGRESS") return "action";
+  if (s === "IN_TRANSFER" || s === "AWAITING_SYNC") return "risk";
+  return "track";
 }
 
 export function GlobalSearchModal({
@@ -17,302 +17,188 @@ export function GlobalSearchModal({
   bags,
   onClose,
   onSelectBag,
-}: GlobalSearchModalProps) {
+}: {
+  open: boolean;
+  bags: LiveBag[];
+  onClose: () => void;
+  onSelectBag: (tag: string) => void;
+}) {
   const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
+  const [activeIndex, setActiveIndex] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listId = useId();
 
-  const inputId = useId();
-  const listboxId = useId();
-
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return bags;
-    return bags.filter((b) =>
-      `${b.tag_number} ${b.booking_reference} ${b.passenger_name} ${b.flight_number} ${b.arrival_airport}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [bags, query]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query, matches.length]);
+  const matches = bags.filter((b) =>
+    `${b.tag_number} ${b.flight_number} ${b.departure_airport} ${b.arrival_airport}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-
-    if (open) {
-      if (!dialog.open) {
-        previousFocusRef.current = document.activeElement as HTMLElement | null;
-        dialog.showModal();
-      }
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    } else {
+    if (open && !dialog.open) {
+      previousFocus.current = document.activeElement as HTMLElement;
+      dialog.showModal();
+      setActiveIndex(0);
+    }
+    if (!open && dialog.open) {
+      dialog.close();
+      previousFocus.current?.focus();
       setQuery("");
-      if (dialog.open) {
-        dialog.close();
-        previousFocusRef.current?.focus();
-        previousFocusRef.current = null;
-      }
+      setActiveIndex(0);
     }
   }, [open]);
 
-  const handleSelect = (bag: LiveBag) => {
-    onSelectBag(bag.tag_number);
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open || matches.length === 0) return;
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open, matches.length]);
+
+  function choose(tag: string) {
+    // Close search before opening transfer dialog; never stack native dialogs.
+    dialogRef.current?.close();
     onClose();
-  };
+    onSelectBag(tag);
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (matches.length === 0) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % matches.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + matches.length) % matches.length);
-    } else if (e.key === "Enter") {
-      const target = matches[selectedIndex];
-      if (target) {
-        e.preventDefault();
-        handleSelect(target);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % matches.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + matches.length) % matches.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(matches.length - 1);
+    } else if (event.key === "Enter") {
+      const selected = matches[activeIndex];
+      if (selected) {
+        event.preventDefault();
+        choose(selected.tag_number);
       }
     }
-  };
+  }
 
-  const activeBag = matches[selectedIndex];
-  const activeOptionId = activeBag
-    ? `${listboxId}-opt-${activeBag.tag_number}`
-    : undefined;
+  const clampedIndex = matches.length > 0 ? Math.min(activeIndex, matches.length - 1) : -1;
+  const activeOptionId = clampedIndex >= 0 ? `${listId}-opt-${clampedIndex}` : undefined;
 
   return (
     <dialog
+      className="global-search-dialog"
       ref={dialogRef}
-      aria-label="Global Baggage Search"
-      aria-modal="true"
+      aria-labelledby="global-search-title"
       onCancel={(e) => {
         e.preventDefault();
         onClose();
       }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose();
+      }}
     >
-      {open && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
-          }}
-          style={{
-            width: "100vw",
-            height: "100vh",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            paddingTop: "88px",
-            paddingLeft: "16px",
-            paddingRight: "16px",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={handleKeyDown}
-            style={{
-              width: "100%",
-              maxWidth: "560px",
-              backgroundColor: "#FFFFFF",
-              borderRadius: "14px",
-              border: "1px solid #E2E1DB",
-              boxShadow: "0 22px 48px rgba(0, 0, 0, 0.22)",
-              overflow: "hidden",
+      <div className="search-heading">
+        <div>
+          <h2 id="global-search-title">Baggage search</h2>
+          {bags.length > 0 && (
+            <p className="search-subtitle">
+              {query.trim()
+                ? `${matches.length} of ${bags.length} matching records`
+                : `${bags.length} authorized records in snapshot`}
+            </p>
+          )}
+        </div>
+        <button className="icon-button" onClick={onClose} aria-label="Close baggage search">
+          <CloseIcon color="#2D2D2D" size={18} />
+        </button>
+      </div>
+      <div className="modal-search-box">
+        <SearchIcon size={16} color="#66686A" />
+        <input
+          ref={inputRef}
+          autoFocus
+          type="search"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-activedescendant={activeOptionId}
+          aria-autocomplete="list"
+          aria-label="Search full bag tag or flight"
+          placeholder="Search full bag tag or flight"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        {query && (
+          <button
+            type="button"
+            className="clear-field-btn"
+            aria-label="Clear search query"
+            onClick={() => {
+              setQuery("");
+              inputRef.current?.focus();
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px 16px",
-                borderBottom: "1px solid #ECEAE3",
+            <CloseIcon size={13} color="#66686A" />
+          </button>
+        )}
+      </div>
+      <div id={listId} role="listbox" aria-label="Matching baggage records" className="search-results">
+        {matches.map((b, idx) => {
+          const active = idx === clampedIndex;
+          return (
+            <button
+              key={b.tag_number}
+              id={`${listId}-opt-${idx}`}
+              ref={(el) => {
+                optionRefs.current[idx] = el;
               }}
+              role="option"
+              aria-selected={active}
+              data-active={active ? "true" : undefined}
+              onMouseEnter={() => setActiveIndex(idx)}
+              onClick={() => choose(b.tag_number)}
             >
-              <SearchIcon size={17} color="#000000" />
-              <label htmlFor={inputId} className="sr-only">
-                Search baggage by tag, PNR, flight number, or passenger name
-              </label>
-              <input
-                ref={inputRef}
-                id={inputId}
-                type="search"
-                role="combobox"
-                aria-expanded={true}
-                aria-controls={listboxId}
-                aria-activedescendant={activeOptionId}
-                aria-autocomplete="list"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search bag tag, PNR, flight number, or passenger name..."
-                style={{
-                  flex: 1,
-                  border: "none",
-                  outline: "none",
-                  fontSize: "14px",
-                  color: "#000000",
-                  backgroundColor: "transparent",
-                  minHeight: "32px",
-                }}
-              />
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close search dialog"
-                className="focus-ring"
-                style={{
-                  fontSize: "11px",
-                  color: "#000000",
-                  backgroundColor: "#FAF9F5",
-                  padding: "4px 8px",
-                  borderRadius: "5px",
-                  border: "1px solid #E5E2DA",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                ESC
-              </button>
-            </div>
-
-            <div
-              id={listboxId}
-              role="listbox"
-              aria-label="Matching baggage records"
-              style={{ maxHeight: "340px", overflowY: "auto", padding: "8px" }}
-            >
-              {matches.length === 0 ? (
-                <div
-                  style={{
-                    padding: "24px",
-                    textAlign: "center",
-                    fontSize: "13px",
-                    color: "#000000",
-                  }}
-                >
-                  No matching baggage tags found for &ldquo;{query}&rdquo;.
-                </div>
-              ) : (
-                matches.map((bag, idx) => {
-                  const exc = isExceptionBag(bag);
-                  const isActive = idx === selectedIndex;
-                  return (
-                    <button
-                      key={bag.tag_number}
-                      id={`${listboxId}-opt-${bag.tag_number}`}
-                      type="button"
-                      role="option"
-                      aria-selected={isActive}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      onClick={() => handleSelect(bag)}
-                      className="focus-ring"
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "12px",
-                        padding: "10px 12px",
-                        borderRadius: "9px",
-                        border: isActive
-                          ? "1px solid #C8D1CB"
-                          : "1px solid transparent",
-                        backgroundColor: isActive ? "#EFEEE9" : "transparent",
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <div>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          <span
-                            className="tabular-nums"
-                            style={{
-                              fontWeight: 700,
-                              fontSize: "13px",
-                              color: "#000000",
-                            }}
-                          >
-                            {bag.tag_number}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "12.5px",
-                              fontWeight: 600,
-                              color: "#000000",
-                            }}
-                          >
-                            {bag.passenger_name}
-                          </span>
-                        </div>
-                        <div
-                          className="tabular-nums"
-                          style={{
-                            fontSize: "11.5px",
-                            color: "#000000",
-                            marginTop: "2px",
-                          }}
-                        >
-                          {bag.flight_number} ({bag.departure_airport} →{" "}
-                          {bag.arrival_airport}) · PNR {bag.booking_reference}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            padding: "2px 8px",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            backgroundColor: exc ? "#F3F1EC" : "#FAF9F5",
-                            border: `1px solid ${exc ? "#D8D3CB" : "#E5E2DA"}`,
-                            color: "#000000",
-                          }}
-                        >
-                          {formatStatusLabel(bag.status)}
-                        </span>
-                        <span
-                          className="tabular-nums"
-                          style={{
-                            fontWeight: 700,
-                            fontSize: "12px",
-                            color: "#000000",
-                          }}
-                        >
-                          Risk {bag.risk_score}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              <span className="search-result-main">
+                <strong>
+                  <HighlightMatch text={b.tag_number} query={query} />
+                </strong>
+                <span>
+                  <HighlightMatch text={b.flight_number} query={query} /> ·{" "}
+                  <HighlightMatch text={`${b.departure_airport} → ${b.arrival_airport}`} query={query} />
+                </span>
+              </span>
+              <span className="search-result-meta">
+                <span className="status-pill" data-tone={statusTone(b.status)}>
+                  {formatStatusLabel(b.status)}
+                </span>
+                <ChevronRightIcon size={14} className="row-chevron" />
+              </span>
+            </button>
+          );
+        })}
+        {!matches.length && (
+          <p className="table-empty" role="status">
+            No authorized matching baggage records.
+          </p>
+        )}
+      </div>
+      <div className="search-footer-hint" aria-hidden="true">
+        <span>↑↓ Navigate</span>
+        <span>↵ Open workbench</span>
+        <span>Esc Close</span>
+      </div>
     </dialog>
   );
 }

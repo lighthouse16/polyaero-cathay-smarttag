@@ -7,6 +7,7 @@ export interface BaggageEventItem {
   handled_by_staff_id?: string | null;
   scanner_type: string;
   notes?: string;
+  provenance?: OperationalProvenance;
 }
 
 export interface LiveBag {
@@ -51,3 +52,108 @@ export type SidebarView =
   "transfer-control" | "exceptions" | "baggage-trace" | "performance";
 
 export type InvestigationTab = "overview" | "journey" | "smarttag" | "history";
+
+/** Source validity must come from upstream, never a locally invented TTL. */
+export interface OperationalProvenance {
+  system: string;
+  recordId: string;
+  observedAt: string;
+  validUntil: string;
+}
+
+export interface FlightLeg {
+  id: string;
+  flightNumber: string;
+  operatingDate: string;
+  origin: string;
+  destination: string;
+  scheduledDepartureAt: string | null;
+  scheduledArrivalAt: string | null;
+  estimatedDepartureAt: string | null;
+  estimatedArrivalAt: string | null;
+  actualArrivalAt: string | null;
+  provenance: OperationalProvenance;
+}
+
+export interface HandlingDeadline {
+  at: string;
+  kind: "latest_intervention";
+  provenance: OperationalProvenance;
+}
+
+export type TransferAttention = "action_required" | "at_risk" | "on_track" | "unknown";
+
+export interface BagTransferConnection {
+  id: string;
+  bagTag: string;
+  inboundLegId: string;
+  outboundLegId: string;
+  status: "pending" | "transferred" | "missed";
+  attention: TransferAttention;
+  deadline: HandlingDeadline | null;
+  provenance: OperationalProvenance;
+}
+
+export interface FlightRiskAssessment {
+  flightLegId: string;
+  status: "assessed" | "unavailable";
+  score: number | null;
+  modelVersion: string | null;
+  assessedAt: string | null;
+  validUntil: string | null;
+  evidence: OperationalProvenance[];
+  missingInputs: string[];
+}
+
+export interface BagRiskAssessment {
+  bagTag: string;
+  status: "assessed" | "unavailable";
+  score: number | null;
+  modelVersion: string | null;
+  assessedAt: string | null;
+  validUntil: string | null;
+  evidence: OperationalProvenance[];
+  missingInputs: string[];
+}
+
+export interface TransferControlSnapshot {
+  availability: "available" | "unavailable";
+  generatedAt: string;
+  validUntil: string | null;
+  source: string;
+  missingInputs: string[];
+  bags: LiveBag[];
+  legs: FlightLeg[];
+  connections: BagTransferConnection[];
+  flightRisks: FlightRiskAssessment[];
+  bagRisks: BagRiskAssessment[];
+  transferSuccess: null | {
+    successful: number;
+    eligible: number;
+    windowStart: string;
+    windowEnd: string;
+    provenance: OperationalProvenance;
+  };
+}
+
+export interface OutboundFlightSummary {
+  leg: FlightLeg;
+  transferBagCount: number;
+  actionRequiredCount: number;
+  atRiskCount: number;
+  onTrackCount: number;
+  unknownCount: number;
+  earliestActionAt: string | null;
+  riskScore: number | null;
+}
+
+export type InboundConnectionSummary = OutboundFlightSummary;
+
+export interface TransferMetrics {
+  total: number | null;
+  actionRequired: number | null;
+  atRisk: number | null;
+  onTrack: number | null;
+  unknown: number | null;
+  success: number | null;
+}

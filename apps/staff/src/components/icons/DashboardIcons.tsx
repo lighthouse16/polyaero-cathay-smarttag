@@ -28,6 +28,30 @@ export function CathayBrushwingIcon({
   );
 }
 
+export function ArrowLeftIcon({
+  size = 15,
+  color = "currentColor",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
 export function SearchIcon({
   size = 16,
   color = "currentColor",
@@ -498,6 +522,121 @@ export function CloseIcon({
     >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon({
+  size = 14,
+  color = "currentColor",
+  className = "",
+}: {
+  size?: number;
+  color?: string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+export function CopyIcon({
+  size = 14,
+  color = "currentColor",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({
+  size = 14,
+  color = "currentColor",
+  className = "",
+}: {
+  size?: number;
+  color?: string;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M8 16H3v5" />
+    </svg>
+  );
+}
+
+export function SortArrowIcon({
+  direction = "none",
+  size = 12,
+}: {
+  direction?: "asc" | "desc" | "none";
+  size?: number;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {direction === "desc" ? (
+        <path d="M8 3v10M4.5 9.5 8 13l3.5-3.5" />
+      ) : direction === "asc" ? (
+        <path d="M8 13V3M4.5 6.5 8 3l3.5 3.5" />
+      ) : (
+        <>
+          <path d="M5.5 6.5 8 4l2.5 2.5" opacity="0.55" />
+          <path d="M5.5 9.5 8 12l2.5-2.5" opacity="0.55" />
+        </>
+      )}
     </svg>
   );
 }

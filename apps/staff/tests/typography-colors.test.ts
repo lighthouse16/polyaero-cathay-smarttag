@@ -1,106 +1,55 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-
-describe("Strict Black and White Typography Rules", () => {
-  const rootDir = path.resolve(__dirname, "..");
-  const srcDir = path.join(rootDir, "src");
-
-  function getAllSourceFiles(dir: string): string[] {
-    let results: string[] = [];
-    const list = fs.readdirSync(dir);
-    for (const file of list) {
-      const fullPath = path.join(dir, file);
-      const stat = fs.statSync(fullPath);
-      if (stat.isDirectory()) {
-        results = results.concat(getAllSourceFiles(fullPath));
-      } else if (
-        file.endsWith(".tsx") ||
-        (file.endsWith(".ts") && !file.endsWith(".d.ts")) ||
-        file.endsWith(".css")
-      ) {
-        results.push(fullPath);
-      }
-    }
-    return results;
-  }
-
-  it("ensures globals.css text variables are strictly black #000000", () => {
-    const css = fs.readFileSync(path.join(srcDir, "app/globals.css"), "utf-8");
-    expect(css).toContain("--text-primary: #000000;");
-    expect(css).toContain("--text-secondary: #000000;");
-    expect(css).toContain("--text-muted: #000000;");
-    expect(css).toContain("--risk-high-text: #000000;");
-    expect(css).toContain("--risk-med-text: #000000;");
-    expect(css).toContain("--risk-low-text: #000000;");
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { OperationsHeader } from "../src/components/layout/OperationsHeader";
+const root = path.resolve(__dirname, "..", "src");
+const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
+describe("frozen Cathay operational design", () => {
+  it("keeps compact header free of visible operations title and command chip", () => {
+    const html = renderToStaticMarkup(React.createElement(OperationsHeader, { station: "HKG · T1", activeView: "transfer-control", onSelectView: () => {}, onOpenSearch: () => {}, actionRequiredCount: null, onOpenAlerts: () => {} }));
+    expect(html).not.toContain(">Ground Operations<");
+    expect(html).not.toContain("<kbd");
+    expect(html).not.toContain("Ctrl/Cmd+K");
+    expect(html).toContain('aria-keyshortcuts="Control+K Meta+K"');
+    expect(html).toContain('aria-label="Search baggage by bag tag or flight"');
+    expect(read("app/page.tsx")).toContain('event.key.toLowerCase() !== "k"');
   });
-
-  it("ensures BaggageRiskTable CSS status and risk pills use strictly #000000 or #ffffff", () => {
-    const css = fs.readFileSync(
-      path.join(srcDir, "components/transfer/BaggageRiskTable.module.css"),
-      "utf-8",
-    );
-    // Critical risk pill uses white on dark red background
-    expect(css).toMatch(/\.risk-critical\s*\{[^}]*color:\s*#ffffff;/i);
-    // Other pills use black #000000
-    expect(css).toMatch(/\.risk-high\s*\{[^}]*color:\s*#000000;/i);
-    expect(css).toMatch(/\.risk-medium\s*\{[^}]*color:\s*#000000;/i);
-    expect(css).toMatch(/\.risk-low\s*\{[^}]*color:\s*#000000;/i);
-    expect(css).toMatch(/\.status-exception\s*\{[^}]*color:\s*#000000;/i);
-    expect(css).toMatch(/\.status-transfer\s*\{[^}]*color:\s*#000000;/i);
-    expect(css).toMatch(/\.status-ok\s*\{[^}]*color:\s*#000000;/i);
+  it("uses supplied primary roles without borrowing logo-only teal", () => {
+    const css = read("app/globals.css") + read("components/layout/OperationsHeader.module.css") + read("components/investigation/BaggageInvestigationPanel.module.css");
+    expect(css).toContain("--brand-primary-darkcyan-default: #367878");
+    expect(css).toContain("--brand-primary-darkcyan-active: #163230");
+    expect(css).toContain("--brand-primary-darkcyan-light: #F1F4F1");
+    expect(css).toContain("--brand-primary-darkgreen-active: #002527");
+    expect(css).toContain("--brand-secondary-gold-default: #886521");
+    expect(css).toContain("width: 108px");
+    expect(css).toContain("border-bottom: 2px solid var(--brand-primary-darkcyan-active)");
+    expect(css).toContain("outline: 2px solid var(--brand-primary-darkcyan-default)");
+    expect(css.toUpperCase()).not.toContain("#005D63");
   });
-
-  it("ensures all text color declarations across components use strictly black or white", () => {
-    const files = getAllSourceFiles(srcDir);
-    const allowed = new Set([
-      "#000000",
-      "#000",
-      "black",
-      "#ffffff",
-      "#fff",
-      "white",
-      "inherit",
-      "transparent",
-      "currentcolor",
-    ]);
-
-    const violations: { file: string; line: number; match: string }[] = [];
-
-    for (const file of files) {
-      if (file.includes("icons")) continue;
-
-      const relativePath = path.relative(rootDir, file);
-      const content = fs.readFileSync(file, "utf-8");
-      const lines = content.split("\n");
-
-      lines.forEach((line, idx) => {
-        // Skip comments or background-color / border-color lines
-        if (line.includes("background") || line.includes("border")) return;
-
-        // Match color: "#..." or color: #...
-        const colorRegex = /\bcolor\s*:\s*["']?([^"',;}\n]+)["']?/gi;
-        let m: RegExpExecArray | null;
-        while ((m = colorRegex.exec(line)) !== null) {
-          const raw = m[1].trim().toLowerCase();
-          // Allow CSS variables
-          if (raw.startsWith("var(")) continue;
-          // Allow white rgba on dark surfaces
-          if (raw.startsWith("rgba(255, 255, 255,") || raw.startsWith("rgba(255,255,255,")) continue;
-          // Allow black rgba
-          if (raw.startsWith("rgba(0, 0, 0,") || raw.startsWith("rgba(0,0,0,")) continue;
-
-          if (!allowed.has(raw)) {
-            violations.push({
-              file: relativePath,
-              line: idx + 1,
-              match: m[0],
-            });
-          }
-        }
-      });
-    }
-
-    expect(violations).toEqual([]);
+  it("uses local Cathay type and required neutral text tokens", () => {
+    const css = read("app/globals.css");
+    expect(css).toContain('font-family: "Cathay Sans EN"');
+    expect(css).toContain("--text-primary: #2D2D2D");
+    expect(css).toContain("--text-secondary: #66686A");
+    expect(css).toContain("border-radius: 14px");
+    expect(css).toContain("--workspace-bg: #F9F9F9");
+    expect(read("app/layout.tsx")).not.toContain("next/font/google");
+  });
+  it("header white, three stable nav labels and real official logo", () => {
+    const header = read("components/layout/OperationsHeader.tsx");
+    const css = read("components/layout/OperationsHeader.module.css");
+    for (const label of ["Transfer Control", "Baggage Trace", "Performance"]) expect(header).toContain(label);
+    expect(header).toContain("/cathay/cathay-en.svg");
+    expect(css.toLowerCase()).toContain("#ffffff");
+    expect(header).not.toContain("STF-8821");
+    expect(header).not.toContain("Reset Demo");
+  });
+  it("new operational surfaces use no pastel/gradient/icon-bubble styling", () => {
+    const css = read("app/globals.css") + read("components/investigation/BaggageInvestigationPanel.module.css");
+    for (const forbidden of ["#F3F1EC", "#EFEEE9", "glassmorphism", "radial-gradient", "backdrop-filter"]) expect(css).not.toContain(forbidden);
+    const workbench = read("components/transfer/FlightWorkbench.tsx");
+    expect(workbench).not.toMatch(/Approve Recovery|Dispatch|Allocate team|Recommended action|stepper/i);
   });
 });
