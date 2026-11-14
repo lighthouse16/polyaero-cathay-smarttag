@@ -654,6 +654,97 @@ def test_idle_activation_timeout_resets_pending_target_before_next_command(monke
     assert reset_values.count(0) == 3
 
 
+def test_pa1_readback_completion_exits_listen_without_waiting_for_rf_drop(monkeypatch):
+    install_clock(monkeypatch)
+    message = bridge_record(sync_id="fast-exit")
+    commands = [
+        b'\x80\x10\x00\x00\x00',
+        b'\x00\xa4\x00\x0c\x02\xe1\x04',
+        b'\x00\xd6\x00\x00\x02\x00\x00',
+    ]
+    for offset in range(2, len(message), 48):
+        chunk = message[offset:offset + 48]
+        commands.append(bytes([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
+    commands.extend([b'\x00\xd6\x00\x00\x02' + message[:2], b'\x80\x11\x00\x00\x00'])
+    for offset in range(0, len(message), 48):
+        commands.append(bytes([0, 0xB0, offset >> 8, offset & 255, min(48, len(message) - offset)]))
+    expected_tg_get_count = len(commands)
+    extra_poll_seen = [False]
+
+    def respond(command, _):
+        if command == 2:
+            return b'\x32\x01\x06\x07'
+        if command in (0x12, 0x14):
+            return b''
+        if command == 0x8C:
+            return b'\x08\x00\xa4\x04\x00\x07\xd2\x76\x00\x00\x85\x01\x01\x00'
+        if command == 0x86:
+            if not commands:
+                extra_poll_seen[0] = True
+                return False
+            return b'\x00' + commands.pop(0)
+        return b'\x00'
+
+    uart = ScriptedUART(respond)
+    nfc = PN532_UART(uart)
+    nfc.initialize()
+    target = NfcTarget(nfc, refresh_display=lambda _: None)
+    target.configure()
+
+    assert target.listen()[:len(message)] == message
+    assert target.readback_completed is True
+    assert not extra_poll_seen[0]
+    assert uart.commands.count(0x86) == expected_tg_get_count
+
+
+def test_deferred_epd_refresh_runs_after_nfc_session_when_panel_has_cs(monkeypatch):
+    install_clock(monkeypatch)
+    monkeypatch.setattr(sys.modules["machine"], "reset", lambda: None, raising=False)
+    spec = importlib.util.spec_from_file_location(
+        "smarttag_firmware_main", Path(__file__).parent.parent / "main.py")
+    firmware = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(firmware)
+
+    events = []
+    panel = SimpleNamespace(
+        cs=object(),
+        buffer_1Gray=bytearray(15000),
+        init=lambda: events.append("init"),
+        EPD_4IN2_V2_Display=lambda _: events.append("full"),
+        EPD_4IN2_V2_PartialDisplay=lambda _: events.append("partial"),
+    )
+
+    class TwoPhaseTarget(NfcTarget):
+        calls = 0
+
+        def listen(self, session_ms):
+            TwoPhaseTarget.calls += 1
+            if TwoPhaseTarget.calls == 1:
+                events.append("nfc-start")
+                write_bridge(self, bridge_record(sync_id="deferred-write"))
+                events.append(f"receipt:{self.refresh_receipt}")
+                return self.ndef_file
+            events.append("next-listen")
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(firmware, "PN532_UART", lambda *args, **kwargs: FakeNfc())
+    monkeypatch.setattr(firmware, "EPD_4in2", lambda: panel)
+    monkeypatch.setattr(firmware, "PortraitCanvas", lambda _: MockCanvas())
+    monkeypatch.setattr(firmware, "NfcTarget", TwoPhaseTarget)
+
+    with pytest.raises(KeyboardInterrupt):
+        firmware.main()
+
+    assert events == [
+        "init",
+        "full",
+        "nfc-start",
+        "receipt:deferred-write",
+        "partial",
+        "next-listen",
+    ]
+
+
 if __name__ == "__main__":
     test_itf_encoding()
     test_itf_horizontal_dimensions()

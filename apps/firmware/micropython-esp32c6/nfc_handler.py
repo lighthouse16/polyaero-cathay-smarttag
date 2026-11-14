@@ -70,6 +70,7 @@ class NfcTarget:
         self.refresh_attempted = False
         self.refresh_receipt = None
         self.pa1_session = False
+        self.readback_completed = False
         self.current_file = 0xE103
 
     def configure(self):
@@ -119,6 +120,8 @@ class NfcTarget:
                     self._process_apdu(req[1:])
                     if self.write_completed and not self.refresh_attempted and not self.pa1_session:
                         self._refresh_display()
+                    if self.readback_completed:
+                        break
 
             if self.wrote_payload and not self.refresh_attempted:
                 self._refresh_display()
@@ -216,6 +219,10 @@ class NfcTarget:
                 data = self.ndef_file[offset:offset + le]
             res = bytearray(data) + bytearray([0x90, 0x00])
             self._respond_raw(res)
+            if self.current_file == 0xE104 and self.write_completed:
+                nlen = (self.ndef_file[0] << 8) | self.ndef_file[1]
+                if nlen and offset + le >= 2 + nlen:
+                    self.readback_completed = True
 
         # 3. UPDATE BINARY (00 D6 ...) - supports multi-packet writes
         elif len(apdu) >= 5 and apdu[0] == 0x00 and apdu[1] == 0xD6:
