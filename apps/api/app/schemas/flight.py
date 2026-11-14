@@ -9,12 +9,17 @@ TripType = Literal["RETURN", "ONE_WAY", "MULTI_CITY"]
 OperationalStatus = Literal[
     "UNKNOWN", "SCHEDULED", "DELAYED", "BOARDING", "DEPARTED", "ARRIVED", "CANCELLED"
 ]
+InitialBaggageStatus = Literal["AWAITING_SYNC", "CHECKED_IN"]
 
 
 class FlightStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operational_status: OperationalStatus
+    weather_severity: int = Field(default=2, ge=1, le=5)
+    load_factor_pct: float = Field(default=86.0, ge=0, le=100, allow_inf_nan=False)
+    airport_congestion: int = Field(default=2, ge=1, le=5)
+    initial_status: InitialBaggageStatus = "AWAITING_SYNC"
     estimated_departure_time: AwareDatetime | None = None
     estimated_arrival_time: AwareDatetime | None = None
     actual_departure_time: AwareDatetime | None = None
@@ -33,6 +38,11 @@ class FlightStatusUpdate(BaseModel):
         return self
 
 
+class CabinAvailability(BaseModel):
+    seats_available: int
+    price: float
+
+
 class FlightStatusRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +53,14 @@ class FlightStatusRead(BaseModel):
     departure_time: datetime
     arrival_time: datetime
     operational_status: OperationalStatus
+    weather_severity: int
+    load_factor_pct: float
+    airport_congestion: int
+    initial_status: InitialBaggageStatus
+    aircraft: str | None
+    is_connecting: bool
+    connecting_carrier: str | None
+    cabins: dict[str, CabinAvailability]
     estimated_departure_time: datetime | None
     estimated_arrival_time: datetime | None
     actual_departure_time: datetime | None
@@ -53,11 +71,6 @@ class FlightStatusRead(BaseModel):
     source: Literal["STAFF_REPORTED_DATABASE"] = "STAFF_REPORTED_DATABASE"
 
 
-class CabinAvailability(BaseModel):
-    seats_available: int
-    price: float
-
-
 class FlightOption(BaseModel):
     id: UUID
     flight_number: str
@@ -65,6 +78,10 @@ class FlightOption(BaseModel):
     destination_code: str
     departure_time: datetime
     arrival_time: datetime
+    weather_severity: int
+    load_factor_pct: float
+    airport_congestion: int
+    initial_status: InitialBaggageStatus
     terminal: str | None
     gate: str | None
     aircraft: str | None

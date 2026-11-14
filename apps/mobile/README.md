@@ -3,7 +3,7 @@
 The app uses the FastAPI backend for sign-in (password or email OTP), flight
 search, booking creation, trip tabs, PNR import, SmartTag preparation status,
 staff-reported flight status, and prototype boarding passes.
-Existing baggage/NFC bridge requests use the same API URL.
+Baggage/NFC bridge requests use the same API URL and authenticated session.
 
 ## Local API
 
@@ -78,6 +78,10 @@ using Metro only needs a Metro restart.
   protected API. It shows actual booking details and is prominently marked
   **PROTOTYPE - NOT VALID FOR BOARDING**. No real airline pass, assigned seat,
   boarding barcode, or check-in flow is provided.
+- Baggage reads and sync require a registered, active tag owned by the signed-in
+  member. Flight conditions come from the shared flight record, not the phone.
+  The flight's initial baggage status is a default, not proof of NFC refresh;
+  the bridge sends sync confirmation separately.
 - Tokens are held in memory and automatically refreshed after an expired
   access token. Closing/reloading the app requires signing in again. Logout
   clears local tokens and requests server revocation.

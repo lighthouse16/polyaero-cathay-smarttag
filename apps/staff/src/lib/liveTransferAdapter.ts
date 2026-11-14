@@ -299,7 +299,7 @@ export async function fetchLiveTransferSnapshot(
     typeof signalOrBase === "string" && signalOrBase.trim()
       ? signalOrBase.trim().replace(/\/$/, "")
       : getLiveApiBase();
-  const baggageRes = await fetch(`${cleanBase}/baggage`, {
+  const baggageRes = await fetch(`${cleanBase}/baggage/dashboard`, {
     cache: "no-store",
     ...(signal ? { signal } : {}),
   });

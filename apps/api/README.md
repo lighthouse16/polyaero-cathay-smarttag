@@ -89,6 +89,45 @@ Run `uv run alembic upgrade head` before deploying this version. Existing and
 seeded flights start at `UNKNOWN`, with no staff report timestamp. Status comes
 from our database, **not a live airline feed**.
 
+`flights` is the shared flight catalogue. Alongside route, schedule, cabin
+availability, and operational status, it stores `weather_severity` (1-5),
+`load_factor_pct` (0-100), `airport_congestion` (1-5), and `initial_status`
+(`AWAITING_SYNC` or `CHECKED_IN`). These defaults are 2, 86.0, 2, and
+`AWAITING_SYNC`. Search/status/upcoming responses expose these shared values;
+staff may update them through the existing protected flight-status PATCH.
+
+Bookings already reference `flights.id`. Baggage now has a required `flight_id`
+foreign key instead of duplicate flight number/route/departure columns.
+Connection minutes stay on baggage because each passenger's connection can
+differ. Changing flight conditions affects baggage reads and risk inputs without
+copying updates into each bag. The flight's `initial_status` is only a starting
+baggage default; it never proves NFC sync or replaces an existing bag milestone.
+
+Back up existing data before running `uv run alembic upgrade head`. Migration
+`b6c7d8e9f0a1` links legacy baggage using a matching tag booking, or an exact
+unique number/route/departure match for bags without a linked booking. Missing,
+ambiguous, or conflicting identities stop the migration and roll it back rather
+than guessing. Correct those legacy rows before retrying. Downgrade reconstructs
+the old baggage flight fields from the shared catalogue.
+
+Member `GET /baggage`, `GET /baggage/{identifier}`, and `POST /baggage/sync`
+require bearer authentication and enforce ownership; private responses are
+not cached. Sync requires a registered active owned tag and uses its booking's
+flight, or an explicit `flight_id` for an owned unbooked tag. Legacy
+number/route/departure selectors are accepted only when unambiguous. Pass
+`sync_status: "TAGGED"` or `"SYNCHRONIZED"` only after the client confirms sync;
+the old `initial_status` request name remains an alias for compatibility, not
+the source of flight defaults. Do not send weather/load/congestion overrides
+to baggage sync: they are rejected. No new physical-refresh verification is
+implemented here.
+
+- `GET /api/v1/flights/upcoming` is public and returns all flights whose scheduled
+  departure is now or later (UTC), ordered by departure time and then flight ID.
+  Cancelled/departed/arrived flights and flights with actual departure/arrival
+  timestamps are excluded. Estimated times do not change eligibility: a delayed
+  flight with a past scheduled departure is not included. The response is an
+  unpaginated array of the same flight details as the status endpoint below;
+  no matches returns `[]`.
 - `GET /api/v1/flights/status?flight_number=CX255&departure_date=2026-11-14`
   is public and returns all matching flights on their scheduled UTC departure
   date. No match returns an empty list. Responses include scheduled, estimated,
@@ -183,19 +222,21 @@ are sent. Remove the environment variable afterward. Reruns never reset member
 passwords. Refresh tokens, verification codes, and WebAuthn credentials are
 intentionally left to genuine authentication flows.
 
-**Dashboard:** `/api/v1/baggage` lists PostgreSQL baggage rows, including all ten
-seeded bags; the two spare tags are inventory, not baggage. It no longer appends
-the two hardcoded demo bags. Detail accepts a baggage UUID, tag code, tag UUID or
-barcode. Scan, sync, risk and passenger recovery updates persist in PostgreSQL.
-Shared NFC/app events also update the baggage status, so tag display and the
-dashboard stay consistent. Unregistered tags return 404 instead of demo data.
+**Dashboard/member boundary:** `/api/v1/baggage` and its detail route require
+member authentication and return only baggage owned through the member's booking
+or tag. The staff dashboard's separate `/api/v1/baggage/dashboard` routes provide
+the persisted all-baggage view consumed by the staff application; deployments
+must restrict those dashboard and staff-operation routes to trusted staff access.
+Member responses use `Cache-Control: no-store`.
 
-Risk assessments, predicted carousel assignments and recovery details are stored
-in `baggage.operational_data`. Unassessed seed bags have no risk score or carousel
-assignment; these are not fabricated from status. Run `alembic upgrade head`
-before deploying this API version. The additive migration preserves existing
-seed rows; no reseeding is required. `/baggage/reset` returns 409 rather than
-deleting persistent records. Empty databases return an empty list.
+The staff dashboard includes PostgreSQL baggage rows, including all ten seeded
+bags; spare tags are inventory, not baggage. Scan, risk and passenger recovery
+updates persist in PostgreSQL, and shared NFC/app events update the baggage
+status. Risk assessments, predicted carousel assignments and recovery details
+are stored in `baggage.operational_data`. Unassessed seed bags have no risk score
+or carousel assignment. Run `alembic upgrade head` before deploying this API
+version. The additive migration preserves existing seed rows; no reseeding is
+required. `/baggage/reset` returns 409 rather than deleting persistent records.
 
 Seed integration tests use real PostgreSQL in a fresh randomly named schema per
 test, removed afterward. They never use the application's `DATABASE_URL`.
@@ -273,8 +314,10 @@ apps/api/
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | /health | Health check |
-| GET | /api/v1/baggage | List PostgreSQL baggage |
+| GET | /api/v1/baggage | List the authenticated member's PostgreSQL baggage |
 | GET | /api/v1/baggage/{identifier} | Get baggage by UUID, tag code or barcode |
+| GET | /api/v1/baggage/dashboard | Staff dashboard baggage listing |
+| GET | /api/v1/baggage/dashboard/{identifier} | Staff dashboard baggage detail |
 | POST | /api/v1/baggage/sync | Sync a registered tag with a booked itinerary |
 | POST | /api/v1/baggage/{identifier}/scan | Persist a milestone and event |
 | POST | /api/v1/baggage/{identifier}/risk/apply | Persist a model risk assessment |
@@ -299,12 +342,11 @@ apps/api/
 ### baggage
 - `id` (UUID, PK)
 - `passenger_name` (String)
-- `flight_number` (String, indexed)
-- `departure_airport` (String, 3 chars)
-- `arrival_airport` (String, 3 chars)
-- `departure_time` (DateTime)
+- `flight_id` (UUID, FK to flights, indexed)
 - `seat_number` (String, nullable)
-- `status` (String, default: 'checked_in')
+- `status` (String)
+- `connection_minutes` (Integer, non-negative)
+- `operational_data` (JSONB)
 - `tag_id` (UUID, FK to tags, nullable, indexed)
 - `created_at`, `updated_at` (DateTime)
 

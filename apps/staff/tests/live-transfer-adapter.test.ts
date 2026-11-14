@@ -43,7 +43,7 @@ describe("persistent baggage integration", () => {
     const snapshot = await fetchLiveTransferSnapshot(base);
     expect(snapshot.bags).toHaveLength(11);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(`${base}/baggage`, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith(`${base}/baggage/dashboard`, { cache: "no-store" });
   });
 
   it("passes cancellation to the baggage request", async () => {

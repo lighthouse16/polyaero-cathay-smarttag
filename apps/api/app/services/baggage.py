@@ -6,7 +6,9 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.baggage import BaggageEvent, Tag
+from app.models.baggage import Baggage, BaggageEvent, Tag
+from app.models.booking import Booking
+from app.models.flight import Flight
 
 # SYNCHRONIZED / TAG_TAPPED are events, not baggage milestones.
 MILESTONES = {
@@ -97,19 +99,27 @@ async def record_event(
     from app.services.dashboard_baggage import ensure_baggage
 
     status = normalize_status(event_type)
-    bag = await ensure_baggage(db, tag)
+    baggage = await ensure_baggage(db, tag)
+    if baggage is not None and tag.booking_id is not None:
+        booking = await db.get(Booking, tag.booking_id)
+        if booking is not None and baggage.flight_id != booking.flight_id:
+            flight = await db.get(Flight, booking.flight_id)
+            if flight is not None:
+                baggage.flight_id = flight.id
+                if baggage.status.upper() in {"AWAITING_SYNC", "CHECKED_IN", "UNLINKED"}:
+                    baggage.status = flight.initial_status
     now = datetime.now(UTC)
     if status in MILESTONES:
         tag.tag_status = status
-        if bag is not None:
-            bag.status = status
-            bag.operational_data = {
-                key: value for key, value in (bag.operational_data or {}).items()
+        if baggage is not None:
+            baggage.status = status
+            baggage.operational_data = {
+                key: value for key, value in (baggage.operational_data or {}).items()
                 if key != "eink_banner"
             }
     tag.updated_at = now
-    if bag is not None:
-        bag.updated_at = now
+    if baggage is not None:
+        baggage.updated_at = now
     event = BaggageEvent(
         tag_id=tag.id,
         booking_id=booking_id or tag.booking_id,
