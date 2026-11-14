@@ -56,7 +56,10 @@
   --text-primary: #2D2D2D;
   --text-secondary: #66686A;
   --text-muted: #66686A;
-  --cathay-jade: #163230;
+  /* Supplied Cathay primary palette: default and active, not logo teal. */
+  --brand-primary-darkcyan-default: #367878;
+  --brand-primary-darkcyan-active: #163230;
+  --cathay-jade: var(--brand-primary-darkcyan-default);
   --shadow-card: 0 1px 3px rgb(45 45 45 / 4%), 0 1px 2px rgb(45 45 45 / 2%);
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -129,7 +132,7 @@ dialog::backdrop { background: rgb(45 45 45 / 32%); }
 .connections-pane > .operational-scroll, .bags-pane > .operational-scroll { flex: 1; }
 .connection-selector { overflow: auto; padding: 0 12px 12px; min-height: 0; }
 .connection-selector > button { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; padding: 14px 12px; border: 1px solid var(--border-hairline); border-radius: 10px; margin-bottom: 8px; background: white; font-size: 11px; }
-.connection-selector > button[aria-pressed="true"] { border-color: #163230; box-shadow: inset 3px 0 #163230; background: #F9F9F9; }
+.connection-selector > button[aria-pressed="true"] { border-color: var(--brand-primary-darkcyan-active); box-shadow: inset 3px 0 var(--brand-primary-darkcyan-active); background: #F9F9F9; }
 .connection-selector strong { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 15px; }
 .connection-selector strong span { font-size: 11px; font-weight: 400; }
 .connection-selector button > span { color: var(--text-secondary); }

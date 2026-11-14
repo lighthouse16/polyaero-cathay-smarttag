@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import type { SidebarView } from "../../lib/types";
 import { formatHongKongClock } from "../../lib/utils";
@@ -60,7 +60,6 @@ export function OperationsHeader({
           className={styles.logo}
           priority
         />
-        <span className={styles.title}>Ground Operations</span>
       </div>
 
       <nav className={styles.navigation} aria-label="Ground Operations">
@@ -85,11 +84,10 @@ export function OperationsHeader({
           onClick={onOpenSearch}
           aria-label="Search baggage by bag tag or flight"
           aria-keyshortcuts="Control+K Meta+K"
-          title="Search baggage (Ctrl/Cmd+K)"
+          title="Search baggage"
         >
           <SearchIcon size={16} color="#2D2D2D" />
           <span className={styles.searchLabel}>Search bag or flight</span>
-          <kbd className={styles.shortcut}>Ctrl/⌘ K</kbd>
         </button>
         <div className={styles.station}>
           <span>{station}</span>

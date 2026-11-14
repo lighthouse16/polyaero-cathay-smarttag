@@ -1,9 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { OperationsHeader } from "../src/components/layout/OperationsHeader";
 const root = path.resolve(__dirname, "..", "src");
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 describe("frozen Cathay operational design", () => {
+  it("keeps compact header free of visible operations title and command chip", () => {
+    const html = renderToStaticMarkup(React.createElement(OperationsHeader, { station: "HKG · T1", activeView: "transfer-control", onSelectView: () => {}, onOpenSearch: () => {}, actionRequiredCount: null, onOpenAlerts: () => {} }));
+    expect(html).not.toContain(">Ground Operations<");
+    expect(html).not.toContain("<kbd");
+    expect(html).not.toContain("Ctrl/Cmd+K");
+    expect(html).toContain('aria-keyshortcuts="Control+K Meta+K"');
+    expect(html).toContain('aria-label="Search baggage by bag tag or flight"');
+    expect(read("app/page.tsx")).toContain('event.key.toLowerCase() !== "k"');
+  });
+  it("uses supplied primary roles without borrowing logo-only teal", () => {
+    const css = read("app/globals.css") + read("components/layout/OperationsHeader.module.css") + read("components/investigation/BaggageInvestigationPanel.module.css");
+    expect(css).toContain("--brand-primary-darkcyan-default: #367878");
+    expect(css).toContain("--brand-primary-darkcyan-active: #163230");
+    expect(css).toContain("border-bottom: 2px solid var(--brand-primary-darkcyan-active)");
+    expect(css).toContain("outline: 2px solid var(--brand-primary-darkcyan-default)");
+    expect(css.toUpperCase()).not.toContain("#005D63");
+  });
   it("uses local Cathay type and required neutral text tokens", () => {
     const css = read("app/globals.css");
     expect(css).toContain('font-family: "Cathay Sans EN"');

@@ -100,7 +100,7 @@
 
 .tabs button[aria-selected="true"] {
   font-weight: 700;
-  border-bottom-color: #163230;
+  border-bottom-color: var(--brand-primary-darkcyan-active);
 }
 
 .inspector button:focus-visible,
