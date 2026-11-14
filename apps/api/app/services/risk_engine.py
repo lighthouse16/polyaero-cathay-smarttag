@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-
 import joblib
 import pandas as pd
 from pydantic import BaseModel
 
 ARTIFACT_PATH = Path(__file__).resolve().parent.parent.parent / "artifacts" / "cathay_bag_risk_bundle.joblib"
+
+
+def mask_bag_tag(tag_number: str) -> str:
+    clean = (tag_number or "").strip()
+    if len(clean) <= 6:
+        return clean
+    return f"{clean[:4]}••••{clean[-2:]}"
 
 
 class FlightRiskFeatures(BaseModel):
@@ -22,14 +28,17 @@ class FlightRiskFeatures(BaseModel):
     dest_flight_frequency_pct: float = 20.0
     historical_route_delay_rate: float = 0.22
     transfer_bag_count: int = 1
+    transfer_scan_detected: bool = False
 
 
 class FlightRiskAssessment(BaseModel):
     model_version: str
     risk_score: int
-    risk_level: str
+    risk_level: str                  # ON_TRACK | AT_RISK | ACTION_REQUIRED
     priority_sequence: int
+    time_to_act_mins: int
     recommended_action: str
+    expected_outcome: str
     passenger_summary: str
     predicted_arrival_time: str
     carousel_estimate: str
@@ -57,10 +66,12 @@ class FeederFlightPriority(BaseModel):
     origin: str
     transfer_bag_count: int
     risk_score: int
+    time_to_act_mins: int
     expected_missed_bags: float
     priority_index: float
     dispatch_mode: str
     recommended_action: str
+    expected_outcome: str
     effective_buffer_mins: int
     bhs_transfer_mins: float
 
@@ -80,30 +91,37 @@ class BaggageRiskModelInterface(ABC):
         ...
 
 
-def compute_priority_metrics(
+def compute_copilot_decision(
     bag_count: int,
     miss_prob: float,
     effective_buffer: float,
+    bhs_transfer_mins: float,
     dest_freq_pct: float,
-) -> tuple[float, float, str, str]:
+) -> tuple[float, float, int, str, str, str]:
     expected_missed = round(bag_count * miss_prob, 1)
     scarcity_mult = 1.0 + 0.5 * (1.0 - max(0.0, min(100.0, dest_freq_pct)) / 100.0)
 
-    if effective_buffer < 10:
+    # Time to Act = remaining slack before manual intercept misses the 15-min loading cutoff
+    time_to_act = max(2, int(round(effective_buffer - 18)))
+
+    if effective_buffer < 12:
         recoverability = 0.35
         mode = "AUTO_REBOOK_DIGITAL_RECOVERY"
-        action = "Auto-Trigger Express Rebook / Hotel Delivery on Passenger App"
-    elif effective_buffer <= 50:
+        action = "Trigger proactive next-flight rebooking & passenger alert"
+        outcome = "Bag automatically routed to next available departure with zero counter queue."
+    elif effective_buffer <= 52 or miss_prob >= 0.45:
         recoverability = 1.25
         mode = "TAIL_TO_TAIL_RAMP_VAN"
-        action = "Dispatch Dedicated Tail-to-Tail Ramp Transfer Van"
+        action = "Prioritise manual baggage transfer"
+        outcome = "Bag can reach the onward-flight loading cutoff."
     else:
         recoverability = 0.85
         mode = "PRIORITY_BHS_CHUTE"
-        action = "Route via High-Speed Priority BHS Chute"
+        action = "Continue automated BHS transfer monitoring"
+        outcome = f"Expected to clear HKG BHS in ~{int(round(bhs_transfer_mins))} min well ahead of cutoff."
 
     priority_index = round(expected_missed * scarcity_mult * recoverability, 1)
-    return expected_missed, priority_index, mode, action
+    return expected_missed, priority_index, time_to_act, mode, action, outcome
 
 
 class HeuristicBaselineRiskModel(BaggageRiskModelInterface):
@@ -115,21 +133,14 @@ class HeuristicBaselineRiskModel(BaggageRiskModelInterface):
         eff_buf = features.transfer_minutes - max(0, features.inbound_delay_mins)
         raw = 25 + max(0, 65 - eff_buf) + (features.weather_severity - 1) * 9 + (features.airport_congestion - 1) * 6
         score = max(5, min(98, int(raw)))
-        exp_missed, p_idx, mode, action = compute_priority_metrics(
-            features.transfer_bag_count, score / 100.0, eff_buf, features.dest_flight_frequency_pct
+        exp_missed, p_idx, time_to_act, mode, action, outcome = compute_copilot_decision(
+            features.transfer_bag_count, score / 100.0, eff_buf, 26.0, features.dest_flight_frequency_pct
         )
         eta_str = (datetime.now(UTC) + timedelta(hours=4, minutes=20)).strftime("%d %b, %H:%M Local")
+        reasons = _build_plain_reasons(features.inbound_delay_mins, eff_buf, features.transfer_scan_detected, features.weather_severity)
         return _format_assessment(
-            self.model_version,
-            score,
-            eta_str,
-            "Belt 7",
-            [f"Effective buffer: {eff_buf} mins", f"Weather index: {features.weather_severity}/5"],
-            features.flight_number,
-            exp_missed,
-            p_idx,
-            mode,
-            action,
+            self.model_version, score, time_to_act, eta_str, "Belt 7", reasons,
+            features.flight_number, exp_missed, p_idx, mode, action, outcome
         )
 
     def rank_feeders(self, outbound_flight: str, feeders: list[FeederFlightInput]) -> list[FeederFlightPriority]:
@@ -137,8 +148,8 @@ class HeuristicBaselineRiskModel(BaggageRiskModelInterface):
         for f in feeders:
             eff_buf = f.scheduled_transfer_mins - max(0, f.inbound_delay_mins)
             score = max(5, min(98, int(30 + max(0, 65 - eff_buf) + (f.weather_impact_score - 1) * 8)))
-            exp_missed, p_idx, mode, action = compute_priority_metrics(
-                f.transfer_bag_count, score / 100.0, eff_buf, f.dest_flight_frequency_pct
+            exp_missed, p_idx, time_to_act, mode, action, outcome = compute_copilot_decision(
+                f.transfer_bag_count, score / 100.0, eff_buf, 28.0, f.dest_flight_frequency_pct
             )
             results.append(
                 FeederFlightPriority(
@@ -146,10 +157,12 @@ class HeuristicBaselineRiskModel(BaggageRiskModelInterface):
                     origin=f.origin,
                     transfer_bag_count=f.transfer_bag_count,
                     risk_score=score,
+                    time_to_act_mins=time_to_act,
                     expected_missed_bags=exp_missed,
                     priority_index=p_idx,
                     dispatch_mode=mode,
                     recommended_action=action,
+                    expected_outcome=outcome,
                     effective_buffer_mins=eff_buf,
                     bhs_transfer_mins=28.0,
                 )
@@ -166,7 +179,6 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
         self.clf = bundle["classifier"]
         self.reg = bundle["regressor"]
         self.feature_cols = bundle["features"]
-        self.schema = bundle.get("schema", "hkg-hub-feeder-v3")
 
     @property
     def model_version(self) -> str:
@@ -175,7 +187,7 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
     def predict(self, features: FlightRiskFeatures) -> FlightRiskAssessment:
         inferred_delay = features.inbound_delay_mins
         if inferred_delay == 0 and features.transfer_minutes < 55:
-            inferred_delay = max(0, 60 - features.transfer_minutes)
+            inferred_delay = max(0, 62 - features.transfer_minutes)
 
         row = pd.DataFrame([{
             "inbound_delay_mins": inferred_delay,
@@ -187,12 +199,12 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
         }])[self.feature_cols]
 
         prob = float(self.clf.predict_proba(row)[0, 1])
-        score = max(2, min(98, int(round(prob * 100))))
+        score = max(4, min(98, int(round(prob * 100))))
         bhs_mins = float(self.reg.predict(row)[0])
 
         eff_buf = features.transfer_minutes - max(0, inferred_delay)
-        exp_missed, p_idx, mode, action = compute_priority_metrics(
-            features.transfer_bag_count, prob, eff_buf, features.dest_flight_frequency_pct
+        exp_missed, p_idx, time_to_act, mode, action, outcome = compute_copilot_decision(
+            features.transfer_bag_count, prob, eff_buf, bhs_mins, features.dest_flight_frequency_pct
         )
 
         route_mins = {
@@ -207,23 +219,10 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
         eta_str = eta_dt.strftime("%d %b, %H:%M Local")
         carousel = "Belt 7" if features.destination.upper() in {"HND", "NRT"} else "Belt 4"
 
-        factors = [
-            f"Inbound delay: {inferred_delay} mins | Transfer window: {features.transfer_minutes} mins",
-            f"Airport weather index: {features.weather_severity}/5 | Congestion: {features.airport_congestion}/5",
-            f"HKG->{features.destination.upper()} frequency share: {features.dest_flight_frequency_pct:.0f}%",
-            f"Predicted HKG BHS transfer time: {bhs_mins:.0f} mins",
-        ]
+        reasons = _build_plain_reasons(inferred_delay, eff_buf, features.transfer_scan_detected, features.weather_severity)
         return _format_assessment(
-            self.model_version,
-            score,
-            eta_str,
-            carousel,
-            factors,
-            features.flight_number,
-            exp_missed,
-            p_idx,
-            mode,
-            action,
+            self.model_version, score, time_to_act, eta_str, carousel, reasons,
+            features.flight_number, exp_missed, p_idx, mode, action, outcome
         )
 
     def rank_feeders(self, outbound_flight: str, feeders: list[FeederFlightInput]) -> list[FeederFlightPriority]:
@@ -248,9 +247,9 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
         results: list[FeederFlightPriority] = []
         for f, prob, bhs_mins in zip(feeders, probs, bhs_times):
             eff_buf = f.scheduled_transfer_mins - max(0, f.inbound_delay_mins)
-            score = max(2, min(98, int(round(float(prob) * 100))))
-            exp_missed, p_idx, mode, action = compute_priority_metrics(
-                f.transfer_bag_count, float(prob), eff_buf, f.dest_flight_frequency_pct
+            score = max(4, min(98, int(round(float(prob) * 100))))
+            exp_missed, p_idx, time_to_act, mode, action, outcome = compute_copilot_decision(
+                f.transfer_bag_count, float(prob), eff_buf, float(bhs_mins), f.dest_flight_frequency_pct
             )
             results.append(
                 FeederFlightPriority(
@@ -258,10 +257,12 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
                     origin=f.origin,
                     transfer_bag_count=f.transfer_bag_count,
                     risk_score=score,
+                    time_to_act_mins=time_to_act,
                     expected_missed_bags=exp_missed,
                     priority_index=p_idx,
                     dispatch_mode=mode,
                     recommended_action=action,
+                    expected_outcome=outcome,
                     effective_buffer_mins=eff_buf,
                     bhs_transfer_mins=round(float(bhs_mins), 1),
                 )
@@ -273,9 +274,22 @@ class TrainedHubFeederRiskModel(BaggageRiskModelInterface):
         return results
 
 
+def _build_plain_reasons(delay_mins: int, eff_buf: int, scan_detected: bool, weather_sev: int) -> list[str]:
+    reasons: list[str] = []
+    if delay_mins > 0:
+        reasons.append(f"Incoming flight delayed {delay_mins} min")
+    reasons.append(f"Only {max(0, eff_buf)} min connection remaining")
+    if not scan_detected:
+        reasons.append("Transfer scan not detected")
+    if weather_sev >= 3:
+        reasons.append(f"Weather slowdown at hub (Level {weather_sev}/5)")
+    return reasons
+
+
 def _format_assessment(
     version: str,
     score: int,
+    time_to_act: int,
     eta_str: str,
     carousel: str,
     factors: list[str],
@@ -284,17 +298,18 @@ def _format_assessment(
     p_idx: float,
     mode: str,
     action: str,
+    outcome: str,
 ) -> FlightRiskAssessment:
     if score >= 65:
-        level = "HIGH_PRIORITY"
+        level = "ACTION_REQUIRED"
         seq = 1
-        pax_msg = f"Priority transfer protection active for {flight_number} (Score {score}/100)."
+        pax_msg = f"Priority transfer recovery active for {flight_number} (Risk {score}/100)."
     elif score >= 35:
-        level = "MEDIUM"
+        level = "AT_RISK"
         seq = 2
-        pax_msg = f"Transfer window on {flight_number} is actively monitored by HKG BHS."
+        pax_msg = f"Connection window on {flight_number} is actively monitored by HKG Transfer Control."
     else:
-        level = "LOW"
+        level = "ON_TRACK"
         seq = 3
         pax_msg = f"Smooth connection outlook on {flight_number}."
 
@@ -303,7 +318,9 @@ def _format_assessment(
         risk_score=score,
         risk_level=level,
         priority_sequence=seq,
+        time_to_act_mins=time_to_act,
         recommended_action=action,
+        expected_outcome=outcome,
         passenger_summary=pax_msg,
         predicted_arrival_time=eta_str,
         carousel_estimate=carousel,

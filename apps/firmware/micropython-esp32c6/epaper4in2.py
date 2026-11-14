@@ -1,7 +1,6 @@
 # Waveshare 4.2" V2 monochrome controller, 400x300.
 # Register reference: waveshareteam/e-Paper, python/lib/waveshare_epd/epd4in2_V2.py
 from machine import Pin, SPI
-import errno
 import time
 import framebuf
 
@@ -19,7 +18,7 @@ class EPD_4in2:
         self.busy = Pin(EPD_BUSY, Pin.IN)
         self.busy_gpio = EPD_BUSY
         self.spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
-                        sck=Pin(EPD_SCK), mosi=Pin(EPD_MOSI))
+                       sck=Pin(EPD_SCK), mosi=Pin(EPD_MOSI))
         self.buffer_1Gray = bytearray(self.WIDTH * self.HEIGHT // 8)
         self.image1Gray = framebuf.FrameBuffer(
             self.buffer_1Gray, self.WIDTH, self.HEIGHT, framebuf.MONO_HLSB)

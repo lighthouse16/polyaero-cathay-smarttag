@@ -1,0 +1,81 @@
+{
+  "completed_at_utc": "2026-11-14T07:35:49.167371+00:00",
+  "total_training_duration_mins": 3.37,
+  "dataset_rows": 250000,
+  "split_strategy": {
+    "train": "70%",
+    "validation": "15%",
+    "holdout_test": "15%"
+  },
+  "winning_architecture": "HGB_depth4_lr0.03_iter400",
+  "holdout_test_metrics": {
+    "roc_auc": 0.97295,
+    "brier_calibration_score": 0.0568,
+    "log_loss": 0.18348,
+    "bhs_transfer_mae_mins": 3.05
+  },
+  "permutation_feature_importance": {
+    "scheduled_transfer_mins": 0.273,
+    "inbound_delay_mins": 0.06493,
+    "weather_impact_score": 0.00705,
+    "airport_congestion_index": 0.00613,
+    "historical_route_delay_rate": 0.00028,
+    "dest_flight_frequency_pct": 3e-05
+  },
+  "validation_leaderboard": [
+    {
+      "name": "HGB_depth4_lr0.03_iter400",
+      "cv_mean_auc": 0.97287,
+      "cv_std_auc": 0.00053,
+      "val_auc": 0.97301,
+      "val_brier": 0.05649,
+      "val_logloss": 0.18261,
+      "duration_mins": 0.14
+    },
+    {
+      "name": "HGB_depth6_lr0.03_iter500",
+      "cv_mean_auc": 0.97273,
+      "cv_std_auc": 0.00052,
+      "val_auc": 0.97293,
+      "val_brier": 0.05653,
+      "val_logloss": 0.18289,
+      "duration_mins": 0.15
+    },
+    {
+      "name": "HGB_depth8_lr0.02_iter700",
+      "cv_mean_auc": 0.97272,
+      "cv_std_auc": 0.00053,
+      "val_auc": 0.9729,
+      "val_brier": 0.05657,
+      "val_logloss": 0.18299,
+      "duration_mins": 0.23
+    },
+    {
+      "name": "NeuralNet_MLP_128x64x32",
+      "cv_mean_auc": 0.97289,
+      "cv_std_auc": 0.00043,
+      "val_auc": 0.97282,
+      "val_brier": 0.05659,
+      "val_logloss": 0.18327,
+      "duration_mins": 1.57
+    },
+    {
+      "name": "ExtraTrees_350trees_d16",
+      "cv_mean_auc": 0.97232,
+      "cv_std_auc": 0.00049,
+      "val_auc": 0.97241,
+      "val_brier": 0.05967,
+      "val_logloss": 0.20132,
+      "duration_mins": 0.42
+    },
+    {
+      "name": "RandomForest_300trees_d14",
+      "cv_mean_auc": 0.97211,
+      "cv_std_auc": 0.00048,
+      "val_auc": 0.97217,
+      "val_brier": 0.05696,
+      "val_logloss": 0.18645,
+      "duration_mins": 0.69
+    }
+  ]
+}
