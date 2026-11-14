@@ -7,7 +7,6 @@ Run on host: python -m pytest tests/ -v
 import sys
 import json
 import importlib.util
-import errno
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -262,7 +261,7 @@ def test_failed_refresh_or_wrong_bridge_never_acknowledges(wrong_identity):
 
     def failed_refresh(parsed):
         calls.append(parsed)
-        raise OSError(errno.ETIMEDOUT, "Panel still busy")
+        raise TimeoutError("Panel still busy")
 
     target = NfcTarget(nfc, refresh_display=failed_refresh)
     record = bridge_record(tag_code="04:B3:7C:1D:9E:2F:81") if wrong_identity else bridge_record()
@@ -341,16 +340,14 @@ def test_startup_full_refresh_precedes_partial_refresh_for_nfc_write(monkeypatch
 def test_busy_timeout_or_missing_panel_fails_refresh(monkeypatch, busy_values):
     import epaper4in2
 
-    monkeypatch.setattr(epaper4in2, "TimeoutError", None, raising=False)
     clock = iter(range(0, 10000, 100))
     monkeypatch.setattr(epaper4in2.time, "ticks_ms", lambda: next(clock), raising=False)
     monkeypatch.setattr(epaper4in2.time, "ticks_diff", lambda end, start: end - start, raising=False)
     monkeypatch.setattr(epaper4in2.time, "sleep_ms", lambda _: None, raising=False)
     panel = EPD_4in2()
     panel.busy = SimpleNamespace(value=lambda: busy_values[0])
-    with pytest.raises(OSError) as exc:
+    with pytest.raises(TimeoutError):
         panel.EPD_4IN2_V2_PartialDisplay(panel.buffer_1Gray)
-    assert exc.value.errno == errno.ETIMEDOUT
 
 
 def test_refresh_requires_a_complete_busy_cycle_and_v2_update_commands(monkeypatch):

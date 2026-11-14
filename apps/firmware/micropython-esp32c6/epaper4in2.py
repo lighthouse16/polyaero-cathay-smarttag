@@ -1,7 +1,6 @@
 # Waveshare 4.2" V2 monochrome controller, 400x300.
 # Register reference: waveshareteam/e-Paper, python/lib/waveshare_epd/epd4in2_V2.py
 from machine import Pin, SPI
-import errno
 import time
 import framebuf
 
@@ -18,7 +17,7 @@ class EPD_4in2:
         self.rst = Pin(EPD_RST, Pin.OUT)
         self.busy = Pin(EPD_BUSY, Pin.IN)
         self.spi = SPI(1, baudrate=4_000_000, polarity=0, phase=0,
-                        sck=Pin(EPD_SCK), mosi=Pin(EPD_MOSI))
+                       sck=Pin(EPD_SCK), mosi=Pin(EPD_MOSI))
         self.buffer_1Gray = bytearray(self.WIDTH * self.HEIGHT // 8)
         self.image1Gray = framebuf.FrameBuffer(
             self.buffer_1Gray, self.WIDTH, self.HEIGHT, framebuf.MONO_HLSB)
@@ -42,11 +41,11 @@ class EPD_4in2:
         if require_activity:
             while self.busy.value() != 1:
                 if time.ticks_diff(time.ticks_ms(), start) > 1000:
-                    raise OSError(errno.ETIMEDOUT, "E-paper did not start its refresh")
+                    raise TimeoutError("E-paper did not start its refresh")
                 time.sleep_ms(1)
         while self.busy.value() == 1:
             if time.ticks_diff(time.ticks_ms(), start) > timeout_ms:
-                raise OSError(errno.ETIMEDOUT, "E-paper BUSY pin did not clear")
+                raise TimeoutError("E-paper BUSY pin did not clear")
             time.sleep_ms(10)
 
     def _set_window(self):
