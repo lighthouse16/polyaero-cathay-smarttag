@@ -33,7 +33,8 @@
         {
           "selectIdentifiers": ["D2760000850101"]
         }
-      ]
+      ],
+      "./plugins/withNfcFeature"
     ],
     "experiments": {
       "typedRoutes": true
