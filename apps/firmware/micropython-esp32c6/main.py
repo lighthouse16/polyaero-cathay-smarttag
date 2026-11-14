@@ -37,7 +37,7 @@ def main():
 
     def refresh_display(parsed):
         render_iata_baggage_tag(canvas, parsed)
-        epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
+        epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
 
     nfc_target = NfcTarget(nfc, SMARTTAG_UID, refresh_display)
     nfc_target.configure()
@@ -46,7 +46,7 @@ def main():
     canvas.clear()
     canvas.text("READY FOR TAP", 60, 180, canvas.black, scale=2, bold=True)
     canvas.text("Tap phone to write tag", 40, 220, canvas.black, scale=1)
-    epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
+    epd.EPD_4IN2_V2_Display(epd.buffer_1Gray)
 
     print("\n>>> SYSTEM READY. Tap phone to PN532 <<<")
 
