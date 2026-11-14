@@ -105,6 +105,31 @@ uv run --frozen --extra dev pytest tests\test_seed.py -q
 Without that variable, database tests skip; preview/password-validation tests
 still run.
 
+#### Seed the deployed AWS database from Cloud Shell
+
+Build and push a new API image from the seed branch; the running API image may
+predate `app.seed`. Use a separate image tag so the deployed API is unchanged.
+Upload `seed_cloudrun.py` to Cloud Shell, then run:
+
+```bash
+python3 ~/seed_cloudrun.py --project polyaero \
+  --image asia-east2-docker.pkg.dev/polyaero/smarttag-demo/api:seed-12e353d \
+  --date 2026-11-14
+```
+
+The helper creates `smarttag-demo-seed` using the existing
+`smarttag-demo-migrate` job's database credentials, TLS settings, network and
+runtime identity. It runs a preview, prints the database target, privately
+prompts for a demo login password, and requires `apply` before writing. Preview
+does not validate connectivity. Check the execution logs for committed row
+counts; existing seed members never have their passwords changed.
+
+This is for the hackathon database only. It does not modify the API or migration
+job or rotate their keys. Credentials are visible to authorized viewers of job
+configuration. The password is removed from the current seed job configuration
+after applying, including on execution failure, but prior execution metadata
+may retain it. Use a unique demo-only password, never a personal password.
+
 ### Run Tests
 
 ```bash
