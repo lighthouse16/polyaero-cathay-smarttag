@@ -192,7 +192,13 @@ export const BaggageJourneyScreen: React.FC<BaggageJourneyScreenProps> = ({
   const riskLevel = liveBag?.risk_level ?? 'LOW';
   const isHighRisk = riskLevel === 'HIGH_PRIORITY' || riskScore >= 65;
 
-  const baseMilestones = journeyView.items.map((item, idx) => {
+  const baseMilestones = journeyView.items.map(
+    (
+      item,
+      idx
+    ): (typeof journeyView.items)[number] & {
+      state: 'completed' | 'current' | 'pending' | 'delayed' | 'exception';
+    } => {
     if (isMissing || isMisroutedOrRecovering) {
       if (idx === 0) return { ...item, state: 'completed' as const };
       if (idx === 1) {

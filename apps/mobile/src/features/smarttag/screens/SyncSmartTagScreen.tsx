@@ -120,7 +120,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     setFailure(null);
 
     const payload = buildNfcPayloadForBag(itinerary, bag);
-    const physicalService = null;
+    const physicalService = forceDemo ? null : getPhysicalNfcService();
     if (!forceDemo && !physicalService) {
       setFailure({
         code: 'NFC_UNAVAILABLE',
@@ -142,8 +142,8 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
       service: effectiveService,
       payload,
-      expectedTagUid: bag.smartTag.tagUid,
-      stepDelayMs: 140,
+      expectedTagUid: physicalService ? '' : bag.smartTag.tagUid,
+      stepDelayMs: physicalService ? 0 : 140,
       onStep: (step) => {
         if (operation.cancelled) {
           if (step.state === 'SCANNING' || step.state === 'WRITING') throw new NfcCancelledError();
@@ -160,7 +160,17 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
     smartTagRepository.recordSyncOutcome(bag.id, outcome);
 
     if (outcome.finalState === 'SUCCESS') {
-      // 1. Update backend DB with NFC tap (replaces firmware HTTP POST)
+      // 1. Sync booking to Copilot first so live backend bag record exists
+      await syncBookingToCopilot({
+        tagNumber: bag.baggage.tagNumber,
+        tagCode: bag.smartTag.tagUid,
+        flightNumber: itinerary.flight.flightNumber,
+        origin: itinerary.flight.origin,
+        destination: itinerary.flight.destination,
+        initialStatus: 'TAGGED',
+      });
+
+      // 2. Update backend DB with NFC tap (replaces firmware HTTP POST)
       const tapPayload = {
         tagUid: bag.smartTag.tagUid,
         baggageTagNumber: bag.baggage.tagNumber,
@@ -173,16 +183,6 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
         timestamp: Date.now() / 1000,
       };
       await postSmartTagTap(bag.smartTag.tagUid, tapPayload);
-
-      // 2. Sync booking to Copilot (existing flow)
-      await syncBookingToCopilot({
-        tagNumber: bag.baggage.tagNumber,
-        tagCode: bag.smartTag.tagUid,
-        flightNumber: itinerary.flight.flightNumber,
-        origin: itinerary.flight.origin,
-        destination: itinerary.flight.destination,
-        initialStatus: 'TAGGED',
-      });
 
       smartTagController.navigateTo('result', {
         itineraryId: itinerary.id,

@@ -14,7 +14,7 @@
  */
 
 import { INfcService, MockNfcService } from '@polyaero/shared';
-import { nativeNfcService } from './NativeNfcService';
+import { isNativeNfcModuleAvailable, nativeNfcService } from './NativeNfcService';
 import { Platform } from 'react-native';
 
 export class MobileNfcManager {
@@ -22,16 +22,16 @@ export class MobileNfcManager {
   private static hardwareInstance: INfcService | null = null;
 
   /**
-   * Returns a verified native E-ink hardware service when running in a Dev Client
-   * with react-native-nfc-manager installed. Returns `null` in Expo Go / Web / simulator.
+   * Returns a verified native E-ink hardware service when running in a Dev Client / APK
+   * with react-native-nfc-manager linked. Returns `null` in Expo Go / Web / simulator.
    */
   public static getPhysicalHardwareService(): INfcService | null {
     if (MobileNfcManager.hardwareInstance) {
       return MobileNfcManager.hardwareInstance;
     }
 
-    // Only initialize native service on physical platforms (not web)
-    if (Platform.OS !== 'web') {
+    // Only initialize native service on physical platforms when native NfcManager module is linked
+    if (Platform.OS !== 'web' && isNativeNfcModuleAvailable()) {
       MobileNfcManager.hardwareInstance = nativeNfcService;
       return MobileNfcManager.hardwareInstance;
     }
