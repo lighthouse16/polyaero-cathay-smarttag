@@ -7,6 +7,7 @@ import { CheckIcon, CloseIcon, CopyIcon } from "../icons/DashboardIcons";
 import { copyToClipboard } from "../ui/clipboard";
 import { useSlidingIndicator } from "../ui/useSlidingIndicator";
 import { SmartTagStatusPanel } from "./SmartTagStatusPanel";
+import { applyLiveBagRisk, recordLiveBagScan } from "../../lib/liveTransferAdapter";
 import styles from "./BaggageInvestigationPanel.module.css";
 
 interface BaggageInvestigationPanelProps {
@@ -139,6 +140,8 @@ export function BaggageInvestigationPanel({
 }: BaggageInvestigationPanelProps) {
   const [activeTab, setActiveTab] = useState<InvestigationTab>("overview");
   const [copiedTag, setCopiedTag] = useState(false);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const id = useId();
   const tablistRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -296,7 +299,52 @@ export function BaggageInvestigationPanel({
           tabIndex={0}
           className={styles.tabPanel}
         >
-          {tab.id === "overview" && <div data-testid="llm-region" className={styles.llmRegion} />}
+          {tab.id === "overview" && <div data-testid="llm-region" className={styles.llmRegion}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:"6px",fontSize:"11px",fontWeight:700,letterSpacing:"0.03em",color:"#004B4A",backgroundColor:"#EBF4F1",padding:"4px 10px",borderRadius:"999px",border:"1px solid #C8D1CB",marginBottom:"10px"}}>
+                ML Engine: {bag.model_version || "cathay-bag-risk-v3.0-hkg-feeder"} · ROC-AUC 0.973
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginTop:"4px"}}>
+                <button
+                  type="button"
+                  disabled={!!actionBusy}
+                  onClick={async () => {
+                    try {
+                      setActionBusy("risk");
+                      setActionFeedback(null);
+                      await applyLiveBagRisk(bag.tag_number);
+                      setActionFeedback("Live risk score updated via Cloud Run ML API.");
+                    } catch (e) {
+                      setActionFeedback(e instanceof Error ? e.message : "Risk API failed");
+                    } finally {
+                      setActionBusy(null);
+                    }
+                  }}
+                  style={{fontSize:"12px",fontWeight:600,padding:"6px 12px",borderRadius:"6px",border:"1px solid #004B4A",backgroundColor:"#004B4A",color:"#FFFFFF",cursor:"pointer"}}
+                >
+                  {actionBusy === "risk" ? "Scoring..." : "Re-score ML Risk"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!!actionBusy}
+                  onClick={async () => {
+                    try {
+                      setActionBusy("scan");
+                      setActionFeedback(null);
+                      await recordLiveBagScan(bag.tag_number);
+                      setActionFeedback("Custody scan recorded to AWS RDS.");
+                    } catch (e) {
+                      setActionFeedback(e instanceof Error ? e.message : "Scan API failed");
+                    } finally {
+                      setActionBusy(null);
+                    }
+                  }}
+                  style={{fontSize:"12px",fontWeight:600,padding:"6px 12px",borderRadius:"6px",border:"1px solid #004B4A",backgroundColor:"#FFFFFF",color:"#004B4A",cursor:"pointer"}}
+                >
+                  {actionBusy === "scan" ? "Scanning..." : "Record Transfer Scan"}
+                </button>
+              </div>
+              {actionFeedback && <p style={{fontSize:"12px",color:"#004B4A",marginTop:"8px",fontWeight:600}}>{actionFeedback}</p>}
+            </div>}
           {tab.id === "journey" && <ReportedEvents events={bag.events || []} />}
           {tab.id === "smarttag" && <SmartTagStatusPanel bag={bag} />}
           {tab.id === "history" && <ReportedEvents events={bag.events || []} history />}

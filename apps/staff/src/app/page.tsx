@@ -1,7 +1,8 @@
 "use client";
 import React, { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { SidebarView, TransferControlSnapshot } from "../lib/types";
-import { aggregateOutboundFlights, findBagConnection, transferMetrics, validateTransferSnapshot, isTransferSnapshotFresh } from "../lib/transferControl";
+import { aggregateOutboundFlights, findBagConnection, transferMetrics, isTransferSnapshotFresh } from "../lib/transferControl";
+import { fetchLiveTransferSnapshot } from "../lib/liveTransferAdapter";
 import { OperationsHeader } from "../components/layout/OperationsHeader";
 import { OutboundFlightQueue, stationTime } from "../components/transfer/OutboundFlightQueue";
 import { FlightWorkbench } from "../components/transfer/FlightWorkbench";
@@ -26,9 +27,7 @@ export default function StaffDashboardPage() {
     if (busy.current) return;
     busy.current = true;
     try {
-      const response = await fetch("/api/v1/transfer-control", { cache: "no-store", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
-      if (!response.ok) throw new Error(`Transfer snapshot request failed (${response.status})`);
-      const next = validateTransferSnapshot(await response.json());
+      const next = await fetchLiveTransferSnapshot(signal);
       if (signal?.aborted) return;
       setSnapshot(next);
       setError(null);
