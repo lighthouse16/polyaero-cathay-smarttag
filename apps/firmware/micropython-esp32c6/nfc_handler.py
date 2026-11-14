@@ -37,11 +37,12 @@ class NfcTarget:
         self.wrote_payload = False
         self._init_ndef()
 
-    def _init_ndef(self):
+    def _init_ndef(self, preserve_ndef: bool = False):
         """Pre-load NDEF buffer with valid 'INIT' Text record"""
-        self.ndef_file[:] = b'\x00' * 512
-        init_record = bytearray([0x00, 0x0B, 0xD1, 0x01, 0x07, 0x54, 0x02, 0x65, 0x6E, 0x49, 0x4E, 0x49, 0x54])
-        self.ndef_file[0:len(init_record)] = init_record
+        if not preserve_ndef:
+            self.ndef_file[:] = b'\x00' * 512
+            init_record = bytearray([0x00, 0x0B, 0xD1, 0x01, 0x07, 0x54, 0x02, 0x65, 0x6E, 0x49, 0x4E, 0x49, 0x54])
+            self.ndef_file[0:len(init_record)] = init_record
         self.write_completed = False
         self.wrote_payload = False
         self.written = bytearray(512)
@@ -64,7 +65,7 @@ class NfcTarget:
         Listen for phone NFC write session.
         Returns NDEF file buffer if write completed, else None.
         """
-        self._init_ndef()
+        self._init_ndef(preserve_ndef=True)
         try:
             # Start target mode
             init_res = self.nfc.call_function(0x8C, response_length=64, params=TARGET_PARAMS, timeout=session_ms)

@@ -26,20 +26,20 @@ class PN532_UART:
             self.reset_pin.value(1)
             time.sleep_ms(10)
             self.reset_pin.value(0)
-            time.sleep_ms(400)
+            time.sleep_ms(20)
             self.reset_pin.value(1)
-            time.sleep_ms(100)
+            time.sleep_ms(30)
         while self.uart.any():
             self.uart.read()
 
     def initialize(self):
         self.reset()
-        self.uart.write(b'\x55\x55' + b'\x00' * 15)
-        time.sleep_ms(10)
+        self.uart.write(b'\x55\x55\x00\x00\x00')
         version = self.call_function(0x02, response_length=4)
         if version is None or len(version) != 4 or version[0] != 0x32:
             raise OSError(errno.ENODEV, "PN532 GetFirmwareVersion failed; check UART mode, pins and power")
-        # Normal SAM mode; target/card emulation is selected separately.
+        # Normal SAM mode exits LowVbat; send HSU wakeup preamble immediately before command.
+        self.uart.write(b'\x55\x55\x00\x00\x00')
         sam = self.call_function(0x14, response_length=1, params=bytearray([0x01, 0x14, 0x01]))
         if sam != bytearray():
             raise OSError(errno.EIO, "PN532 SAMConfiguration failed")

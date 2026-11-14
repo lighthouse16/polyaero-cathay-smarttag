@@ -1,6 +1,7 @@
 # Waveshare 4.2" V2 monochrome controller, 400x300.
 # Register reference: waveshareteam/e-Paper, python/lib/waveshare_epd/epd4in2_V2.py
 from machine import Pin, SPI
+import errno
 import time
 import framebuf
 
