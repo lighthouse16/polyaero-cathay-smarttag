@@ -207,7 +207,7 @@ export function OperationsSidebar({
                     : "transparent",
                   color: "#FFFFFF",
                   fontSize: "13.5px",
-                  fontWeight: active ? 600 : 500,
+                  fontWeight: active ? 700 : 400,
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "background-color 0.15s ease",
@@ -265,7 +265,7 @@ export function OperationsSidebar({
                 backgroundColor: "rgba(255, 255, 255, 0.05)",
                 color: "#FFFFFF",
                 fontSize: "12.5px",
-                fontWeight: 500,
+                fontWeight: 400,
                 cursor: "pointer",
                 transition: "background-color 0.15s ease",
               }}
@@ -320,7 +320,7 @@ export function OperationsSidebar({
             alignItems: "center",
             gap: "7px",
             fontSize: "12px",
-            fontWeight: 600,
+            fontWeight: 700,
             boxShadow: "0 4px 14px rgba(0, 0, 0, 0.25)",
             transition: "background-color 0.15s ease",
           }}

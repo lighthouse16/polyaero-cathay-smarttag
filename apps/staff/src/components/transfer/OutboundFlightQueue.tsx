@@ -180,6 +180,8 @@ export function OutboundFlightQueue({
       <div className="table-toolbar">
         <div className="toolbar-search-wrap">
           <input
+            id="outbound-flight-search"
+            name="outbound-flight-search"
             type="search"
             aria-label="Search outbound flights"
             placeholder="Flight or destination"
@@ -198,6 +200,8 @@ export function OutboundFlightQueue({
           )}
         </div>
         <select
+          id="outbound-status-filter"
+          name="outbound-status-filter"
           disabled={unavailable}
           aria-label="Filter outbound status"
           value={status}
@@ -209,6 +213,8 @@ export function OutboundFlightQueue({
           ))}
         </select>
         <select
+          id="outbound-sort-select"
+          name="outbound-sort-select"
           disabled={unavailable}
           aria-label="Sort outbound flights"
           value={sort}
@@ -336,7 +342,9 @@ export function OutboundFlightQueue({
                     style={{ "--score-pct": `${pct}%` } as React.CSSProperties}
                     className="score-cell"
                   >
-                    {unavailable ? "—" : f.riskScore ?? "—"}
+                    {unavailable || f.riskScore === null || f.riskScore === undefined
+                      ? "—"
+                      : `${f.riskScore}%`}
                   </td>
                   <td>
                     {formatTimeToAct(

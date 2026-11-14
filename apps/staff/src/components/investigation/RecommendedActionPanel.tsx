@@ -63,7 +63,7 @@ export function RecommendedActionPanel({
             backgroundColor: "#004B4A",
             color: "#FFFFFF",
             fontSize: "12.5px",
-            fontWeight: 600,
+            fontWeight: 700,
             padding: "0 14px",
             display: "inline-flex",
             alignItems: "center",
@@ -101,7 +101,7 @@ export function RecommendedActionPanel({
               backgroundColor: "#FFFFFF",
               color: "#000000",
               fontSize: "12.5px",
-              fontWeight: 600,
+              fontWeight: 700,
               padding: "0 12px",
               display: "inline-flex",
               alignItems: "center",
@@ -175,7 +175,7 @@ export function RecommendedActionPanel({
                 borderRadius: "6px",
                 background: "transparent",
                 fontSize: "12px",
-                fontWeight: 600,
+                fontWeight: 700,
                 color: "#000000",
                 cursor: "pointer",
               }}
@@ -202,7 +202,7 @@ export function RecommendedActionPanel({
                 borderRadius: "6px",
                 background: "transparent",
                 fontSize: "12px",
-                fontWeight: 600,
+                fontWeight: 700,
                 color: "#000000",
                 cursor: "pointer",
               }}
@@ -229,7 +229,7 @@ export function RecommendedActionPanel({
                 borderRadius: "6px",
                 background: "transparent",
                 fontSize: "12px",
-                fontWeight: 500,
+                fontWeight: 400,
                 color: "#000000",
                 cursor: "pointer",
               }}
@@ -257,7 +257,7 @@ export function RecommendedActionPanel({
                 borderRadius: "6px",
                 background: "#FAF9F5",
                 fontSize: "12px",
-                fontWeight: 600,
+                fontWeight: 700,
                 color: "#000000",
                 cursor: "pointer",
               }}

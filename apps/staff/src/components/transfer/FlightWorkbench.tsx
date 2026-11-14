@@ -12,9 +12,10 @@ import {
 } from "../../lib/transferControl";
 import { BaggageInvestigationPanel } from "../investigation/BaggageInvestigationPanel";
 import { ArrowLeftIcon, ChevronRightIcon, CloseIcon } from "../icons/DashboardIcons";
-import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { ConnectionBagTable } from "./ConnectionBagTable";
-import { formatTimeToAct, stationTime, flightAttention } from "./OutboundFlightQueue";
+import { stationTime, flightAttention } from "./OutboundFlightQueue";
+import { WorkbenchMetrics } from "./WorkbenchMetrics";
+import { OperationsCopilotDrawer } from "../copilot/OperationsCopilotDrawer";
 import type { SelectionAction, TransferSelection } from "./selection";
 
 export function FlightWorkbench({
@@ -23,12 +24,16 @@ export function FlightWorkbench({
   now,
   stale,
   onSelection,
+  copilotOpen = false,
+  onCopilotOpenChange,
 }: {
   snapshot: TransferControlSnapshot;
   selection: TransferSelection;
   now: Date;
   stale: boolean;
   onSelection: (action: SelectionAction) => void;
+  copilotOpen?: boolean;
+  onCopilotOpenChange?: (open: boolean) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -120,10 +125,6 @@ export function FlightWorkbench({
     onSelection({ type: "bag", id: connection.bagTag });
   }
 
-  const affectedCount = fresh
-    ? (header?.actionRequiredCount ?? 0) + (header?.atRiskCount ?? 0)
-    : null;
-
   return (
     <dialog
       ref={dialogRef}
@@ -157,30 +158,7 @@ export function FlightWorkbench({
                 HKT
               </p>
             </div>
-            <dl className="workbench-metrics">
-              <div>
-                <dt>Flight risk /100</dt>
-                <dd>
-                  <AnimatedNumber value={fresh ? header?.riskScore ?? null : null} />
-                </dd>
-              </div>
-              <div>
-                <dt>Affected bags</dt>
-                <dd>
-                  <AnimatedNumber value={affectedCount} />
-                </dd>
-              </div>
-              <div>
-                <dt>Earliest Time to Act</dt>
-                <dd>
-                  {formatTimeToAct(
-                    fresh && header?.earliestActionAt
-                      ? (Date.parse(header.earliestActionAt) - now.getTime()) / 60000
-                      : null,
-                  )}
-                </dd>
-              </div>
-            </dl>
+            <WorkbenchMetrics header={header} fresh={fresh} now={now} />
             <button
               autoFocus
               className="icon-button"
@@ -247,6 +225,8 @@ export function FlightWorkbench({
 
             <form className="workbench-search" onSubmit={searchBag}>
               <input
+                id="workbench-bag-search"
+                name="workbench-bag-search"
                 data-workbench-search
                 aria-label="Locate bag within transfer flights"
                 placeholder="Full bag tag"
@@ -460,6 +440,24 @@ export function FlightWorkbench({
                 </div>
               )}
             </div>
+          )}
+          {onCopilotOpenChange && (
+            <OperationsCopilotDrawer
+              open={copilotOpen}
+              onOpenChange={onCopilotOpenChange}
+              snapshot={snapshot}
+              now={now}
+              activeView="transfer-control"
+              onLocateBag={(tag) => {
+                const connection = findBagConnection(snapshot, tag);
+                if (connection) {
+                  onSelection({ type: "outbound", id: connection.outboundLegId });
+                  onSelection({ type: "inbound", id: connection.inboundLegId });
+                  onSelection({ type: "bag", id: connection.bagTag });
+                }
+              }}
+              onSelectOutboundFlight={(id) => onSelection({ type: "outbound", id })}
+            />
           )}
         </div>
       )}

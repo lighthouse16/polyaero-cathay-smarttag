@@ -130,6 +130,142 @@ function ReportedEvents({
   );
 }
 
+function formatOverviewStatus(status: string | undefined): {
+  label: string;
+  tone: "critical" | "warn" | "track";
+} {
+  const normalized = (status || "").trim().toUpperCase();
+  switch (normalized) {
+    case "MISCONNECTED":
+    case "OFFLOADED":
+    case "DELAYED":
+      return {
+        label: normalized.charAt(0) + normalized.slice(1).toLowerCase(),
+        tone: "critical",
+      };
+    case "AT_RISK":
+      return { label: "At risk", tone: "warn" };
+    case "IN_TRANSFER":
+      return { label: "In transfer", tone: "track" };
+    case "LOADED":
+      return { label: "Loaded", tone: "track" };
+    default:
+      return {
+        label: status ? status.replace(/_/g, " ") : "Tracked",
+        tone: "track",
+      };
+  }
+}
+
+function formatOverviewTimestamp(timestamp: string | undefined): string {
+  if (!timestamp) return "Unavailable";
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return timestamp;
+  return (
+    parsed.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Hong_Kong",
+    }) + " HKT"
+  );
+}
+
+function OverviewSummary({
+  bag,
+  connectionLabel,
+}: {
+  bag: LiveBag;
+  connectionLabel: string;
+}) {
+  const statusInfo = formatOverviewStatus(bag.status);
+  const events = bag.events || [];
+  const latestEvent = [...events].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  )[0];
+
+  const routeValue = bag.flight_number
+    ? `${bag.flight_number} · ${bag.departure_airport} → ${bag.arrival_airport}`
+    : connectionLabel || "Unavailable";
+
+  const latestScanValue = latestEvent
+    ? `${
+        latestEvent.station_name && latestEvent.station_name !== latestEvent.location_code
+          ? `${latestEvent.location_code} · ${latestEvent.station_name}`
+          : latestEvent.location_code
+      } · ${formatOverviewTimestamp(latestEvent.timestamp)}`
+    : "No scans recorded";
+
+  const syncValue =
+    bag.is_tag_synced === true
+      ? `Synced${bag.tag_interface ? ` · ${bag.tag_interface}` : ""}`
+      : bag.is_tag_synced === false
+        ? `Pending sync${bag.tag_interface ? ` · ${bag.tag_interface}` : ""}`
+        : "Unavailable";
+
+  const weightValue =
+    typeof bag.weight_kg === "number" && bag.weight_kg > 0
+      ? `${bag.weight_kg} kg`
+      : "Unavailable";
+
+  const factors = (bag.risk_factors || []).filter((item) => item.trim().length > 0);
+
+  return (
+    <div data-testid="llm-region" className={styles.overview}>
+      <div className={styles.overviewLead}>
+        <div className={styles.overviewHeader}>
+          <span className={styles.overviewLabel}>Operational overview</span>
+          <span className={styles.overviewStatus} data-tone={statusInfo.tone}>
+            {statusInfo.label}
+            {bag.is_rush_bag ? " · Rush priority" : ""}
+          </span>
+        </div>
+        {bag.passenger_risk_summary && (
+          <p className={styles.overviewSummaryText}>{bag.passenger_risk_summary}</p>
+        )}
+        {factors.length > 0 && (
+          <ul className={styles.overviewFactors}>
+            {factors.map((factor, idx) => (
+              <li key={`${idx}-${factor}`}>{factor}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <dl className={styles.record}>
+        <div>
+          <dt>Flight</dt>
+          <dd>{routeValue}</dd>
+        </div>
+        <div>
+          <dt>Last location</dt>
+          <dd>{bag.last_known_location || "Unavailable"}</dd>
+        </div>
+        <div>
+          <dt>Carousel</dt>
+          <dd>{bag.carousel_assigned || "Unassigned"}</dd>
+        </div>
+        <div>
+          <dt>Latest scan</dt>
+          <dd>{latestScanValue}</dd>
+        </div>
+        <div>
+          <dt>SmartTag sync</dt>
+          <dd>{syncValue}</dd>
+        </div>
+        <div>
+          <dt>Weight</dt>
+          <dd>{weightValue}</dd>
+        </div>
+        <div>
+          <dt>Total scans</dt>
+          <dd>{events.length} recorded</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export function BaggageInvestigationPanel({
   bag,
   bagRisk,
@@ -296,7 +432,9 @@ export function BaggageInvestigationPanel({
           tabIndex={0}
           className={styles.tabPanel}
         >
-          {tab.id === "overview" && <div data-testid="llm-region" className={styles.llmRegion} />}
+          {tab.id === "overview" && (
+            <OverviewSummary bag={bag} connectionLabel={connectionLabel} />
+          )}
           {tab.id === "journey" && <ReportedEvents events={bag.events || []} />}
           {tab.id === "smarttag" && <SmartTagStatusPanel bag={bag} />}
           {tab.id === "history" && <ReportedEvents events={bag.events || []} history />}

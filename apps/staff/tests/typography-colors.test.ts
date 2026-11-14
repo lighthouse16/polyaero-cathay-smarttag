@@ -46,6 +46,16 @@ describe("frozen Cathay operational design", () => {
     expect(header).not.toContain("STF-8821");
     expect(header).not.toContain("Reset Demo");
   });
+  it("keeps Performance typography explicit without inherited button-size resets", () => {
+    const css = read("components/performance/PerformanceView.module.css");
+    const legendRules = [...css.matchAll(/\.causeLegendRow\s*\{([^}]+)\}/g)];
+    expect(legendRules).toHaveLength(1);
+    expect(legendRules[0][1]).toContain("font-size: 12.5px");
+    expect(legendRules[0][1]).toContain("line-height: 1.4");
+    expect(legendRules[0][1]).not.toMatch(/\bfont\s*:/);
+    expect(css).not.toMatch(/font-size:\s*(?:9|10|10\.5|11)px/);
+    expect(css).not.toContain(".kpiLabel { font-size: 11.5px; }");
+  });
   it("new operational surfaces use no pastel/gradient/icon-bubble styling", () => {
     const css = read("app/globals.css") + read("components/investigation/BaggageInvestigationPanel.module.css");
     for (const forbidden of ["#F3F1EC", "#EFEEE9", "glassmorphism", "radial-gradient", "backdrop-filter"]) expect(css).not.toContain(forbidden);

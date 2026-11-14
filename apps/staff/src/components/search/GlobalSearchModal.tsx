@@ -8,7 +8,7 @@ import { HighlightMatch } from "../ui/HighlightMatch";
 function statusTone(status: string): "action" | "risk" | "track" {
   const s = (status || "").toUpperCase();
   if (s === "MISROUTED" || s === "MISSING" || s === "RECOVERY_IN_PROGRESS") return "action";
-  if (s === "IN_TRANSFER" || s === "AWAITING_SYNC") return "risk";
+  if (s === "AWAITING_SYNC") return "risk";
   return "track";
 }
 
@@ -127,6 +127,8 @@ export function GlobalSearchModal({
         <SearchIcon size={16} color="#66686A" />
         <input
           ref={inputRef}
+          id={`${listId}-search-input`}
+          name="global-baggage-search"
           autoFocus
           type="search"
           role="combobox"

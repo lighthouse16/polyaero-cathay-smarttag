@@ -26,3 +26,7 @@ Jade header/sidebar, ivory two-column workspace, TanStack grid, case tabs, nativ
 ## Release gate
 
 Draft only until screenshot comparison/E2E/accessibility QA and required ChatGPT reviewer approval pass. Monorepo typecheck has existing mobile TS2367 errors (BaggageJourneyScreen); do not suppress them or edit passenger app in this task. Production dependency audit reports existing advisories; triage before release. No production deployment or merge authorized.
+
+## Current backend integration handoff
+
+See [STAFF_BACKEND_HANDOFF.md](../../docs/STAFF_BACKEND_HANDOFF.md) for current Transfer Control, Performance and Copilot contracts, provider setup, deployment limits, and known data/auth gaps.

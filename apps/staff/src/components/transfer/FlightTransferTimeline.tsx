@@ -128,7 +128,7 @@ export function FlightTransferTimeline({
             border: "1px solid #C5CCC9",
             color: "#000000",
             fontSize: "10px",
-            fontWeight: 600,
+            fontWeight: 700,
             lineHeight: 1,
             cursor: "help",
           }}
@@ -284,7 +284,7 @@ export function FlightTransferTimeline({
                           }}
                         >
                           {row.flightNumber}{" "}
-                          <span style={{ fontWeight: 600, color: "#000000" }}>
+                          <span style={{ fontWeight: 700, color: "#000000" }}>
                             {row.route}
                           </span>
                         </div>
@@ -320,7 +320,7 @@ export function FlightTransferTimeline({
                           backgroundColor: "#E5E8E3",
                           color: "#000000",
                           fontSize: "11.5px",
-                          fontWeight: 600,
+                          fontWeight: 700,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -352,7 +352,7 @@ export function FlightTransferTimeline({
                           backgroundColor: row.isAtRisk ? "#E9E5DC" : "#E5E8E3",
                           color: "#000000",
                           fontSize: "11.5px",
-                          fontWeight: 600,
+                          fontWeight: 700,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -372,7 +372,7 @@ export function FlightTransferTimeline({
                             : "#E9ECEB",
                           color: "#000000",
                           fontSize: "11.5px",
-                          fontWeight: 500,
+                          fontWeight: 400,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",

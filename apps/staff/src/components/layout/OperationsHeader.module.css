@@ -66,7 +66,7 @@
   background: #FFFFFF;
   border: 1px solid #E6E7E8;
   border-radius: 8px;
-  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
+  font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 400;
   cursor: pointer;
@@ -87,7 +87,7 @@
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
+  font-family: var(--font-display);
   font-size: 14.5px;
   font-weight: 400;
   white-space: nowrap;
@@ -133,7 +133,8 @@
   transform: translateY(1px);
 }
 
-.alerts:hover {
+.alerts:hover,
+.profile:hover {
   background: #F9F9F9;
   border-radius: 999px;
   color: var(--brand-primary-darkcyan-default);
@@ -141,7 +142,8 @@
 
 .navButton:focus-visible,
 .search:focus-visible,
-.alerts:focus-visible {
+.alerts:focus-visible,
+.profile:focus-visible {
   outline: 2px solid var(--brand-primary-darkcyan-default);
   outline-offset: 2px;
 }
@@ -172,12 +174,12 @@
 }
 
 .station {
-  padding: 5px 11px;
-  background: #F4F5F6;
-  color: var(--brand-primary-darkcyan-active);
-  border: 1px solid #E2E4E6;
-  border-radius: 4px;
-  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
+  padding: 0;
+  background: transparent;
+  color: var(--text-primary);
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-sans);
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -190,7 +192,7 @@
   gap: 2px;
   padding-left: 12px;
   border-left: 1px solid #E6E7E8;
-  font-family: "Cathay Sans EN", "GT Walsheim", sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -206,48 +208,28 @@
   display: none;
 }
 
-.alerts {
+.userActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alerts,
+.profile {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: #2D2D2D;
   cursor: pointer;
-  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.alerts[data-has-alerts="true"] .alertCount {
-  box-shadow: 0 0 0 2px #FFFFFF;
-}
-
-.alertCount {
-  position: absolute;
-  top: 5px;
-  right: 4px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--brand-primary-darkgreen-active);
-  color: #FFFFFF;
-  font-family: "GT Walsheim", "Cathay Sans EN", sans-serif;
-  font-size: 10.5px;
-  line-height: 1;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.alerts:hover .alertCount {
-  transform: scale(1.08);
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (max-width: 1280px) {
@@ -332,11 +314,31 @@
     color: #66686A;
   }
 
+  .navigation {
+    gap: 4px;
+    justify-content: space-between;
+  }
+
   .navButton {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
-    gap: 6px;
-    padding: 0 8px;
-    font-size: 13px;
+    gap: 5px;
+    padding: 0 4px;
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 420px) {
+  .navButton {
+    gap: 4px;
+    padding: 0 2px;
+    font-size: 12px;
+  }
+
+  .navButton svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
   }
 }

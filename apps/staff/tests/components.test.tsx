@@ -46,7 +46,8 @@ describe("truthful component output", () => {
     expect(html).not.toContain("CX4M1P");
     expect(html).not.toContain("Recommended action");
     expect(html).not.toContain("<dialog");
-    expect(html).toMatch(/data-testid="llm-region"[^>]*><\/div>/);
+    expect(html).toContain('data-testid="llm-region"');
+    expect(html).toContain("Operational overview");
   });
   it("case retains genuine zero deadline and distinct score", () => {
     const html = renderToStaticMarkup(<BaggageInvestigationPanel bag={bag} bagRisk={37} timeToAct={0} connectionLabel="CX616 / CX255" />);

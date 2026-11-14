@@ -174,7 +174,7 @@ export function ActionConfirmationModal({
                 style={{
                   display: "block",
                   fontSize: "12px",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: "#000000",
                   marginBottom: "5px",
                 }}
@@ -222,7 +222,7 @@ export function ActionConfirmationModal({
                   backgroundColor: "#FFFFFF",
                   color: "#000000",
                   fontSize: "13px",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: isSubmitting ? "not-allowed" : "pointer",
                   opacity: isSubmitting ? 0.5 : 1,
                 }}
@@ -242,7 +242,7 @@ export function ActionConfirmationModal({
                   backgroundColor: confirmBg,
                   color: "#FFFFFF",
                   fontSize: "13px",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: isSubmitting ? "wait" : "pointer",
                 }}
               >
