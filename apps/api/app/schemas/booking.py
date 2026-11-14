@@ -1,0 +1,36 @@
+from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+BookingStatus = Literal["UPCOMING", "PAST", "CANCELLED"]
+
+
+class BookingCreate(BaseModel):
+    pnr: str = Field(..., min_length=5, max_length=10)
+    flight_id: UUID
+    booking_status: BookingStatus = "UPCOMING"
+    checkin_status: bool = False
+    allowed_bags: int = Field(2, ge=0, le=9)
+    selected_bags: int = Field(1, ge=0, le=9)
+
+
+class BookingRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID | None
+    flight_id: UUID
+    pnr: str
+    booking_status: str
+    checkin_status: bool
+    allowed_bags: int
+    selected_bags: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class LinkTagRequest(BaseModel):
+    pnr: str = Field(..., min_length=5, max_length=10)
+    tag_id: UUID
