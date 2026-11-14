@@ -25,6 +25,26 @@ TARGET_PARAMS = bytearray([
 
 AID_NFC_FORUM = bytearray(b'\xD2\x76\x00\x00\x85\x01\x01')
 
+AIRPORT_CITIES = {
+    "HKG": "HONG KONG",
+    "NRT": "TOKYO",
+    "HND": "TOKYO",
+    "KIX": "OSAKA",
+    "SGN": "HO CHI MINH",
+    "HAN": "HANOI",
+    "SIN": "SINGAPORE",
+    "TPE": "TAIPEI",
+    "ICN": "SEOUL",
+    "BKK": "BANGKOK",
+    "LHR": "LONDON",
+    "LAX": "LOS ANGELES",
+    "JFK": "NEW YORK",
+    "YVR": "VANCOUVER",
+    "SYD": "SYDNEY",
+    "PVG": "SHANGHAI",
+    "PEK": "BEIJING",
+}
+
 
 class NfcTarget:
     def __init__(self, nfc, tag_uid="04:A2:3B:4C:5D:6E:70", refresh_display=None):
@@ -319,13 +339,15 @@ def parse_iata_payload(ndef_buf: bytearray) -> dict:
                     return None
                 date = date[8:10] + ("JAN", "FEB", "MAR", "APR", "MAY", "JUN",
                                      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")[month - 1]
+            dest_code = route[1].upper()
+            dest_city = str(record.get("city", "")).strip().upper() or AIRPORT_CITIES.get(dest_code, dest_code)
             return {
                 "tag_num": tag,
-                "dest_code": route[1].upper(),
-                "dest_city": route[1].upper(),
+                "dest_code": dest_code,
+                "dest_city": dest_city,
                 "flight": flight.upper(),
                 "date": date,
-                "time": str(record.get("time", "")),
+                "time": str(record.get("time", "")).strip() or "0840",
                 "passenger": str(record.get("passenger", "")).upper(),
                 "tag_code": str(record.get("tag_code", "")).upper(),
                 "sync_id": sync_id,
