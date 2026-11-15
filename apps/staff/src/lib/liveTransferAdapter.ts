@@ -344,12 +344,20 @@ export function buildLiveTransferSnapshot(
     const requestedOpDate = Number.isFinite(parsedDep)
       ? formatHktDateKey(parsedDep)
       : formatHktDateKey(nowMs);
-    const scheduledFlight = findFlight(
-      outFlight,
-      outOrigin,
-      outDest,
-      requestedOpDate,
-    );
+    const inboundFlight = isInboundToHkg
+      ? findFlight(rawFlight, rawOrigin, "HKG", requestedOpDate)
+      : undefined;
+    const inboundArrivalMs = inboundFlight ? Date.parse(inboundFlight.arrival_time) : Number.NaN;
+    // An outbound record does not identify its feeder; never attach an unrelated real flight.
+    const scheduledFlight = isInboundToHkg && Number.isFinite(inboundArrivalMs)
+      ? flightOptions
+          .filter((flight) => flight.flight_number.toUpperCase() === outFlight &&
+            flight.origin_code.toUpperCase() === outOrigin &&
+            flight.destination_code.toUpperCase() === outDest &&
+            Date.parse(flight.departure_time) >= inboundArrivalMs + 20 * 60_000 &&
+            Date.parse(flight.departure_time) <= inboundArrivalMs + DAY_MS)
+          .sort((a, b) => Date.parse(a.departure_time) - Date.parse(b.departure_time))[0]
+      : findFlight(outFlight, outOrigin, outDest, requestedOpDate);
     let depMs = scheduledFlight
       ? Date.parse(scheduledFlight.departure_time)
       : Number.isFinite(parsedDep)
@@ -369,6 +377,10 @@ export function buildLiveTransferSnapshot(
         anchoredFlightOffsetMin.set(outFlight, offsetMin);
       }
       depMs = nowMs + offsetMin * 60_000;
+    }
+    if (!scheduledFlight && Number.isFinite(inboundArrivalMs)) {
+      // ponytail: inferred demo connection; replace with persisted transfer linkage when available.
+      depMs = Math.max(depMs, inboundArrivalMs + 95 * 60_000);
     }
     const depIso = new Date(depMs).toISOString();
     const opDate = formatHktDateKey(depMs);
@@ -397,14 +409,6 @@ export function buildLiveTransferSnapshot(
       legDepMsMap.set(outLegId, depMs);
     }
 
-    const inboundFlight = isInboundToHkg
-      ? findFlight(rawFlight, rawOrigin, "HKG", requestedOpDate)
-      : flightOptions.find(
-          (flight) =>
-            flight.origin_code.toUpperCase() !== "HKG" &&
-            flight.destination_code.toUpperCase() === "HKG" &&
-            formatHktDateKey(Date.parse(flight.departure_time)) === opDate,
-        );
     const feeder = inboundFlight
       ? {
           flightNumber: inboundFlight.flight_number.toUpperCase(),
@@ -413,7 +417,8 @@ export function buildLiveTransferSnapshot(
       : isInboundToHkg
       ? { flightNumber: rawFlight, origin: rawOrigin }
       : FEEDER_POOL[idx % FEEDER_POOL.length];
-    const inLegId = `in-${feeder.flightNumber}-${opDate}`;
+    const inOpDate = inboundFlight ? requestedOpDate : opDate;
+    const inLegId = `in-${feeder.flightNumber}-${inOpDate}`;
     const rawConnMins =
       typeof b.connection_minutes === "number" && b.connection_minutes >= 0
         ? b.connection_minutes
@@ -422,9 +427,6 @@ export function buildLiveTransferSnapshot(
           : 95;
     // Cap synthetic multi-day template gaps (>6h) to a realistic same-shift transfer buffer (38–102m)
     const connMins = rawConnMins <= 360 ? rawConnMins : (idx % 5) * 16 + 38;
-    const inboundArrivalMs = inboundFlight
-      ? Date.parse(inboundFlight.arrival_time)
-      : Number.NaN;
     const inArrMs = Number.isFinite(inboundArrivalMs)
       ? inboundArrivalMs
       : depMs - connMins * 60_000;
@@ -434,7 +436,7 @@ export function buildLiveTransferSnapshot(
       legsMap.set(inLegId, {
         id: inLegId,
         flightNumber: feeder.flightNumber,
-        operatingDate: opDate,
+        operatingDate: inOpDate,
         origin: feeder.origin,
         destination: "HKG",
         scheduledDepartureAt: inboundFlight
@@ -700,6 +702,9 @@ export async function fetchLiveTransferSnapshot(
         }),
       })
         .then(async (response) => {
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(`Flight API returned HTTP ${response.status}`);
+          }
           if (!response.ok) return [];
           const data = (await response.json()) as {
             outbound?: BackendFlightOption[];
@@ -712,7 +717,13 @@ export async function fetchLiveTransferSnapshot(
             ...(data.return_flights ?? []),
           ];
         })
-        .catch(() => []),
+        .catch((error: unknown) => {
+          if (signal?.aborted ||
+            (error instanceof Error && (error.name === "AbortError" || /HTTP (401|403)/.test(error.message)))) {
+            throw error;
+          }
+          return [];
+        }),
     ),
   );
   const flightBatches = await Promise.all(flightQueries);

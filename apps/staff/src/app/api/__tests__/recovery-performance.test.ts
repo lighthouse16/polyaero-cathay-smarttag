@@ -2,9 +2,31 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { GET } from "../v1/recovery-performance/route";
 
 vi.mock("node:fs/promises", () => ({ readFile: vi.fn() }));
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("recovery-performance API", () => {
+  it("production live mode retains the full demo Performance report rather than snapshot-only fallback", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STAFF_LIVE_BACKEND", "1");
+    const cohort = Array.from({ length: 40 }, (_, i) => ({
+      id: `regression-${i}`, dataset: "realistic-v1", tag_number: `016800${String(i).padStart(4, "0")}`,
+      tag_code: `REALISTIC-20261114-${i}`, passenger_name: "DEMO/ONLY", flight_number: "CX548",
+      departure_airport: "HKG", arrival_airport: "NRT", departure_time: "2026-11-15T08:00:00Z",
+      status: i % 4 === 0 ? "MISROUTED" : "COLLECTED", risk_score: i % 4 === 0 ? 82 : 14,
+      is_rush_bag: i % 4 === 0, events: [],
+    }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(cohort))));
+    const response = await GET(new Request("http://localhost/api/v1/recovery-performance?window=7d&station=HKG"));
+    const report = await response.json();
+    expect(response.status).toBe(200);
+    expect(report.availability).toBe("available");
+    expect(report.trend.length).toBeGreaterThan(1);
+    expect(report.funnel.find((stage: { key: string }) => stage.key === "transferred").count).toBeGreaterThan(0);
+    expect(report.kpis.some((metric: { value: number | null }) => metric.value !== null)).toBe(true);
+  });
   it("defaults to honest unavailable report without fabricating data", async () => {
     vi.stubEnv("STAFF_QA_FIXTURE", "");
     vi.stubEnv("STAFF_LIVE_BACKEND", "");
