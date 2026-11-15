@@ -84,3 +84,7 @@ __pycache__/
 **/.env
 .expo/
 apps/api/data/
+/firmware/
+.pio/
+
+

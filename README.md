@@ -113,15 +113,68 @@ When reference screenshots of the official Cathay Pacific application are provid
 
 ---
 
-## 6. Hardware & Platform Limitations
+## 6. Physical SmartTag Hardware Architecture & Prototype
 
-- **Passive RF E-ink**: The hardware prototype uses passive RF energy harvesting without an internal battery. In Phase 0, NFC operations are simulated via `MockNfcService`.
-- **Expo Go vs Dev Client**: Standard Expo Go does not bundle native NFC libraries (`react-native-nfc-manager`). Testing on physical E-ink tags will require an Expo Development Build (`eas build`).
-- **Barcode Readability**: Standard IATA 10-digit license plate numbers use Interleaved 2 of 5. Readability on reflective E-ink under airport lighting requires physical hardware calibration.
-- **IoT Bridge**: The ESP32 runs PN532 in target mode, so the phone writes NDEF into the bridge. The API gates taps with an optional shared `IOT_DEVICE_KEY`; the NFC UID itself is spoofable.
+The physical prototype integrates an **ESP32-C6**, **Waveshare PN532 NFC HAT** (operating in ISO/IEC 14443-4 Type-A Card Emulation Mode), and a **Waveshare 4.2" E-Paper Module** (monochrome 400x300 bi-stable display).
+
+### Prototype Photos
+
+| Standby / Ready to Pair (Cold Reset) | Paired & Rendered Baggage Tag |
+| :---: | :---: |
+| <img src="docs/hardware/smarttag-ready-to-pair-standby.jpg" width="340" alt="Standby Screen" /> | <img src="docs/hardware/smarttag-paired-baggage-tag.jpg" width="340" alt="Paired Tag Screen" /> |
+| *Cold reset standby screen on power cycle.* | *Live tag rendered on phone NFC tap (CX548 to NRT).* |
+
+### Hardware Architecture & Interconnection
+
+```mermaid
+flowchart TD
+    subgraph Mobile ["📱 Passenger Smartphone"]
+        App["Cathay Mobile App (Expo / React Native)"]
+        NfcChip["NFC Controller (ISO-DEP / NDEF)"]
+        App -->|"Tap to Tag"| NfcChip
+    end
+
+    subgraph SmartTag ["🏷️ PolyAero SmartTag Physical Prototype"]
+        subgraph NFC_Mod ["Waveshare PN532 NFC HAT"]
+            Antenna["13.56 MHz NFC Antenna"]
+            PN532["PN532 NFC Chip (Card Emulation)"]
+            Antenna <--> PN532
+        end
+
+        subgraph MCU ["ESP32-C6 Microcontroller (MicroPython Firmware)"]
+            Boot["boot.py (Cold Boot Init)"]
+            Handler["nfc_handler.py (ISO-DEP / PA1 APDU)"]
+            Engine["layout.py + barcode.py (IATA ITF-10 Engine)"]
+            Driver["epaper4in2.py (Waveshare V2 SPI Driver)"]
+            Boot --> Handler
+            PN532 <-->|"HSU UART: GPIO 22 (RX) / 23 (TX) / 7 (RST)"| Handler
+            Handler -->|"Baggage Payload (CX548 / NRT)"| Engine
+            Engine -->|"300x400 1-bit Buffer"| Driver
+        end
+
+        subgraph EPD ["Waveshare 4.2\" E-Paper Module (V2)"]
+            Panel["400x300 Bi-stable E-ink Display"]
+            Driver -->|"SPI: MOSI:19, SCK:21, CS:18, DC:2, RST:3, BUSY:6"| Panel
+        end
+    end
+
+    NfcChip <-->|"Near-Field Coupling (13.56 MHz)"| Antenna
+    Panel -.->|"Zero-power persistent image"| Barcode["IATA 10-Digit Barcode (CX548 to NRT)"]
+```
+
+See the [Hardware Documentation & Pinout Specification](docs/hardware/README.md) and [Firmware Source Code](apps/firmware/micropython-esp32c6/README.md) for full circuit schematics, timing parameters, and unit tests.
 
 ---
 
-## 7. Contributing & Collaboration
+## 7. Hardware & Platform Limitations
+
+- **Passive RF E-ink**: The hardware prototype uses passive RF energy harvesting simulation without an internal battery.
+- **Expo Go vs Dev Client**: Standard Expo Go does not bundle native NFC libraries (`react-native-nfc-manager`). Testing on physical E-ink tags requires the standalone release APK build (available in [GitHub Releases](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases)).
+- **Barcode Readability**: Standard IATA 10-digit license plate numbers use Interleaved 2 of 5. Tested and verified readable with handheld optical barcode imagers.
+- **IoT Bridge**: The ESP32 runs PN532 in target mode, so the phone writes NDEF directly into the tag.
+
+---
+
+## 8. Contributing & Collaboration
 
 See [Collaboration Guide](docs/collaboration-guide.md) for branch naming conventions (`feat/cathay-ui`, `feat/smarttag-mobile`, `feat/backend`, `feat/staff-portal`) and PR requirements.
