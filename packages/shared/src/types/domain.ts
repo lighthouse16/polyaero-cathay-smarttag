@@ -1,13 +1,13 @@
 /**
  * PolyAero Cathay SmartTag Domain Models
- * Core shared types across Mobile App, Staff Portal, and Supabase Backend.
+ * Core shared types across the mobile app, staff portal, and API.
  */
 
 export type CathayTier = 'GREEN' | 'SILVER' | 'GOLD' | 'DIAMOND';
 
 export interface Passenger {
   id: string;
-  authUserId?: string; // Foreign key mapping to Supabase Auth auth.users(id)
+  authUserId?: string;
   bookingReference: string;
   firstName: string;
   lastName: string;

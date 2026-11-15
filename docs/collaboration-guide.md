@@ -2,12 +2,12 @@
 
 ## 1. Team Ownership Boundaries
 
-| Feature Stream | Branch Convention | Focus Area |
-|:---|:---|:---|
-| **Cathay UI Reconstruction** | `feat/cathay-ui` | Pixel-perfect reconstruction of provided Cathay App screenshots (`apps/mobile/src/features/cathay-shell/`) |
-| **SmartTag Mobile Experience** | `feat/smarttag-mobile` | Passenger NFC pairing, baggage live tracking, carousel notifications |
-| **Backend & Data Layer** | `feat/backend` | Supabase schema migrations, RLS policies, real-time channels |
-| **Ground Staff Operations** | `feat/staff-portal` | Next.js ground operations dashboard, baggage recovery tools |
+| Feature Stream                 | Branch Convention      | Focus Area                                                                                                 |
+| :----------------------------- | :--------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **Cathay UI Reconstruction**   | `feat/cathay-ui`       | Pixel-perfect reconstruction of provided Cathay App screenshots (`apps/mobile/src/features/cathay-shell/`) |
+| **SmartTag Mobile Experience** | `feat/smarttag-mobile` | Passenger NFC pairing, baggage live tracking, carousel notifications                                       |
+| **Backend & Data Layer**       | `feat/backend`         | FastAPI endpoints, SQLAlchemy models, Alembic migrations, PostgreSQL                                       |
+| **Ground Staff Operations**    | `feat/staff-portal`    | Next.js ground operations dashboard, baggage recovery tools                                                |
 
 ---
 
@@ -31,6 +31,7 @@
 ---
 
 ## 3. Pull Request Guidelines
+
 - Fill out the PR template (`.github/PULL_REQUEST_TEMPLATE.md`).
 - For UI changes in `cathay-shell`, attach screenshot comparisons against the reference.
 - Verify that no personal data or secrets are committed.

@@ -118,6 +118,6 @@ curl --fail --silent --show-error "${URL}/api/v1/flights/search" \
 echo
 echo "API URL: ${URL}/api/v1"
 echo "API docs: ${URL}/api/v1/docs"
-echo "Prototype only: baggage memory resets on restart; OTP providers and passkey origins still need configuration."
+echo "Prototype only: baggage persists in RDS; staff authorization, SMTP, and public passkey origins still need configuration."
 echo "Device key is in Secret Manager: ${NAME}-device-key. Do not put it in public mobile configuration."
 echo "Delete demo resources after the hackathon; cleanup instructions are in README.md."

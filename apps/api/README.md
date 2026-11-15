@@ -6,21 +6,21 @@ FastAPI backend for the Baggage Recovery Copilot hackathon project.
 
 ### Prerequisites
 
-- Python 3.11+
-- uv (package manager): `pip install uv` or `corepack enable uv`
+- Python 3.13 recommended (matching the container; project metadata requires 3.11+)
+- uv (package manager): see https://docs.astral.sh/uv/getting-started/installation/
 - PostgreSQL 16+
 
 ### Install Dependencies
 
-```bash
-cd apps/api
-uv sync
+```powershell
+Set-Location apps\api
+uv sync --frozen --extra dev
 ```
 
 ### Environment Configuration
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 # Edit .env with your database credentials
 ```
 
@@ -78,10 +78,15 @@ uv run --frozen --extra dev pytest tests\test_email.py -q
 ### Run Development Server
 
 ```bash
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 API docs available at: http://localhost:8000/api/v1/docs
+
+Hosted hackathon API: https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1
+(interactive docs at `/docs`). This is a temporary synthetic-data service, not
+a production airline integration. See the [root quickstart](../../README.md)
+for local PostgreSQL and both frontend startup commands.
 
 ### Flight Status and Prototype Boarding Passes
 
@@ -180,8 +185,8 @@ Set `SEED_TEST_DATABASE_URL` as documented below; without it, database tests ski
 
 ### Seed Linked Demo Data
 
-The seed command targets the **current API/Alembic PostgreSQL schema**, not the
-older, incompatible `supabase` schema. Run migrations first. From the repository
+The seed command targets the **API/Alembic PostgreSQL schema**.
+Run migrations first. From the repository
 root, preview the dataset without opening a database connection:
 
 ```powershell
@@ -252,7 +257,7 @@ still run.
 
 #### Seed the deployed AWS database from Cloud Shell
 
-Build and push a new API image from the seed branch; the running API image may
+Build and push a new API image from the current main branch; the running API image may
 predate `app.seed`. Use a separate image tag so the deployed API is unchanged.
 Upload `seed_cloudrun.py` to Cloud Shell, then run:
 
@@ -311,26 +316,27 @@ apps/api/
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /health | Health check |
-| GET | /api/v1/baggage | List the authenticated member's PostgreSQL baggage |
-| GET | /api/v1/baggage/{identifier} | Get baggage by UUID, tag code or barcode |
-| GET | /api/v1/baggage/dashboard | Staff dashboard baggage listing |
-| GET | /api/v1/baggage/dashboard/{identifier} | Staff dashboard baggage detail |
-| POST | /api/v1/baggage/sync | Sync a registered tag with a booked itinerary |
-| POST | /api/v1/baggage/{identifier}/scan | Persist a milestone and event |
-| POST | /api/v1/baggage/{identifier}/risk/apply | Persist a model risk assessment |
-| POST | /api/v1/baggage/{identifier}/passenger/choice | Persist demo recovery choice |
-| POST | /api/v1/tags | Create SmartTag |
-| GET | /api/v1/tags/{id} | Get tag by ID |
-| GET | /api/v1/tags | List tags |
-| PATCH | /api/v1/tags/{id} | Update tag |
-| DELETE | /api/v1/tags/{id} | Delete tag |
+| Method | Path                                          | Description                                        |
+| ------ | --------------------------------------------- | -------------------------------------------------- |
+| GET    | /health                                       | Health check                                       |
+| GET    | /api/v1/baggage                               | List the authenticated member's PostgreSQL baggage |
+| GET    | /api/v1/baggage/{identifier}                  | Get baggage by UUID, tag code or barcode           |
+| GET    | /api/v1/baggage/dashboard                     | Staff dashboard baggage listing                    |
+| GET    | /api/v1/baggage/dashboard/{identifier}        | Staff dashboard baggage detail                     |
+| POST   | /api/v1/baggage/sync                          | Sync a registered tag with a booked itinerary      |
+| POST   | /api/v1/baggage/{identifier}/scan             | Persist a milestone and event                      |
+| POST   | /api/v1/baggage/{identifier}/risk/apply       | Persist a model risk assessment                    |
+| POST   | /api/v1/baggage/{identifier}/passenger/choice | Persist demo recovery choice                       |
+| POST   | /api/v1/tags                                  | Create SmartTag                                    |
+| GET    | /api/v1/tags/{id}                             | Get tag by ID                                      |
+| GET    | /api/v1/tags                                  | List tags                                          |
+| PATCH  | /api/v1/tags/{id}                             | Update tag                                         |
+| DELETE | /api/v1/tags/{id}                             | Delete tag                                         |
 
 ## Database Schema
 
 ### tags
+
 - `id` (UUID, PK)
 - `tag_code` (String, unique) - NFC tag identifier
 - `is_active` (Boolean)
@@ -340,6 +346,7 @@ apps/api/
 - `created_at`, `updated_at` (DateTime)
 
 ### baggage
+
 - `id` (UUID, PK)
 - `passenger_name` (String)
 - `flight_id` (UUID, FK to flights, indexed)
@@ -350,31 +357,32 @@ apps/api/
 - `tag_id` (UUID, FK to tags, nullable, indexed)
 - `created_at`, `updated_at` (DateTime)
 
-## Next Steps
+## Prototype limitations
 
-- [ ] Implement CRUD operations in endpoints
-- [ ] Add authentication/authorization
-- [ ] Add baggage milestone events table
-- [ ] Integrate with Supabase for realtime (staff portal)
-- [ ] Add RAG/agentic AI modules (separate service)
+Member authentication, ownership-scoped baggage, flight/booking APIs, and
+persistent events are implemented. Staff/dashboard access is not a completed
+production authorization model; restrict operational routes to trusted demo
+users. Flight reports and risk inputs are not a live airline/airport feed.
+SMTP must be configured separately for email OTP; SMS remains a development
+stub. The backend does not prove physical e-paper refresh.
 
 ## One-day Google Cloud Run demo with AWS RDS
 
 This is a public, demo-data-only deployment, not a production release. Baggage
 and operational updates persist in AWS RDS across instance replacements.
-Authentication/ownership gaps from the audit remain. Gmail/SMS delivery and
-public passkey origins are not configured by this deployment.
+Staff/dashboard authorization gaps remain. SMTP email delivery and public
+passkey origins require separate configuration; SMS remains a development stub.
 
 Select a Google Cloud project with billing enabled and open Cloud Shell.
-During PR review, get the deployment branch directly from GitHub:
+Clone the current main branch:
 
 ```bash
-git clone --branch feat/backend-cloudrun-rds https://github.com/lighthouse16/polyaero-cathay-smarttag.git
+git clone --branch main https://github.com/lighthouse16/polyaero-cathay-smarttag.git
 cd polyaero-cathay-smarttag/apps/api
 bash deploy-cloudrun.sh
 ```
 
-After this PR is merged, use `--branch main` instead. Alternatively, upload
+Alternatively, upload
 the prepared `api-cloudrun.zip` using Cloud Shell's Upload file menu and run:
 
 ```bash
@@ -388,6 +396,12 @@ The script uses Hong Kong (`asia-east2`), near the AWS RDS Hong Kong region
 outbound IP. When it pauses, add that IP as a PostgreSQL TCP 5432 source ending
 in `/32` to the AWS database's security group, then continue. Never open the
 database to `0.0.0.0/0`.
+
+Provision the AWS RDS PostgreSQL instance and `smarttag` database separately
+before running the script: the helper does not create AWS resources. RDS must
+be reachable from the Google Cloud NAT IP; this setup does not establish a
+private cross-cloud VPN. Keep the endpoint and credentials private, and retain
+backups before applying migrations.
 
 Enter your RDS endpoint, database name, username, and password at the prompts.
 Do not run the script with `bash -x`: that would reveal credentials. Secrets
@@ -403,8 +417,8 @@ if it stops, inspect the error and existing resources before rerunning.
 After successful health and database-route checks, use the printed URL ending
 in `/api/v1` for `EXPO_PUBLIC_API_URL` and `NEXT_PUBLIC_API_URL` when building
 clients. The generated device key must only be provisioned to trusted hardware.
-Changing the API URL does not resolve the client's existing demo-data or NFC
-acknowledgement issues.
+Changing the API URL does not complete the remaining simulator integrations or
+verify NFC/e-paper hardware behavior.
 
 ### Resume with an already pushed image and existing permissions
 

@@ -1,56 +1,49 @@
 # Baggage Recovery Copilot Development Guide
 
-## 1. Prerequisites
-- **Node.js**: `v20.x` or `v22.x` (Tested on `v22.21.0`)
-- **Package Manager**: `pnpm` (Tested on `v10.33.0`)
-- **Mobile Development**:
-  - Expo Go (iOS/Android) or iOS Simulator / Android Emulator
-  - For native NFC hardware testing: Expo Development Build (`eas-cli`)
+The [root README](../README.md#run-locally) is the canonical local quickstart:
+prerequisites, PostgreSQL setup, migrations/seeds, environment files, and
+commands for all three development servers.
 
----
+## Application environments
 
-## 2. Quickstart
+| Application     | Copy from                  | Local file              | Public API variable             |
+| --------------- | -------------------------- | ----------------------- | ------------------------------- |
+| Passenger app   | `apps\mobile\.env.example` | `apps\mobile\.env`      | `EXPO_PUBLIC_API_URL`           |
+| Staff dashboard | `apps\staff\.env.example`  | `apps\staff\.env.local` | `NEXT_PUBLIC_API_URL`           |
+| Backend         | `apps\api\.env.example`    | `apps\api\.env`         | None; server configuration only |
 
-### Step 1: Clone Repository
-```bash
-git clone https://github.com/lighthouse16/polyaero-cathay-smarttag.git
-cd polyaero-cathay-smarttag
+The root environment example is a reference, not an automatically loaded file.
+Use the complete `/api/v1` URL. Android emulators use `10.0.2.2`; physical phones
+use the computer's LAN IP; browser/iOS simulator use `localhost`.
+Restart development servers after changes and rebuild client production bundles.
+Do not expose server secrets through public variables.
+
+## Common commands
+
+From the repository root:
+
+```powershell
+pnpm dev:mobile
+pnpm dev:staff
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @polyaero/staff test
+pnpm build:staff
 ```
 
-### Step 2: Install Workspace Dependencies
-```bash
-pnpm install
-```
+Run servers in separate terminals. `pnpm test` runs the shared package tests, not
+every workspace's tests. See [mobile testing](../apps/mobile/README.md) and
+[API testing](../apps/api/README.md) for their separate suites.
 
-### Step 3: Run Development Servers
-- **Mobile App (Expo)**:
-  ```bash
-  pnpm dev:mobile
-  ```
-  Press `w` to open in web browser, or scan QR code with Expo Go.
+## Prototype versus live behavior
 
-- **Ground Staff Portal (Next.js)**:
-  ```bash
-  pnpm dev:staff
-  ```
-  Open `http://localhost:3000` in your browser.
+`EXPO_PUBLIC_USE_MOCK_DATA=true` enables explicit mobile demo flows. The default
+is live API mode; a working database and member account are required for the
+integrated flows. The local SmartTag simulator and Next.js mock API remain
+separate from persisted PostgreSQL operations.
 
----
-
-## 3. Monorepo Commands
-
-| Command | Action |
-|:---|:---|
-| `pnpm install` | Install and link all workspace dependencies |
-| `pnpm typecheck` | Run strict TypeScript checks across all packages |
-| `pnpm test` | Run Vitest unit tests in `@polyaero/shared` |
-| `pnpm build:staff` | Create production Next.js build of Staff Portal |
-| `pnpm format` | Auto-format codebase using Prettier |
-
----
-
-## 4. Environment Variables
-Local development functions completely offline using realistic mock fixtures.
-To connect to a live Supabase project:
-1. Copy `.env.example` to `.env.local`
-2. Update `EXPO_PUBLIC_SUPABASE_URL` and keys.
+Browser/Expo Go testing does not exercise native NFC. Use an Expo development
+client for compatible physical phones, and follow the
+[firmware wiring/deployment guide](../apps/firmware/micropython-esp32c6/README.md)
+for the standalone ESP32-C6 bridge.
