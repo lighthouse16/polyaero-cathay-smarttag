@@ -60,6 +60,18 @@ export interface BackendBag {
   events?: BackendScanEvent[] | null;
 }
 
+export interface BackendFlightOption {
+  id: string;
+  flight_number: string;
+  origin_code: string;
+  destination_code: string;
+  departure_time: string;
+  arrival_time: string;
+  terminal?: string | null;
+  gate?: string | null;
+  aircraft?: string | null;
+}
+
 // shortcut: feeder legs remain demo assumptions until the API supplies actual transfer connections.
 const FEEDER_POOL = [
   { flightNumber: "CX467", origin: "TPE" },
@@ -81,6 +93,7 @@ const COMPLETED_STATUSES = new Set([
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 const WAVE_OFFSETS_24H_MIN = [40, 110, 195, 290, 410, 560, 740, 960, 1180, 1340];
+const HKG_CORRIDOR_DESTINATIONS = ["NRT", "NKG", "YVR", "LHR"];
 
 interface FlightBagRiskSample {
   score: number;
@@ -247,6 +260,7 @@ export function buildLiveTransferSnapshot(
   backendBags: BackendBag[],
   now = new Date(),
   sourceLabel = "Live Cloud Run + AWS RDS",
+  backendFlights: BackendFlightOption[] = [],
 ): TransferControlSnapshot {
   const nowMs = now.getTime();
   const generatedAt = new Date(nowMs).toISOString();
@@ -261,6 +275,28 @@ export function buildLiveTransferSnapshot(
     observedAt: generatedAt,
     validUntil,
   });
+
+  const flightOptions = backendFlights.filter(
+    (flight) =>
+      flight.id &&
+      Number.isFinite(Date.parse(flight.departure_time)) &&
+      flight.flight_number &&
+      flight.origin_code &&
+      flight.destination_code,
+  );
+  const findFlight = (
+    flightNumber: string,
+    origin: string,
+    destination: string,
+    operatingDate: string,
+  ) =>
+    flightOptions.find(
+      (flight) =>
+        flight.flight_number.toUpperCase() === flightNumber &&
+        flight.origin_code.toUpperCase() === origin &&
+        flight.destination_code.toUpperCase() === destination &&
+        formatHktDateKey(Date.parse(flight.departure_time)) === operatingDate,
+    );
 
   const seenTags = new Set<string>();
   const seenIds = new Set<string>();
@@ -305,11 +341,25 @@ export function buildLiveTransferSnapshot(
         : rawDest;
 
     const parsedDep = Date.parse(b.departure_time || "");
-    let depMs = Number.isFinite(parsedDep)
+    const requestedOpDate = Number.isFinite(parsedDep)
+      ? formatHktDateKey(parsedDep)
+      : formatHktDateKey(nowMs);
+    const scheduledFlight = findFlight(
+      outFlight,
+      outOrigin,
+      outDest,
+      requestedOpDate,
+    );
+    let depMs = scheduledFlight
+      ? Date.parse(scheduledFlight.departure_time)
+      : Number.isFinite(parsedDep)
       ? parsedDep
       : nowMs + 110 * 60_000;
     // Live demo anchor: keep stale or near-cutoff departures safely ahead of handling cutoff, assigned per outbound flight wave.
-    if (depMs < nowMs + 60 * 60_000 || depMs > nowMs + 24 * 3600_000) {
+    if (
+      !scheduledFlight &&
+      (depMs < nowMs + 60 * 60_000 || depMs > nowMs + 24 * 3600_000)
+    ) {
       let offsetMin = anchoredFlightOffsetMin.get(outFlight);
       if (offsetMin === undefined) {
         offsetMin =
@@ -332,16 +382,35 @@ export function buildLiveTransferSnapshot(
         origin: outOrigin,
         destination: outDest,
         scheduledDepartureAt: depIso,
-        scheduledArrivalAt: null,
+        scheduledArrivalAt: scheduledFlight &&
+          Number.isFinite(Date.parse(scheduledFlight.arrival_time))
+          ? new Date(scheduledFlight.arrival_time).toISOString()
+          : null,
         estimatedDepartureAt: depIso,
-        estimatedArrivalAt: null,
+        estimatedArrivalAt: scheduledFlight &&
+          Number.isFinite(Date.parse(scheduledFlight.arrival_time))
+          ? new Date(scheduledFlight.arrival_time).toISOString()
+          : null,
         actualArrivalAt: null,
         provenance: makeProv(`leg:${outLegId}`),
       });
       legDepMsMap.set(outLegId, depMs);
     }
 
-    const feeder = isInboundToHkg
+    const inboundFlight = isInboundToHkg
+      ? findFlight(rawFlight, rawOrigin, "HKG", requestedOpDate)
+      : flightOptions.find(
+          (flight) =>
+            flight.origin_code.toUpperCase() !== "HKG" &&
+            flight.destination_code.toUpperCase() === "HKG" &&
+            formatHktDateKey(Date.parse(flight.departure_time)) === opDate,
+        );
+    const feeder = inboundFlight
+      ? {
+          flightNumber: inboundFlight.flight_number.toUpperCase(),
+          origin: inboundFlight.origin_code.toUpperCase(),
+        }
+      : isInboundToHkg
       ? { flightNumber: rawFlight, origin: rawOrigin }
       : FEEDER_POOL[idx % FEEDER_POOL.length];
     const inLegId = `in-${feeder.flightNumber}-${opDate}`;
@@ -353,7 +422,12 @@ export function buildLiveTransferSnapshot(
           : 95;
     // Cap synthetic multi-day template gaps (>6h) to a realistic same-shift transfer buffer (38–102m)
     const connMins = rawConnMins <= 360 ? rawConnMins : (idx % 5) * 16 + 38;
-    const inArrMs = depMs - connMins * 60_000;
+    const inboundArrivalMs = inboundFlight
+      ? Date.parse(inboundFlight.arrival_time)
+      : Number.NaN;
+    const inArrMs = Number.isFinite(inboundArrivalMs)
+      ? inboundArrivalMs
+      : depMs - connMins * 60_000;
     const inArrIso = new Date(inArrMs).toISOString();
 
     if (!legsMap.has(inLegId)) {
@@ -363,9 +437,13 @@ export function buildLiveTransferSnapshot(
         operatingDate: opDate,
         origin: feeder.origin,
         destination: "HKG",
-        scheduledDepartureAt: null,
+        scheduledDepartureAt: inboundFlight
+          ? new Date(inboundFlight.departure_time).toISOString()
+          : null,
         scheduledArrivalAt: inArrIso,
-        estimatedDepartureAt: null,
+        estimatedDepartureAt: inboundFlight
+          ? new Date(inboundFlight.departure_time).toISOString()
+          : null,
         estimatedArrivalAt: inArrIso,
         actualArrivalAt: inArrMs <= nowMs ? inArrIso : null,
         provenance: makeProv(`leg:${inLegId}`),
@@ -595,11 +673,61 @@ export async function fetchLiveTransferSnapshot(
   }
 
   const bags = (await baggageRes.json()) as BackendBag[];
+  const departureDates = new Set([
+    new Date().toISOString().slice(0, 10),
+    new Date(Date.now() - DAY_MS).toISOString().slice(0, 10),
+  ]);
+  for (const bag of bags) {
+    const departureMs = Date.parse(bag.departure_time || "");
+    if (Number.isFinite(departureMs)) {
+      departureDates.add(new Date(departureMs).toISOString().slice(0, 10));
+    }
+  }
+
+  const flightQueries = [...departureDates].flatMap((departureDate) =>
+    HKG_CORRIDOR_DESTINATIONS.map((destination) =>
+      fetch(`${cleanBase}/flights/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        ...(signal ? { signal } : {}),
+        body: JSON.stringify({
+          trip_type: "RETURN",
+          origin: "HKG",
+          destination,
+          departure_date: departureDate,
+          return_date: departureDate,
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) return [];
+          const data = (await response.json()) as {
+            outbound?: BackendFlightOption[];
+            return?: BackendFlightOption[];
+            return_flights?: BackendFlightOption[];
+          };
+          return [
+            ...(data.outbound ?? []),
+            ...(data.return ?? []),
+            ...(data.return_flights ?? []),
+          ];
+        })
+        .catch(() => []),
+    ),
+  );
+  const flightBatches = await Promise.all(flightQueries);
+  const flightMap = new Map<string, BackendFlightOption>();
+  for (const flight of flightBatches.flat()) {
+    if (flight?.id && !flightMap.has(flight.id)) {
+      flightMap.set(flight.id, flight);
+    }
+  }
 
   return buildLiveTransferSnapshot(
     bags,
     new Date(),
-    `Live Cloud Run (${cleanBase})`,
+    `Live PostgreSQL RDS (${cleanBase})`,
+    [...flightMap.values()],
   );
 }
 

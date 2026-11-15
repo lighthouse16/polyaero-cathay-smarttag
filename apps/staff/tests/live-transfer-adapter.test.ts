@@ -35,18 +35,37 @@ const features = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("persistent baggage integration", () => {
-  it("discovers every database bag in one request without guessing seed dates", async () => {
-    const bags = Array.from({ length: 10 }, (_, i) => ({
+  it("loads every database bag and queries matching flights", async () => {
+    const bags = Array.from({ length: 11 }, (_, i) => ({
       ...bag,
       id: `persisted-${i}`,
-      tag_number: `016123450${i}`,
+      tag_number: `01612345${String(i).padStart(2, "0")}`,
     }));
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(bags)));
+    const flight = {
+      id: "flight-cx548",
+      flight_number: "CX548",
+      origin_code: "HKG",
+      destination_code: "NRT",
+      departure_time: bag.departure_time,
+      arrival_time: "2026-11-15T09:00:00Z",
+    };
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(new Response(JSON.stringify(
+        url.endsWith("/baggage/dashboard")
+          ? bags
+          : { outbound: [flight] },
+      ))),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const snapshot = await fetchLiveTransferSnapshot(base);
-    expect(snapshot.bags).toHaveLength(10);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(`${base}/baggage/dashboard`, { cache: "no-store" });
+    expect(snapshot.bags).toHaveLength(11);
+    expect(snapshot.legs).toContainEqual(expect.objectContaining({
+      id: "out-CX548-2026-11-15",
+      scheduledDepartureAt: new Date(flight.departure_time).toISOString(),
+      scheduledArrivalAt: new Date(flight.arrival_time).toISOString(),
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `${base}/baggage/dashboard`, { cache: "no-store" });
+    expect(fetchMock.mock.calls.slice(1).every(([url]) => String(url).includes("/flights/search"))).toBe(true);
   });
 
   it("passes cancellation to the baggage request", async () => {
@@ -88,9 +107,16 @@ describe("persistent baggage integration", () => {
       updated_at: updatedAt,
       events: [{ id: "mobile-sync-event", event_type: "SYNCHRONIZED", timestamp: updatedAt, scanner_type: "APP", location_code: "MOBILE-APP", station_name: "Cathay App SmartTag Sync" }],
     };
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ ...bag, is_tag_synced: false }])))
-      .mockResolvedValueOnce(new Response(JSON.stringify([synced])));
+    let dashboardRequests = 0;
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (!url.endsWith("/baggage/dashboard")) {
+        return Promise.resolve(new Response("{}"));
+      }
+      dashboardRequests += 1;
+      return Promise.resolve(new Response(JSON.stringify([
+        dashboardRequests === 1 ? { ...bag, is_tag_synced: false } : synced,
+      ])));
+    });
     vi.stubGlobal("fetch", fetchMock);
     const before = await fetchLiveTransferSnapshot(base);
     const after = await fetchLiveTransferSnapshot(base);
@@ -98,7 +124,7 @@ describe("persistent baggage integration", () => {
     expect(before.bags[0].is_tag_synced).toBe(false);
     expect(after.bags[0]).toMatchObject({ id: bag.id, tag_number: bag.tag_number, status: "TAGGED", is_tag_synced: true, updated_at: new Date(updatedAt).toISOString() });
     expect(after.bags[0].events).toContainEqual(expect.objectContaining({ id: "mobile-sync-event", event_type: "SYNCHRONIZED", scanner_type: "APP" }));
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/baggage/dashboard"))).toHaveLength(2);
     expect(fetchMock.mock.calls.every(([, options]) => options.cache === "no-store")).toBe(true);
   });
 

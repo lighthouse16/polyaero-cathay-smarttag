@@ -88,3 +88,7 @@ __pycache__/
 .env.*
 !.env.example
 .next-build/
+
+apps/api/data/
+/firmware/
+.pio/
