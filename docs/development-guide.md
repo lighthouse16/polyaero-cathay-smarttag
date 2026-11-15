@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag Development Guide
+# Baggage Recovery Copilot Development Guide
 
 ## 1. Prerequisites
 - **Node.js**: `v20.x` or `v22.x` (Tested on `v22.21.0`)

@@ -1,8 +1,8 @@
-# PolyAero Cathay SmartTag System Architecture
+# Baggage Recovery Copilot System Architecture
 
 ## 1. High-Level Architecture Overview
 
-PolyAero Cathay SmartTag is a reusable digital baggage identity platform proposed for integration into the Cathay Pacific passenger experience.
+Baggage Recovery Copilot is a reusable digital baggage identity platform proposed for integration into the Cathay Pacific passenger experience.
 
 ```
 +------------------------------------------------------------------------+

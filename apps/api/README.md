@@ -1,6 +1,6 @@
-# PolyAero Cathay SmartTag API
+# Baggage Recovery Copilot API
 
-FastAPI backend for the PolyAero Cathay SmartTag hackathon project.
+FastAPI backend for the Baggage Recovery Copilot hackathon project.
 
 ## Quick Start
 

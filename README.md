@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag
+# Baggage Recovery Copilot
 
 > Cathay Hackathon 2026 Prototype  
 > Unofficial PolyAero Research Concept — Not an official Cathay Pacific production product.
@@ -17,14 +17,16 @@
 
 ---
 
+> Naming: Baggage Recovery Copilot is the project name. SmartTag refers to the physical NFC/E-paper baggage tag. Existing repository URLs, APK filenames, API paths, package names and protocol identifiers retain their legacy names for compatibility.
+
 ## 1. Project Overview
 
-**PolyAero Cathay SmartTag** is a reusable digital baggage identity platform designed to integrate into the Cathay Pacific passenger experience and ground operations.
+**Baggage Recovery Copilot** is a baggage transfer and recovery prototype connecting the passenger mobile experience, reusable NFC/E-paper baggage tags, and ground operations.
 
 The prototype includes:
 1. **Passenger Mobile App**: Reconstructed Cathay Pacific mobile app shell with flight booking, baggage management, digital pass, and contactless NFC tag pairing with session acknowledgment and continuous tap loop protection.
 2. **SmartTag Physical E-ink Hardware**: Standalone ESP32-C6 firmware with PN532 Type-4A card emulation, offline IATA 10-digit Interleaved 2 of 5 barcode generation, and Waveshare 4.2" bi-stable E-Paper display with power-cycle cold reset.
-3. **Ground Staff Operations Portal**: Next.js 15 transfer control dashboard featuring flight-first baggage tracking, tight connection alerts, and an **Operations Copilot** (draggable Grammarly-style floating AI widget).
+3. **Ground Staff Operations Portal**: Next.js 15 transfer control dashboard featuring flight-first baggage tracking, tight connection alerts, and an **Baggage Recovery Copilot** (draggable Grammarly-style floating AI widget).
 4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
 5. **Backend API**: FastAPI with PostgreSQL migrations and Cloud Run / RDS production deployment runbooks.
 
@@ -123,7 +125,7 @@ When reference screenshots of the official Cathay Pacific application are provid
 | **Cathay App Shell** | ✅ Complete | Reconstructed Cathay Pacific mobile app shell with brand Cathay Sans typography, flight bookings, and digital boarding pass. |
 | **SmartTag NFC Linking** | ✅ Complete | Native NFC (`react-native-nfc-manager` + Android intent dispatch) with ISO-DEP Type-4A NDEF & PA1 protocol, session ACK protection against repeated tap loops. Packaged in [Release APK v1.0.0](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases/tag/v1.0.0). |
 | **Physical E-ink Tag** | ✅ Complete | Standalone MicroPython firmware on **ESP32-C6** + **Waveshare PN532 NFC HAT** + **Waveshare 4.2" E-Paper V2**. Autonomous offline IATA barcode rendering, zero WiFi dependency, cold reset on power cycle. |
-| **Ground Staff Portal** | ✅ Complete | Live on [Vercel](https://cathay.haidangtrih.me/#transfer-control). Flight-first transfer control dashboard, connection risk tracking, and draggable Grammarly-style **Operations Copilot**. |
+| **Ground Staff Portal** | ✅ Complete | Live on [Vercel](https://cathay.haidangtrih.me/#transfer-control). Flight-first transfer control dashboard, connection risk tracking, and draggable Grammarly-style **Baggage Recovery Copilot**. |
 | **Data & Backend API** | ✅ Complete | FastAPI with PostgreSQL migrations and Supabase auditing for immutable baggage milestone events. |
 
 ---

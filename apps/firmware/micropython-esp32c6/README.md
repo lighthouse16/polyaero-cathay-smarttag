@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag — ESP32-C6 MicroPython Firmware
+# Baggage Recovery Copilot — ESP32-C6 MicroPython Firmware
 
 ESP32-C6 firmware for PN532 Type-4 Target (PICC emulation) + Waveshare 4.2" E-Paper display.
 

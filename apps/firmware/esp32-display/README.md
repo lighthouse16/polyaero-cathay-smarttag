@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag — ESP32-C6 E-Paper + PN532 Bridge
+# Baggage Recovery Copilot — ESP32-C6 E-Paper + PN532 Bridge
 
 The ESP32-C6 is the physical bridge between the phone, the API, and the 4.2-inch E-Paper
 screen.
