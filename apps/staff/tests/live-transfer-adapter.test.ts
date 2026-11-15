@@ -34,16 +34,20 @@ const features = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("persistent baggage integration", () => {
-  it("discovers every database bag in one request without guessing seed dates", async () => {
+  it("loads every database bag and enriches the snapshot with matching flights", async () => {
     const bags = Array.from({ length: 11 }, (_, i) => ({
       ...bag, id: `persisted-${i}`, tag_number: `01612345${i}`,
     }));
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(bags)));
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(new Response(JSON.stringify(
+        url.endsWith("/baggage/dashboard") ? bags : {},
+      ))),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const snapshot = await fetchLiveTransferSnapshot(base);
     expect(snapshot.bags).toHaveLength(11);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(`${base}/baggage/dashboard`, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `${base}/baggage/dashboard`, { cache: "no-store" });
+    expect(fetchMock.mock.calls.slice(1).every(([url]) => String(url).includes("/flights/search"))).toBe(true);
   });
 
   it("passes cancellation to the baggage request", async () => {
