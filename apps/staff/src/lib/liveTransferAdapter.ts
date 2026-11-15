@@ -1,3 +1,4 @@
+import { cachedRead, clearReadCache } from "./readCache";
 import type {
   BagRiskAssessment,
   BagTransferConnection,
@@ -657,24 +658,29 @@ export function getLiveApiBase(): string {
   );
 }
 
+async function fetchDashboardBags(base: string, signal?: AbortSignal, fresh = false): Promise<BackendBag[]> {
+  const load = async () => {
+    const response = await fetch(`${base}/baggage/dashboard`, {
+      cache: "no-store",
+      ...(signal ? { signal } : {}),
+    });
+    if (!response.ok) throw new Error(`Live baggage API returned HTTP ${response.status}`);
+    return await response.json() as BackendBag[];
+  };
+  // Caller-owned cancellation must never cancel another request's shared read.
+  return signal ? load() : cachedRead(`bags:${base}`, 15_000, load, fresh);
+}
+
 export async function fetchLiveTransferSnapshot(
   signalOrBase?: AbortSignal | string,
+  fresh = false,
 ): Promise<TransferControlSnapshot> {
   const signal = typeof signalOrBase === "string" ? undefined : signalOrBase;
   const cleanBase =
     typeof signalOrBase === "string" && signalOrBase.trim()
       ? signalOrBase.trim().replace(/\/$/, "")
       : getLiveApiBase();
-  const baggageRes = await fetch(`${cleanBase}/baggage/dashboard`, {
-    cache: "no-store",
-    ...(signal ? { signal } : {}),
-  });
-
-  if (!baggageRes.ok) {
-    throw new Error(`Live baggage API returned HTTP ${baggageRes.status}`);
-  }
-
-  const bags = (await baggageRes.json()) as BackendBag[];
+  const bags = await fetchDashboardBags(cleanBase, signal, fresh);
   const departureDates = new Set([
     new Date().toISOString().slice(0, 10),
     new Date(Date.now() - DAY_MS).toISOString().slice(0, 10),
@@ -688,24 +694,22 @@ export async function fetchLiveTransferSnapshot(
 
   const flightQueries = [...departureDates].flatMap((departureDate) =>
     HKG_CORRIDOR_DESTINATIONS.map((destination) =>
-      fetch(`${cleanBase}/flights/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        ...(signal ? { signal } : {}),
-        body: JSON.stringify({
-          trip_type: "RETURN",
-          origin: "HKG",
-          destination,
-          departure_date: departureDate,
-          return_date: departureDate,
-        }),
-      })
-        .then(async (response) => {
-          if (response.status === 401 || response.status === 403) {
-            throw new Error(`Flight API returned HTTP ${response.status}`);
-          }
-          if (!response.ok) return [];
+      (async () => {
+        const load = async () => {
+          const response = await fetch(`${cleanBase}/flights/search`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            ...(signal ? { signal } : {}),
+            body: JSON.stringify({
+              trip_type: "RETURN",
+              origin: "HKG",
+              destination,
+              departure_date: departureDate,
+              return_date: departureDate,
+            }),
+          });
+          if (!response.ok) throw new Error(`Flight API returned HTTP ${response.status}`);
           const data = (await response.json()) as {
             outbound?: BackendFlightOption[];
             return?: BackendFlightOption[];
@@ -716,14 +720,17 @@ export async function fetchLiveTransferSnapshot(
             ...(data.return ?? []),
             ...(data.return_flights ?? []),
           ];
-        })
-        .catch((error: unknown) => {
-          if (signal?.aborted ||
-            (error instanceof Error && (error.name === "AbortError" || /HTTP (401|403)/.test(error.message)))) {
-            throw error;
-          }
-          return [];
-        }),
+        };
+        return signal ? load() : cachedRead(
+          `flights:${cleanBase}:${departureDate}:${destination}`, 300_000, load,
+        );
+      })().catch((error: unknown) => {
+        if (signal?.aborted ||
+          (error instanceof Error && (error.name === "AbortError" || /HTTP (401|403)/.test(error.message)))) {
+          throw error;
+        }
+        return [];
+      }),
     ),
   );
   const flightBatches = await Promise.all(flightQueries);
@@ -791,16 +798,10 @@ function pickActionLatencyMin(pctBucket: number): number {
 export async function fetchLiveRecoveryPerformance(
   filters: PerformanceFilterState,
   signal?: AbortSignal,
+  fresh = false,
 ): Promise<RecoveryPerformanceReport> {
   const cleanBase = getLiveApiBase();
-  const baggageRes = await fetch(`${cleanBase}/baggage/dashboard`, {
-    cache: "no-store",
-    ...(signal ? { signal } : {}),
-  });
-  if (!baggageRes.ok) {
-    throw new Error(`Live baggage API returned HTTP ${baggageRes.status}`);
-  }
-  const backendBags = (await baggageRes.json()) as BackendBag[];
+  const backendBags = await fetchDashboardBags(cleanBase, signal, fresh);
   const now = new Date();
   const nowMs = now.getTime();
   const validUntil = new Date(nowMs + 10 * 60_000).toISOString();
@@ -1176,6 +1177,7 @@ export async function recordLiveBagScan(
   if (!res.ok) {
     throw new Error(`Baggage scan failed with HTTP ${res.status}`);
   }
+  clearReadCache();
   return (await res.json()) as BackendBag;
 }
 
@@ -1204,5 +1206,6 @@ export async function applyLiveBagRisk(
   if (!res.ok) {
     throw new Error(`Baggage risk update failed with HTTP ${res.status}`);
   }
+  clearReadCache();
   return (await res.json()) as LiveRiskAssessment;
 }

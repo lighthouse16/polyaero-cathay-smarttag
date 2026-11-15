@@ -1,3 +1,4 @@
+import { clearReadCache } from "../src/lib/readCache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyLiveBagRisk,
@@ -32,9 +33,35 @@ const features = {
   airport_congestion: 2,
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); clearReadCache(); });
 
 describe("persistent baggage integration", () => {
+  it("reuses warm baggage and schedule reads but fresh refresh bypasses baggage cache", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : { outbound: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    const coldCalls = fetchMock.mock.calls.length;
+    await fetchLiveTransferSnapshot(base);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls);
+    await fetchLiveTransferSnapshot(base, true);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls + 1);
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`${base}/baggage/dashboard`);
+  });
+
+  it("expires baggage after 15 seconds without repeating schedule searches", async () => {
+    let clock = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : { outbound: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    const coldCalls = fetchMock.mock.calls.length;
+    clock += 15_001;
+    await fetchLiveTransferSnapshot(base);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls + 1);
+  });
+
   it("never assigns an unrelated real feeder arriving after the outbound flight", () => {
     const now = new Date("2026-11-15T06:00:00Z");
     const flights = [
@@ -174,7 +201,7 @@ describe("persistent baggage integration", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const before = await fetchLiveTransferSnapshot(base);
-    const after = await fetchLiveTransferSnapshot(base);
+    const after = await fetchLiveTransferSnapshot(base, true);
     expect(before.bags[0].id).toBe(after.bags[0].id);
     expect(before.bags[0].is_tag_synced).toBe(false);
     expect(after.bags[0]).toMatchObject({ id: bag.id, tag_number: bag.tag_number, status: "TAGGED", is_tag_synced: true, updated_at: new Date(updatedAt).toISOString() });

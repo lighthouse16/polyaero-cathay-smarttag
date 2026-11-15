@@ -8,21 +8,21 @@ describe("transfer snapshot API", () => {
   it("defaults unavailable without importing baggage seeds", async () => {
     vi.stubEnv("STAFF_QA_FIXTURE", "");
     vi.stubEnv("STAFF_LIVE_BACKEND", "");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/v1/transfer-control"));
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.json()).toMatchObject({ availability: "unavailable", bags: [], legs: [], connections: [], flightRisks: [], bagRisks: [], transferSuccess: null });
   });
   it("production ignores explicit QA fixture opt-in", async () => {
     vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("STAFF_QA_FIXTURE", "1"); vi.stubEnv("STAFF_LIVE_BACKEND", "");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/v1/transfer-control"));
     expect((await response.json()).availability).toBe("unavailable");
   });
   it("invalid QA file fails safely instead of returning stale or seeded state", async () => {
     vi.stubEnv("NODE_ENV", "development"); vi.stubEnv("STAFF_QA_FIXTURE", "1"); vi.stubEnv("STAFF_LIVE_BACKEND", "");
     const { readFile } = await import("node:fs/promises");
     vi.mocked(readFile).mockResolvedValue("{invalid");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/v1/transfer-control"));
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ detail: "Transfer-control source unavailable" });
   });

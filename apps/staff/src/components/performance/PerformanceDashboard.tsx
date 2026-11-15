@@ -55,6 +55,7 @@ export function PerformanceDashboard({
     async (
       nextFilters: PerformanceFilterState,
       signal?: AbortSignal,
+      fresh = false,
     ) => {
       const id = ++requestIdRef.current;
       setLoading(true);
@@ -64,6 +65,7 @@ export function PerformanceDashboard({
           station: nextFilters.station,
           outboundLegId: nextFilters.outboundLegId,
         });
+        if (fresh) params.set("fresh", "1");
         const response = await fetch(
           `/api/v1/recovery-performance?${params.toString()}`,
           { cache: "no-store", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) },
@@ -99,7 +101,7 @@ export function PerformanceDashboard({
     }
     skipFirstFetchRef.current = false;
     const ctrl = new AbortController();
-    void loadReport(filters, ctrl.signal);
+    void loadReport(filters, ctrl.signal, refreshNonce > 0);
     return () => ctrl.abort();
   }, [filters, refreshNonce, loadReport]);
 
