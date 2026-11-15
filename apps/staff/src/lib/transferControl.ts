@@ -71,14 +71,16 @@ function risk(value: unknown): Omit<FlightRiskAssessment, "flightLegId"> {
   return { status, score, modelVersion, assessedAt, validUntil, evidence, missingInputs };
 }
 function sanitizedBag(b: LiveBag): LiveBag {
-  if (!b.tag_number || !b.tag_number.trim()) return invalid();
+  if (!/^\d{10}$/.test(b.tag_number)) return invalid();
   unique(b.events, e => text(e.id));
   // ponytail: no staff PII authorization exists; add case-only PII after an authorized upstream contract.
   return {
     id: text(b.id), tag_number: b.tag_number, tag_code: text(b.tag_code), flight_number: b.flight_number,
     departure_airport: b.departure_airport, arrival_airport: b.arrival_airport,
     booking_reference: "", passenger_name: "", tier_status: "", cabin_class: "", seat_number: "",
-    weight_kg: b.weight_kg, status: b.status, last_known_location: b.last_known_location,
+    weight_kg: b.weight_kg, status: b.status,
+    ...(typeof b.is_tag_synced === "boolean" ? { is_tag_synced: b.is_tag_synced } : {}),
+    last_known_location: b.last_known_location,
     carousel_assigned: "", is_rush_bag: b.is_rush_bag, risk_score: b.risk_score, risk_level: b.risk_level,
     recommended_action: "", eink_banner: "", updated_at: instant(b.updated_at),
     ...(b.departure_time ? { departure_time: instant(b.departure_time) } : {}),
@@ -110,7 +112,7 @@ export function validateTransferSnapshot(value: unknown): TransferControlSnapsho
   unique(bags, b => b.id); unique(connections, c => c.id); unique(connections, c => c.bagTag);
   unique(flightRisks, r => r.flightLegId); unique(bagRisks, r => r.bagTag);
   for (const c of connections) {
-    if (!c.bagTag.trim() || (c.status !== "pending" && (c.attention === "action_required" || c.attention === "at_risk")) || (c.status === "missed" && c.attention !== "unknown")) return invalid();
+    if (!/^\d{10}$/.test(c.bagTag) || (c.status !== "pending" && (c.attention === "action_required" || c.attention === "at_risk")) || (c.status === "missed" && c.attention !== "unknown")) return invalid();
     if (!bagMap.has(c.bagTag) || legMap.get(c.inboundLegId)?.destination !== "HKG" || legMap.get(c.outboundLegId)?.origin !== "HKG" || c.inboundLegId === c.outboundLegId) return invalid();
   }
   for (const r of flightRisks) if (!legMap.has(r.flightLegId)) return invalid();

@@ -4,6 +4,13 @@
 ground-operations prototype. This is an independent PolyAero concept, not an
 official Cathay Pacific product or a production airline system.
 
+## Demo and release links
+
+- [Hosted operations portal](https://cathay.haidangtrih.me/#transfer-control)
+- [Android APK release v1.0.0](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases/tag/v1.0.0)
+- [Hardware specifications and pinout](docs/hardware/README.md)
+- [Standalone MicroPython firmware](apps/firmware/micropython-esp32c6/README.md)
+
 ## What the project does
 
 - **Passenger app:** Expo / React Native app with member sign-in, flight search,
@@ -11,7 +18,8 @@ official Cathay Pacific product or a production airline system.
 - **SmartTag:** NFC baggage identity, sync/readback logic, and a simulated journey
   experience. Native NFC requires a development build and compatible hardware.
 - **Staff dashboard:** Next.js operations workspace for baggage visibility,
-  custody scans, model risk assessments, and recovery choices backed by the API.
+  custody scans, model risk assessments, recovery choices, and a streaming
+  Baggage Recovery Copilot with optional server-configured model providers.
 - **Backend:** FastAPI, SQLAlchemy, and Alembic with PostgreSQL. Bookings and
   baggage reference a shared flight catalogue; events and operational updates
   persist in the database.
@@ -153,10 +161,26 @@ pnpm dev:staff
 ```
 
 Open http://localhost:3000. The provided `apps\staff\.env.example` selects
-`http://localhost:8000/api/v1`. Without that override, the live adapter defaults
+`http://localhost:8000/api/v1` and `STAFF_LIVE_BACKEND=1` for persisted operations.
+Without that URL override, the live adapter defaults
 to the hosted Cloud Run API. The staff view reads `/baggage/dashboard`; member
 baggage routes are separate and ownership-scoped. Do not test mutations against
 the hosted demo when you intended to use a local database.
+
+Optional Copilot provider settings are server-only and documented in the staff
+environment example. Without a configured provider, chat uses a deterministic
+snapshot preview rather than a live model. Protect portal access and apply
+quotas before enabling paid model credentials.
+
+## Hardware prototype photos
+
+| Standby screen                                                                                              | Paired baggage display                                                                                          |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/hardware/smarttag-ready-to-pair-standby.jpg" width="340" alt="SmartTag standby prototype" /> | <img src="docs/hardware/smarttag-paired-baggage-tag.jpg" width="340" alt="SmartTag paired prototype display" /> |
+
+These repository photos illustrate the prototype, not a claim that all physical
+refresh, power, and barcode scenarios were verified in this documentation update.
+See the [hardware guide](docs/hardware/README.md) for the circuit and pinout.
 
 ## How the cloud database and API were deployed
 
@@ -247,3 +271,4 @@ or physical device test has passed. See [API testing](apps/api/README.md) and
 - [Staff dashboard](apps/staff/README.md)
 - [MicroPython firmware and wiring](apps/firmware/micropython-esp32c6/README.md)
 - [Contribution workflow](docs/collaboration-guide.md)
+- [Staff backend and Copilot handoff](docs/STAFF_BACKEND_HANDOFF.md)
