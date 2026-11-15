@@ -39,7 +39,7 @@ export interface BackendBag {
   last_known_location?: string;
   carousel_assigned?: string;
   is_rush_bag?: boolean;
-  risk_score?: number;
+  risk_score?: number | null;
   risk_level?: string;
   recommended_action?: string;
   copilot_approval_status?: string;
@@ -284,8 +284,8 @@ export function buildLiveTransferSnapshot(
       last_known_location: b.last_known_location || "HKG-T1-TRANSFER",
       carousel_assigned: b.carousel_assigned || "",
       is_rush_bag: Boolean(b.is_rush_bag),
-      risk_score: typeof b.risk_score === "number" ? b.risk_score : 25,
-      risk_level: b.risk_level || "LOW",
+      risk_score: typeof b.risk_score === "number" ? b.risk_score : 0,
+      risk_level: b.risk_level || "UNASSESSED",
       recommended_action: b.recommended_action || "",
       eink_banner: b.eink_banner || "",
       updated_at: updatedIso,
@@ -308,7 +308,9 @@ export function buildLiveTransferSnapshot(
         ? "action_required"
         : isAtRisk
           ? "at_risk"
-          : "on_track";
+          : typeof b.risk_score === "number"
+            ? "on_track"
+            : "unknown";
 
     connections.push({
       id: `conn-${b.tag_number}`,
@@ -325,28 +327,41 @@ export function buildLiveTransferSnapshot(
       provenance: makeProv(`conn:${b.tag_number}`),
     });
 
+    const hasRisk = typeof b.risk_score === "number" && Number.isFinite(b.risk_score);
     bagRisks.push({
       bagTag: b.tag_number,
-      status: "assessed",
-      score: liveBag.risk_score,
-      modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
-      assessedAt: generatedAt,
-      validUntil,
-      evidence: [makeProv(`risk:${b.tag_number}`, "cathay-bag-risk-v3.0-hkg-feeder")],
-      missingInputs: [],
+      status: hasRisk ? "assessed" : "unavailable",
+      score: hasRisk ? liveBag.risk_score : null,
+      modelVersion: hasRisk ? "cathay-bag-risk-v3.0-hkg-feeder" : null,
+      assessedAt: hasRisk ? generatedAt : null,
+      validUntil: hasRisk ? validUntil : null,
+      evidence: hasRisk ? [makeProv(`risk:${b.tag_number}`, "cathay-bag-risk-v3.0-hkg-feeder")] : [],
+      missingInputs: hasRisk ? [] : ["No persisted baggage risk assessment"],
     });
 
     const scores = flightBagsMap.get(outLeg.id) ?? [];
-    scores.push(liveBag.risk_score);
+    if (hasRisk) scores.push(liveBag.risk_score);
     flightBagsMap.set(outLeg.id, scores);
   });
 
   const flightRisks: FlightRiskAssessment[] = [...legsMap.values()].map((leg) => {
     const scores = flightBagsMap.get(leg.id);
+    if (!scores || scores.length === 0) {
+      return {
+        flightLegId: leg.id,
+        status: "unavailable",
+        score: null,
+        modelVersion: null,
+        assessedAt: null,
+        validUntil: null,
+        evidence: [],
+        missingInputs: ["No persisted baggage risk assessment"],
+      };
+    }
     return {
       flightLegId: leg.id,
       status: "assessed",
-      score: scores && scores.length > 0 ? Math.max(...scores) : 20,
+      score: Math.max(...scores),
       modelVersion: "cathay-bag-risk-v3.0-hkg-feeder",
       assessedAt: generatedAt,
       validUntil,
@@ -378,8 +393,7 @@ export async function fetchLiveTransferSnapshot(
     typeof signalOrBase === "string" && signalOrBase.trim()
       ? signalOrBase.trim().replace(/\/$/, "")
       : getLiveApiBase();
-
-  const baggageRes = await fetch(`${cleanBase}/baggage`, {
+  const baggageRes = await fetch(`${cleanBase}/baggage/dashboard`, {
     cache: "no-store",
     ...(signal ? { signal } : {}),
   });
@@ -472,7 +486,7 @@ export async function recordLiveBagScan(
     }),
   });
   if (!res.ok) {
-    throw new Error(`Scan update failed with HTTP ${res.status}`);
+    throw new Error(`Baggage scan failed with HTTP ${res.status}`);
   }
   return (await res.json()) as BackendBag;
 }
@@ -497,7 +511,7 @@ export async function applyLiveBagRisk(
     body: JSON.stringify(features),
   });
   if (!res.ok) {
-    throw new Error(`Risk update failed with HTTP ${res.status}`);
+    throw new Error(`Baggage risk update failed with HTTP ${res.status}`);
   }
   return (await res.json()) as LiveRiskAssessment;
 }

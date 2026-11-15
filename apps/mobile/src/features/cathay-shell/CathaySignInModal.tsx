@@ -8,9 +8,12 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
+import { USE_MOCK_DATA } from '../../services/apiConfig';
+import { signIn, verifySignIn, userProfile } from '../../services/api';
 
 interface CathaySignInModalProps {
   visible: boolean;
@@ -29,10 +32,14 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
   const [authMethod, setAuthMethod] = useState<'mobile' | 'email' | 'memberNumber'>('mobile');
 
   // Input states
-  const [identifier, setIdentifier] = useState('70516618');
-  const [password, setPassword] = useState('MyNameCMD#1606');
+  const [identifier, setIdentifier] = useState(USE_MOCK_DATA ? '70516618' : '');
+  const [password, setPassword] = useState(USE_MOCK_DATA ? 'MyNameCMD#1606' : '');
   const [showPassword, setShowPassword] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState('');
 
   // Reset states
   const [resetDob, setResetDob] = useState('16/06/2007');
@@ -44,7 +51,33 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
     setViewState('password');
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!USE_MOCK_DATA) {
+      if (busy) return;
+      setBusy(true);
+      setApiError(null);
+      try {
+        const result = challengeId
+          ? await verifySignIn(challengeId, code)
+          : await signIn(identifier, password);
+        if ('otp_required' in result) {
+          if (!result.challenge_id) throw new Error('The API did not return an OTP challenge.');
+          setChallengeId(result.challenge_id);
+        } else {
+          onSuccess(userProfile(result));
+          setPassword('');
+          setCode('');
+          setChallengeId(null);
+          setViewState('id');
+          onClose();
+        }
+      } catch (error) {
+        setApiError(error instanceof Error ? error.message : 'Sign-in failed.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     // If password matches demo password, log in
     if (password === 'MyNameCMD#1606' || password.length >= 6) {
       onSuccess({
@@ -69,13 +102,29 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
     setViewState('password');
   };
 
+  const handleClose = () => {
+    if (busy) return;
+    setChallengeId(null);
+    setCode('');
+    setApiError(null);
+    if (!USE_MOCK_DATA) {
+      setPassword('');
+      setViewState('id');
+    }
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
+              if (busy) return;
+              setChallengeId(null);
+              setApiError(null);
+              setCode('');
               if (viewState === 'password') setViewState('id');
               else if (viewState.startsWith('reset_')) setViewState('id');
               else onClose();
@@ -89,7 +138,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
             {viewState.startsWith('reset_') ? 'Reset your password' : 'Sign in'}
           </Text>
 
-          <TouchableOpacity onPress={onClose} style={styles.navButton}>
+          <TouchableOpacity onPress={handleClose} disabled={busy} style={styles.navButton}>
             <Ionicons name="close" size={24} color="#718096" />
           </TouchableOpacity>
         </View>
@@ -167,7 +216,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                     style={styles.outlineButton}
                     onPress={() => {
                       setAuthMethod('email');
-                      setIdentifier('haidang.trinh@gmail.com');
+                      setIdentifier(USE_MOCK_DATA ? 'haidang.trinh@gmail.com' : '');
                     }}
                   >
                     <Text style={styles.outlineButtonText}>Email address</Text>
@@ -179,7 +228,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                     style={styles.outlineButton}
                     onPress={() => {
                       setAuthMethod('memberNumber');
-                      setIdentifier('1906620194');
+                      setIdentifier(USE_MOCK_DATA ? '1906620194' : '');
                     }}
                   >
                     <Text style={styles.outlineButtonText}>Membership number</Text>
@@ -191,7 +240,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                     style={styles.outlineButton}
                     onPress={() => {
                       setAuthMethod('mobile');
-                      setIdentifier('70516618');
+                      setIdentifier(USE_MOCK_DATA ? '70516618' : '');
                     }}
                   >
                     <Text style={styles.outlineButtonText}>Mobile phone number</Text>
@@ -199,7 +248,7 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                 )}
               </View>
 
-              {onSwitchToSignUp && (
+              {USE_MOCK_DATA && onSwitchToSignUp && (
                 <View style={styles.signUpPromptRow}>
                   <Text style={styles.signUpPromptText}>Not a member yet? </Text>
                   <TouchableOpacity onPress={onSwitchToSignUp}>
@@ -219,6 +268,8 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                 {authMethod === 'mobile' ? `+852 ${identifier}` : identifier}
               </Text>
 
+              {apiError && <Text style={styles.errorBannerText} accessibilityRole="alert">{apiError}</Text>}
+
               {attemptsLeft !== null && (
                 <View style={styles.errorBanner}>
                   <Ionicons name="warning" size={18} color="#DC2626" />
@@ -233,6 +284,12 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
               )}
 
               <View style={styles.fieldGroup}>
+                {challengeId ? <>
+                  <Text style={styles.fieldLabel}>Verification code sent to your registered email</Text>
+                  <TextInput style={styles.textInput} value={code} onChangeText={setCode}
+                    keyboardType="number-pad" autoComplete="one-time-code" maxLength={10}
+                    placeholder="Enter verification code" />
+                </> : <>
                 <Text style={styles.fieldLabel}>Password</Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
@@ -246,15 +303,16 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
                     <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#718096" />
                   </TouchableOpacity>
                 </View>
+                </>}
               </View>
 
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSignIn} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>Sign in with password</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleSignIn} disabled={busy || (!!challengeId && !code.trim())} activeOpacity={0.85}>
+                <Text style={styles.primaryButtonText}>{busy ? 'Signing in...' : challengeId ? 'Verify and sign in' : 'Sign in'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.forgotPassLink}
-                onPress={() => setViewState('reset_phone')}
+                onPress={() => USE_MOCK_DATA ? setViewState('reset_phone') : Alert.alert('Password reset unavailable', 'This API does not yet provide a password-reset endpoint.')}
                 activeOpacity={0.7}
               >
                 <Text style={styles.forgotPassText}>Forgot password</Text>

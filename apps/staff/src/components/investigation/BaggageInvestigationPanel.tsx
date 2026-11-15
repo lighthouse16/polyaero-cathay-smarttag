@@ -7,7 +7,7 @@ import { CheckIcon, CloseIcon, CopyIcon } from "../icons/DashboardIcons";
 import { copyToClipboard } from "../ui/clipboard";
 import { useSlidingIndicator } from "../ui/useSlidingIndicator";
 import { SmartTagStatusPanel } from "./SmartTagStatusPanel";
-import { applyLiveBagRisk, recordLiveBagScan } from "../../lib/liveTransferAdapter";
+import { applyLiveBagRisk, getLiveApiBase, recordLiveBagScan } from "../../lib/liveTransferAdapter";
 import styles from "./BaggageInvestigationPanel.module.css";
 
 interface BaggageInvestigationPanelProps {
@@ -311,7 +311,15 @@ export function BaggageInvestigationPanel({
                     try {
                       setActionBusy("risk");
                       setActionFeedback(null);
-                      await applyLiveBagRisk(bag.tag_number);
+                      await applyLiveBagRisk(getLiveApiBase(), bag.tag_number, {
+                        flight_number: bag.flight_number,
+                        origin: bag.departure_airport,
+                        destination: bag.arrival_airport,
+                        transfer_minutes: bag.connection_minutes ?? 75,
+                        weather_severity: 2,
+                        load_factor_pct: 85,
+                        airport_congestion: 2,
+                      });
                       setActionFeedback("Live risk score updated via Cloud Run ML API.");
                     } catch (e) {
                       setActionFeedback(e instanceof Error ? e.message : "Risk API failed");
@@ -330,7 +338,12 @@ export function BaggageInvestigationPanel({
                     try {
                       setActionBusy("scan");
                       setActionFeedback(null);
-                      await recordLiveBagScan(bag.tag_number);
+                      await recordLiveBagScan(getLiveApiBase(), bag.tag_number, {
+                        event_type: "TAG_TAPPED",
+                        location_code: "HKG-TRANSFER",
+                        station_name: "Staff Dashboard Transfer Control",
+                        scanner_type: "MANUAL_OVERRIDE",
+                      });
                       setActionFeedback("Custody scan recorded to AWS RDS.");
                     } catch (e) {
                       setActionFeedback(e instanceof Error ? e.message : "Scan API failed");
@@ -340,7 +353,7 @@ export function BaggageInvestigationPanel({
                   }}
                   style={{fontSize:"12px",fontWeight:600,padding:"6px 12px",borderRadius:"6px",border:"1px solid #004B4A",backgroundColor:"#FFFFFF",color:"#004B4A",cursor:"pointer"}}
                 >
-                  {actionBusy === "scan" ? "Scanning..." : "Record Transfer Scan"}
+                  {actionBusy === "scan" ? "Scanning..." : "Record Custody Scan"}
                 </button>
               </div>
               {actionFeedback && <p style={{fontSize:"12px",color:"#004B4A",marginTop:"8px",fontWeight:600}}>{actionFeedback}</p>}

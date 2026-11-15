@@ -113,7 +113,7 @@ export const CathayHomeScreen: React.FC<CathayHomeScreenProps> = ({
 
                   <View style={styles.memberMilesRow}>
                     <Image source={ICON_ASIA_MILES_WHITE} style={styles.asiaMilesWhiteIcon} resizeMode="contain" />
-                    <Text style={styles.memberMetricBold}>{user.asiaMiles}</Text>
+                    <Text style={styles.memberMetricBold}>{user.asiaMiles ?? 'Not available'}</Text>
                     <Text style={styles.memberPipeSeparator}>|</Text>
                     <Text style={styles.memberStatusLabel}>Status Points</Text>
                     <Text style={styles.memberMetricBold}>{user.statusPoints}</Text>
