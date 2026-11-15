@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as copilotPost } from "../src/app/api/v1/copilot/chat/route";
 import { CopilotMessageBody } from "../src/components/copilot/CopilotMessageBody";
-import { OperationsCopilotDrawer } from "../src/components/copilot/OperationsCopilotDrawer";
+import { OperationsCopilotDrawer, readCopilotAttachment } from "../src/components/copilot/OperationsCopilotDrawer";
 import { ThoughtLine } from "../src/components/copilot/ThoughtLine";
 import {
   buildSanitizedCopilotContext,
@@ -247,6 +247,16 @@ describe("ThoughtLine", () => {
 });
 
 describe("OperationsCopilotDrawer", () => {
+  it("reads supported files as context and rejects unsupported, oversized or binary files", async () => {
+    const file = { name: "manifest.csv", size: 12, text: async () => "flight\nCX548" };
+    expect(await readCopilotAttachment(file)).toContain("flight\nCX548");
+    expect(await readCopilotAttachment(file)).toContain("untrusted file content");
+    await expect(readCopilotAttachment({ ...file, name: "photo.png" })).rejects.toThrow("Supported files");
+    await expect(readCopilotAttachment({ ...file, size: 16_001 })).rejects.toThrow("16 KB");
+    await expect(readCopilotAttachment({ ...file, text: async () => "\0binary" })).rejects.toThrow("non-empty text");
+    await expect(readCopilotAttachment({ ...file, text: async () => "  " })).rejects.toThrow("non-empty text");
+    await expect(readCopilotAttachment({ ...file, text: async () => { throw new Error("Read failed"); } })).rejects.toThrow("Read failed");
+  });
   it("renders welcome state aligned with Cathay design and starter prompts", () => {
     const now = new Date("2026-11-15T01:00:00Z");
     const html = renderToStaticMarkup(
@@ -273,7 +283,9 @@ describe("OperationsCopilotDrawer", () => {
     // Send button hidden when draft is empty
     expect(html).not.toContain('aria-label="Send message"');
     // Plus and mic buttons present
-    expect(html).toContain('aria-label="Add context"');
+    expect(html).toContain('aria-label="Upload file"');
+    expect(html).toContain('type="file"');
+    expect(html).toContain('accept=".txt,.csv,.json,.md,.log"');
     expect(html).toContain('aria-label="Voice input"');
   });
 
