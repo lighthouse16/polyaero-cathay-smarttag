@@ -301,7 +301,7 @@ export function buildLiveTransferSnapshot(
 
   const seenTags = new Set<string>();
   const seenIds = new Set<string>();
-  const deduped = backendBags.filter((b, idx) => {
+  const deduped = backendBags.map((b) => ({ ...b })).filter((b, idx) => {
     const t = String(b.tag_number || "").trim();
     if (!t || seenTags.has(t)) return false;
     seenTags.add(t);
