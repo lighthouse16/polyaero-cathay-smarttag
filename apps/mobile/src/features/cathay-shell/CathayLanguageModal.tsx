@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayLanguageModalProps {
   onConfirm: () => void;
@@ -119,6 +120,7 @@ const styles = StyleSheet.create({
   },
   englishTitle: {
     fontSize: 18.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '300',
     color: '#1C2024',
     letterSpacing: -0.2,
@@ -126,6 +128,7 @@ const styles = StyleSheet.create({
   },
   chineseTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
     marginTop: 16,
@@ -133,6 +136,7 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18.5,
     color: '#4A5568',
     fontWeight: '400',
@@ -151,6 +155,7 @@ const styles = StyleSheet.create({
   },
   selectorLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     letterSpacing: 0.5,
     color: '#718096',
@@ -158,6 +163,7 @@ const styles = StyleSheet.create({
   },
   selectorValue: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1A202C',
     marginTop: 4,
@@ -169,6 +175,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#006564',
   },

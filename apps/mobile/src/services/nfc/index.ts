@@ -2,9 +2,10 @@
  * PolyAero Cathay SmartTag - NFC Mobile Integration Boundary
  *
  * ARCHITECTURAL NOTICE:
- * 1. Physical sync supports the ESP32-C6 MicroPython PN532 bridge's PA1 protocol,
- *    not arbitrary passive E-ink tags or the Arduino bridge.
- * 2. Native NFC requires an Expo Development Client and updated bridge firmware.
+ * 1. Physical sync supports both the ESP32-C6 MicroPython PN532 PA1 protocol
+ *    and standard ISO 7816-4 Type-4A NDEF SmartTag bridges with hardware readback.
+ * 2. Native NFC requires an Expo Development Client or release APK with Android NFC
+ *    intent dispatch configured in app plugins.
  * 3. `getPhysicalHardwareService()` returns a NativeNfcService when running in a Dev Client
  *    with the native module installed. Web and missing modules return `null`;
  *    the service checks device availability before scanning.

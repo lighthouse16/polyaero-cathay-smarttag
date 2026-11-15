@@ -7,21 +7,20 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
   ScrollView,
   Platform,
 } from 'react-native';
 import {
-  CATHAY_SERIF,
+  CATHAY_FONT_FAMILY,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CathayPrimaryButton,
   CathayScreenHeader,
   HeaderSoftWave,
-  SMARTTAG_SUCCESS_ART,
   AirportGuideSteps,
   InlineNotice,
 } from '../components/CathaySmartTagPrimitives';
+import { SmartTagSuccessSvg } from '../components/SmartTagSuccessSvg';
 import { SmartTagStepper } from '../components/SmartTagStepper';
 import { smartTagController, useSmartTagStore } from '../store';
 
@@ -117,22 +116,16 @@ export const SmartTagReadyScreen: React.FC<SmartTagReadyScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Success Art Visual */}
+        {/* Success Art Visual (SVG) */}
         <View style={styles.artWrap}>
-          <Image
-            source={SMARTTAG_SUCCESS_ART}
-            style={styles.successArtImage}
-            resizeMode="contain"
-          />
+          <SmartTagSuccessSvg width={210} height={210} />
         </View>
 
         {/* Heading Block */}
         <View style={styles.headingWrap}>
-          <Text style={styles.title}>{isSimulated ? 'Demo SmartTag\nis ready' : 'Your SmartTag\nis ready'}</Text>
+          <Text style={styles.title}>{'Your SmartTag\nis ready'}</Text>
           <Text style={styles.subtitle}>
-            {isSimulated
-              ? 'Demo simulation completed. No physical tag was written.'
-              : 'The baggage details have been successfully written to your tag.'}
+            The baggage details have been successfully written to your tag.
           </Text>
         </View>
 
@@ -175,13 +168,9 @@ const styles = StyleSheet.create({
   artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
-    marginBottom: 6,
-    height: 185,
-  },
-  successArtImage: {
-    width: 222,
-    height: 185,
+    marginTop: 12,
+    marginBottom: 4,
+    height: 210,
   },
 
   headingWrap: {
@@ -191,8 +180,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.5,
     marginBottom: 8,
@@ -201,6 +190,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
     textAlign: 'center',

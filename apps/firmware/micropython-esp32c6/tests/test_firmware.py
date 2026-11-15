@@ -4,6 +4,7 @@ Unit tests for MicroPython firmware modules.
 Run on host: python -m pytest tests/ -v
 """
 
+import errno
 import sys
 import json
 import importlib.util
@@ -55,6 +56,9 @@ class MockCanvas:
 
     def clear(self):
         self.calls.append(('clear',))
+
+    def rect(self, x, y, w, h, color, thickness=1):
+        self.calls.append(('rect', x, y, w, h, color, thickness))
 
 
 def test_itf_encoding():
@@ -651,6 +655,144 @@ def test_idle_activation_timeout_resets_pending_target_before_next_command(monke
         assert target.refresh_receipt is None
     assert uart.commands.count(0x8C) == 2
     assert reset_values.count(0) == 3
+
+
+def test_pa1_readback_completion_exits_listen_without_waiting_for_rf_drop(monkeypatch):
+    install_clock(monkeypatch)
+    message = bridge_record(sync_id="fast-exit")
+    commands = [
+        b'\x80\x10\x00\x00\x00',
+        b'\x00\xa4\x00\x0c\x02\xe1\x04',
+        b'\x00\xd6\x00\x00\x02\x00\x00',
+    ]
+    for offset in range(2, len(message), 48):
+        chunk = message[offset:offset + 48]
+        commands.append(bytes([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
+    commands.extend([b'\x00\xd6\x00\x00\x02' + message[:2], b'\x80\x11\x00\x00\x00'])
+    for offset in range(0, len(message), 48):
+        commands.append(bytes([0, 0xB0, offset >> 8, offset & 255, min(48, len(message) - offset)]))
+    expected_tg_get_count = len(commands)
+    extra_poll_seen = [False]
+
+    def respond(command, _):
+        if command == 2:
+            return b'\x32\x01\x06\x07'
+        if command in (0x12, 0x14):
+            return b''
+        if command == 0x8C:
+            return b'\x08\x00\xa4\x04\x00\x07\xd2\x76\x00\x00\x85\x01\x01\x00'
+        if command == 0x86:
+            if not commands:
+                extra_poll_seen[0] = True
+                return False
+            return b'\x00' + commands.pop(0)
+        return b'\x00'
+
+    uart = ScriptedUART(respond)
+    nfc = PN532_UART(uart)
+    nfc.initialize()
+    target = NfcTarget(nfc, refresh_display=lambda _: None)
+    target.configure()
+
+    assert target.listen()[:len(message)] == message
+    assert target.readback_completed is True
+    assert not extra_poll_seen[0]
+    assert uart.commands.count(0x86) == expected_tg_get_count
+
+
+@pytest.mark.parametrize("panel_fails", [False, True])
+def test_real_panel_refresh_finishes_before_pa1_receipt(monkeypatch, panel_fails):
+    install_clock(monkeypatch)
+    spec = importlib.util.spec_from_file_location(
+        "smarttag_firmware_main", Path(__file__).parent.parent / "main.py")
+    firmware = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(firmware)
+
+    events = []
+    nfc = FakeNfc()
+
+    def refresh(_):
+        events.append("partial")
+        if panel_fails:
+            raise OSError(errno.ETIMEDOUT, "partial refresh BUSY stuck")
+        events.append("busy-complete")
+
+    panel = SimpleNamespace(
+        cs=object(),
+        buffer_1Gray=bytearray(15000),
+        init=lambda: events.append("init"),
+        EPD_4IN2_V2_Display=lambda _: events.append("full"),
+        EPD_4IN2_V2_PartialDisplay=refresh,
+    )
+
+    class TwoPhaseTarget(NfcTarget):
+        calls = 0
+
+        def listen(self, session_ms):
+            TwoPhaseTarget.calls += 1
+            if TwoPhaseTarget.calls == 1:
+                self._process_apdu(b'\x80\x10\x00\x00\x00')
+                write_bridge(self, bridge_record(sync_id="current-write"))
+                assert events == ["init", "full"]
+                assert self.refresh_receipt is None
+                self._process_apdu(b'\x80\x11\x00\x00\x00')
+                expected = b'\x65\x81' if panel_fails else b'PA1|current-write\x90\x00'
+                assert nfc.responses[-1] == expected
+                assert self.refresh_receipt == (None if panel_fails else "current-write")
+                events.append("receipt")
+                return self.ndef_file
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(firmware, "PN532_UART", lambda *args, **kwargs: nfc)
+    monkeypatch.setattr(firmware, "EPD_4in2", lambda: panel)
+    monkeypatch.setattr(firmware, "PortraitCanvas", lambda _: MockCanvas())
+    monkeypatch.setattr(firmware, "NfcTarget", TwoPhaseTarget)
+
+    with pytest.raises(KeyboardInterrupt):
+        firmware.main()
+
+    expected = ["init", "full", "partial"]
+    if not panel_fails:
+        expected.append("busy-complete")
+    assert events == expected + ["receipt"]
+
+
+@pytest.mark.parametrize("partial", [False, True])
+@pytest.mark.parametrize("pa1", [False, True])
+def test_disconnected_uncommitted_write_never_renders_stale_or_partial_data(partial, pa1):
+    commands = []
+
+    class SessionNfc(FakeNfc):
+        def call_function(self, command, **kwargs):
+            if command == 0x8C:
+                return b'\x08'
+            if command == 0x86:
+                return commands.pop(0) if commands else b'\x29'
+            return super().call_function(command, **kwargs)
+
+    rendered = []
+    target = NfcTarget(SessionNfc(), refresh_display=rendered.append)
+    write_bridge(target, bridge_record(sync_id="old-sync"))
+    rendered.clear()
+    message = bridge_record(tag="0999999999", route="HKG-SGN", sync_id="new-sync")
+    if pa1:
+        commands.append(b'\x00\x80\x10\x00\x00\x00')
+    commands.extend([
+        b'\x00\x00\xa4\x00\x0c\x02\xe1\x04',
+        b'\x00\x00\xd6\x00\x00\x02\x00\x00',
+    ])
+    end = 50 if partial else len(message)
+    for offset in range(2, end, 48):
+        chunk = message[offset:min(offset + 48, end)]
+        commands.append(b'\x00' + bytes([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
+
+    result = target.listen()
+
+    assert rendered == []
+    assert result is None
+    assert target.write_completed is False
+    assert target.refresh_receipt is None
+    assert target.ndef_file[:2] == b'\x00\x00'
 
 
 if __name__ == "__main__":

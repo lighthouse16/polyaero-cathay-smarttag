@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, radii, typography, shadows } from '../../theme';
 import { SmartTag, Baggage } from '@polyaero/shared';
+import { CATHAY_FONT_FAMILY } from './components/CathaySmartTagPrimitives';
 
 interface SmartTagCardProps {
   tag: SmartTag;
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
   brandText: {
     color: colors.brand.jadePrimary,
     fontSize: typography.fontSize.caption,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     letterSpacing: 0.8,
   },
@@ -104,6 +106,7 @@ const styles = StyleSheet.create({
   },
   powerText: {
     fontSize: 10,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: colors.text.secondary,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -122,12 +125,14 @@ const styles = StyleSheet.create({
   },
   flightTag: {
     fontSize: typography.fontSize.title,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: colors.eink.displayText,
     letterSpacing: 1,
   },
   destTag: {
     fontSize: typography.fontSize.display,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: colors.brand.jadePrimary,
   },
@@ -143,12 +148,14 @@ const styles = StyleSheet.create({
   },
   einkLabel: {
     fontSize: 9,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#666666',
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   einkValue: {
     fontSize: typography.fontSize.bodySm,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: colors.eink.displayText,
     marginTop: 2,
@@ -161,6 +168,7 @@ const styles = StyleSheet.create({
   },
   einkStatusText: {
     fontSize: 9,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#555555',
     fontWeight: '600',
   },
@@ -178,6 +186,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: typography.fontSize.bodySm,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: colors.text.secondary,
   },
   statusBold: {

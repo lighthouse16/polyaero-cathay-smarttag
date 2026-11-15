@@ -35,6 +35,12 @@ import {
 import { DEFAULT_DECLARATIONS, buildNfcPayloadForBag } from '@polyaero/shared';
 import { smartTagController, smartTagRepository } from '../smarttag/store';
 import { syncBookingToCopilot, setActivePassengerIdentity } from '../../services/copilotBridge';
+import {
+  DiscoveredNfcTap,
+  startNfcTapListener,
+  subscribeNfcTaps,
+} from '../../services/nfc/nfcTapBridge';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 import { USE_MOCK_DATA } from '../../services/apiConfig';
 import { signOut } from '../../services/api';
 import { LiveBookScreen, LiveTripsScreen } from './LiveBookingScreens';
@@ -233,6 +239,49 @@ export const CathayAppShell: React.FC<CathayAppShellProps> = ({
       return () => window.removeEventListener('popstate', handleUrlChange);
     }
   }, [initialTabOverride]);
+
+  // Launch / Background NFC tag intent listener (native only)
+  useEffect(() => {
+    // ponytail: demo setup only; enable live taps after API-backed tag preparation exists.
+    if (Platform.OS === 'web' || !USE_MOCK_DATA) return;
+    const handleTap = (tap: DiscoveredNfcTap | null) => {
+      if (!tap) return;
+      const currentRoute = smartTagController.getSnapshot().nav.currentRoute;
+      // Do not interrupt completed journey or result screens with background taps
+      if (currentRoute === 'result' || currentRoute === 'journey') {
+        return;
+      }
+      const snap = smartTagRepository.getSnapshot();
+      const itin =
+        (snap.activeItineraryId
+          ? snap.itineraries.find((i) => i.id === snap.activeItineraryId)
+          : snap.itineraries[0]) ?? smartTagRepository.addDemoItinerary();
+      const bags = smartTagRepository.getSnapshot().bagSetupsByItinerary[itin.id] ?? [];
+      let bag =
+        (snap.activeBagSetupId ? bags.find((b) => b.id === snap.activeBagSetupId) : bags[0]) ??
+        bags[0];
+      if (!bag || bag.setupState === 'UNREGISTERED') {
+        const prepared = smartTagRepository.prepareBagsForItinerary({
+          itineraryId: itin.id,
+          bagCount: Math.max(bags.length, 1),
+          declarations: DEFAULT_DECLARATIONS,
+        });
+        bag = prepared.bags[0];
+      }
+      setOnboardingScreen(null);
+      setActiveTab('trips');
+      if (currentRoute !== 'sync') {
+        smartTagController.navigateTo('sync', {
+          itineraryId: itin.id,
+          bagSetupId: bag?.id,
+        });
+      }
+    };
+
+    const unsubscribe = subscribeNfcTaps(handleTap);
+    void startNfcTapListener();
+    return unsubscribe;
+  }, []);
 
   // Floating Dock Liquid Droplet Slide Animation (Native Driver - 60fps/APK Safe)
   const initialItemWidth = Math.max((Dimensions.get('window').width - 28 - 12) / TAB_ITEMS.length, 50);
@@ -806,6 +855,7 @@ const styles = StyleSheet.create({
   },
   dockLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     marginTop: 2,
     letterSpacing: -0.1,
   },
@@ -843,11 +893,13 @@ const styles = StyleSheet.create({
   },
   devMenuTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#0F172A',
   },
   devMenuSub: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#64748B',
     marginBottom: 16,
   },
@@ -862,6 +914,7 @@ const styles = StyleSheet.create({
   },
   devOptionBtnText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#334155',
     fontWeight: '600',
   },

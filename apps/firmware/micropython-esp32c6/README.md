@@ -6,6 +6,55 @@ ESP32-C6 firmware for PN532 Type-4 Target (PICC emulation) + Waveshare 4.2" E-Pa
 
 ---
 
+## Hardware Prototype Photos
+
+| Standby (Cold Reset) | Paired Baggage Tag (CX548 to NRT) |
+| :---: | :---: |
+| <img src="../../../docs/hardware/smarttag-ready-to-pair-standby.jpg" width="340" alt="Standby State" /> | <img src="../../../docs/hardware/smarttag-paired-baggage-tag.jpg" width="340" alt="Paired Tag State" /> |
+| *Tag ready to pair on cold reset / power cycle.* | *Bag tag rendered after contactless phone NFC tap.* |
+
+---
+
+## Hardware Architecture & Signal Flow
+
+```mermaid
+flowchart TD
+    subgraph Mobile ["📱 Passenger Smartphone"]
+        App["Cathay Mobile App (Expo / React Native)"]
+        NfcChip["NFC Controller (ISO-DEP / NDEF)"]
+        App -->|"Tap to Tag"| NfcChip
+    end
+
+    subgraph SmartTag ["🏷️ PolyAero SmartTag Physical Prototype"]
+        subgraph NFC_Mod ["Waveshare PN532 NFC HAT"]
+            Antenna["13.56 MHz NFC Antenna"]
+            PN532["PN532 NFC Chip (Card Emulation)"]
+            Antenna <--> PN532
+        end
+
+        subgraph MCU ["ESP32-C6 Microcontroller (MicroPython Firmware)"]
+            Boot["boot.py (Cold Boot Init)"]
+            Handler["nfc_handler.py (ISO-DEP / PA1 APDU)"]
+            Engine["layout.py + barcode.py (IATA ITF-10 Engine)"]
+            Driver["epaper4in2.py (Waveshare V2 SPI Driver)"]
+            Boot --> Handler
+            PN532 <-->|"HSU UART: GPIO 22 (RX) / 23 (TX) / 7 (RST)"| Handler
+            Handler -->|"Baggage Payload (CX548 / NRT)"| Engine
+            Engine -->|"300x400 1-bit Buffer"| Driver
+        end
+
+        subgraph EPD ["Waveshare 4.2\" E-Paper Module (V2)"]
+            Panel["400x300 Bi-stable E-ink Display"]
+            Driver -->|"SPI: MOSI:19, SCK:21, CS:18, DC:2, RST:3, BUSY:6"| Panel
+        end
+    end
+
+    NfcChip <-->|"Near-Field Coupling (13.56 MHz)"| Antenna
+    Panel -.->|"Zero-power persistent image"| Barcode["IATA 10-Digit Barcode (CX548 to NRT)"]
+```
+
+---
+
 ## Hardware
 
 | Component | Connection | ESP32-C6 GPIO |
@@ -308,7 +357,10 @@ Expected device output includes `[+] PHONE CONNECTED!`, `[EPD] Rendering baggage
 label`, and `[EPD] Baggage refresh completed`. The app confirms only after receipt
 and readback match. Remove the phone, then repeat with different baggage data to
 check that the screen changes again. A failed refresh must not produce verified
-success in the app.
+success in the app. Keep the phone coupled until both receipt and readback finish;
+if the panel BUSY interval exceeds the NFC transceive window, sync must fail rather
+than claim verification. This source change still requires a physical Android,
+PN532 and e-paper regression check; existing APK releases are not rebuilt automatically.
 
 **Option C: NFC Tools App (Manual Test)**
 - Install "NFC Tools" (Android/iOS)
