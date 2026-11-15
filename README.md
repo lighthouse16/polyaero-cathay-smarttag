@@ -15,17 +15,17 @@ and protocol identifiers retain their legacy names for compatibility.
 - [Hardware specifications and pinout](docs/hardware/README.md)
 - [Standalone MicroPython firmware](apps/firmware/micropython-esp32c6/README.md)
 
-## Mobile App Screenshots
+## Passenger Mobile App Flow
 
-User-provided mobile app captures from November 15, 2026, shown in capture-time order. These images illustrate the app UI; they do not independently verify every feature or the exact APK build.
+End-to-end passenger journey from home flight lookup to writing baggage details onto the e-ink SmartTag via NFC.
 
-| Mobile app — Screen 1 | Mobile app — Screen 2 |
+| 1. Passenger Home | 2. My Trips & Prepare SmartTag |
 | :---: | :---: |
-| <img src="docs/mobile/mobile-app-01.jpg" width="280" alt="Mobile app screenshot 1" /> | <img src="docs/mobile/mobile-app-02.jpg" width="280" alt="Mobile app screenshot 2" /> |
+| <img src="docs/mobile/mobile-app-04.jpg" width="280" alt="Passenger Home screen showing flight search and recent routes" /> | <img src="docs/mobile/mobile-app-03.jpg" width="280" alt="My Trips screen with CX548 HKG to NRT and Prepare SmartTag action" /> |
 
-| Mobile app — Screen 3 | Mobile app — Screen 4 |
+| 3. NFC Sync to E-Ink Tag | 4. SmartTag Ready & Airport Steps |
 | :---: | :---: |
-| <img src="docs/mobile/mobile-app-03.jpg" width="280" alt="Mobile app screenshot 3" /> | <img src="docs/mobile/mobile-app-04.jpg" width="280" alt="Mobile app screenshot 4" /> |
+| <img src="docs/mobile/mobile-app-02.jpg" width="280" alt="NFC Sync screen prompting passenger to tap phone to SmartTag" /> | <img src="docs/mobile/mobile-app-01.jpg" width="280" alt="SmartTag Ready confirmation screen with Attach, Bag drop, and Track steps" /> |
 
 ## What the project does
 
