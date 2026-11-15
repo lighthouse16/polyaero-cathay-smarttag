@@ -15,6 +15,18 @@ and protocol identifiers retain their legacy names for compatibility.
 - [Hardware specifications and pinout](docs/hardware/README.md)
 - [Standalone MicroPython firmware](apps/firmware/micropython-esp32c6/README.md)
 
+## Mobile App Screenshots
+
+User-provided mobile app captures from November 15, 2026, shown in capture-time order. These images illustrate the app UI; they do not independently verify every feature or the exact APK build.
+
+| Mobile app — Screen 1 | Mobile app — Screen 2 |
+| :---: | :---: |
+| <img src="docs/mobile/mobile-app-01.jpg" width="280" alt="Mobile app screenshot 1" /> | <img src="docs/mobile/mobile-app-02.jpg" width="280" alt="Mobile app screenshot 2" /> |
+
+| Mobile app — Screen 3 | Mobile app — Screen 4 |
+| :---: | :---: |
+| <img src="docs/mobile/mobile-app-03.jpg" width="280" alt="Mobile app screenshot 3" /> | <img src="docs/mobile/mobile-app-04.jpg" width="280" alt="Mobile app screenshot 4" /> |
+
 ## What the project does
 
 - **Passenger app:** Expo / React Native app with member sign-in, flight search,
