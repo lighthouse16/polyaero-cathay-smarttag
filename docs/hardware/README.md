@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag — Hardware Specification & Prototype
+# Baggage Recovery Copilot — Hardware Specification & Prototype
 
 Physical prototype verification for the Cathay Hackathon 2026 digital baggage identity tag.
 
@@ -35,7 +35,6 @@ flowchart TD
             NfcHandler["nfc_handler.py (ISO-DEP / PA1 / NDEF Protocol)"]
             LayoutEngine["layout.py + barcode.py (IATA Layout + ITF-10)"]
             EpdDriver["epaper4in2.py (Waveshare V2 Controller)"]
-            
             Boot --> NfcHandler
             PN532_IC <-->|"HSU UART (115200 bps)"| NfcHandler
             NfcHandler -->|"Baggage Metadata Payload"| LayoutEngine

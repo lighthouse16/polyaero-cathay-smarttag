@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag — ESP32-C6 MicroPython Firmware
+# Baggage Recovery Copilot — ESP32-C6 MicroPython Firmware
 
 ESP32-C6 firmware for PN532 Type-4 Target (PICC emulation) + Waveshare 4.2" E-Paper display.
 
@@ -357,7 +357,10 @@ Expected device output includes `[+] PHONE CONNECTED!`, `[EPD] Rendering baggage
 label`, and `[EPD] Baggage refresh completed`. The app confirms only after receipt
 and readback match. Remove the phone, then repeat with different baggage data to
 check that the screen changes again. A failed refresh must not produce verified
-success in the app.
+success in the app. Keep the phone coupled until both receipt and readback finish;
+if the panel BUSY interval exceeds the NFC transceive window, sync must fail rather
+than claim verification. This source change still requires a physical Android,
+PN532 and e-paper regression check; existing APK releases are not rebuilt automatically.
 
 **Option C: NFC Tools App (Manual Test)**
 - Install "NFC Tools" (Android/iOS)

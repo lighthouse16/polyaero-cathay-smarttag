@@ -700,21 +700,29 @@ def test_pa1_readback_completion_exits_listen_without_waiting_for_rf_drop(monkey
     assert uart.commands.count(0x86) == expected_tg_get_count
 
 
-def test_deferred_epd_refresh_runs_after_nfc_session_when_panel_has_cs(monkeypatch):
+@pytest.mark.parametrize("panel_fails", [False, True])
+def test_real_panel_refresh_finishes_before_pa1_receipt(monkeypatch, panel_fails):
     install_clock(monkeypatch)
-    monkeypatch.setattr(sys.modules["machine"], "reset", lambda: None, raising=False)
     spec = importlib.util.spec_from_file_location(
         "smarttag_firmware_main", Path(__file__).parent.parent / "main.py")
     firmware = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(firmware)
 
     events = []
+    nfc = FakeNfc()
+
+    def refresh(_):
+        events.append("partial")
+        if panel_fails:
+            raise OSError(errno.ETIMEDOUT, "partial refresh BUSY stuck")
+        events.append("busy-complete")
+
     panel = SimpleNamespace(
         cs=object(),
         buffer_1Gray=bytearray(15000),
         init=lambda: events.append("init"),
         EPD_4IN2_V2_Display=lambda _: events.append("full"),
-        EPD_4IN2_V2_PartialDisplay=lambda _: events.append("partial"),
+        EPD_4IN2_V2_PartialDisplay=refresh,
     )
 
     class TwoPhaseTarget(NfcTarget):
@@ -723,14 +731,19 @@ def test_deferred_epd_refresh_runs_after_nfc_session_when_panel_has_cs(monkeypat
         def listen(self, session_ms):
             TwoPhaseTarget.calls += 1
             if TwoPhaseTarget.calls == 1:
-                events.append("nfc-start")
-                write_bridge(self, bridge_record(sync_id="deferred-write"))
-                events.append(f"receipt:{self.refresh_receipt}")
+                self._process_apdu(b'\x80\x10\x00\x00\x00')
+                write_bridge(self, bridge_record(sync_id="current-write"))
+                assert events == ["init", "full"]
+                assert self.refresh_receipt is None
+                self._process_apdu(b'\x80\x11\x00\x00\x00')
+                expected = b'\x65\x81' if panel_fails else b'PA1|current-write\x90\x00'
+                assert nfc.responses[-1] == expected
+                assert self.refresh_receipt == (None if panel_fails else "current-write")
+                events.append("receipt")
                 return self.ndef_file
-            events.append("next-listen")
             raise KeyboardInterrupt
 
-    monkeypatch.setattr(firmware, "PN532_UART", lambda *args, **kwargs: FakeNfc())
+    monkeypatch.setattr(firmware, "PN532_UART", lambda *args, **kwargs: nfc)
     monkeypatch.setattr(firmware, "EPD_4in2", lambda: panel)
     monkeypatch.setattr(firmware, "PortraitCanvas", lambda _: MockCanvas())
     monkeypatch.setattr(firmware, "NfcTarget", TwoPhaseTarget)
@@ -738,14 +751,48 @@ def test_deferred_epd_refresh_runs_after_nfc_session_when_panel_has_cs(monkeypat
     with pytest.raises(KeyboardInterrupt):
         firmware.main()
 
-    assert events == [
-        "init",
-        "full",
-        "nfc-start",
-        "receipt:deferred-write",
-        "partial",
-        "next-listen",
-    ]
+    expected = ["init", "full", "partial"]
+    if not panel_fails:
+        expected.append("busy-complete")
+    assert events == expected + ["receipt"]
+
+
+@pytest.mark.parametrize("partial", [False, True])
+@pytest.mark.parametrize("pa1", [False, True])
+def test_disconnected_uncommitted_write_never_renders_stale_or_partial_data(partial, pa1):
+    commands = []
+
+    class SessionNfc(FakeNfc):
+        def call_function(self, command, **kwargs):
+            if command == 0x8C:
+                return b'\x08'
+            if command == 0x86:
+                return commands.pop(0) if commands else b'\x29'
+            return super().call_function(command, **kwargs)
+
+    rendered = []
+    target = NfcTarget(SessionNfc(), refresh_display=rendered.append)
+    write_bridge(target, bridge_record(sync_id="old-sync"))
+    rendered.clear()
+    message = bridge_record(tag="0999999999", route="HKG-SGN", sync_id="new-sync")
+    if pa1:
+        commands.append(b'\x00\x80\x10\x00\x00\x00')
+    commands.extend([
+        b'\x00\x00\xa4\x00\x0c\x02\xe1\x04',
+        b'\x00\x00\xd6\x00\x00\x02\x00\x00',
+    ])
+    end = 50 if partial else len(message)
+    for offset in range(2, end, 48):
+        chunk = message[offset:min(offset + 48, end)]
+        commands.append(b'\x00' + bytes([0, 0xD6, offset >> 8, offset & 255, len(chunk)]) + chunk)
+
+    result = target.listen()
+
+    assert rendered == []
+    assert result is None
+    assert target.write_completed is False
+    assert target.refresh_receipt is None
+    assert target.ndef_file[:2] == b'\x00\x00'
 
 
 if __name__ == "__main__":

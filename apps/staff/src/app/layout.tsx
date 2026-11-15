@@ -1,17 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
-});
-
 export const metadata: Metadata = {
-  title: "Cathay Pacific | Ground Operations — Baggage Transfer & Recovery",
+  title: "Cathay Pacific | Ground Operations — Transfer Control",
   description:
-    "Cathay Pacific Ground Operations Baggage Transfer Control & SmartTag Recovery Copilot",
+    "Cathay Pacific Ground Operations baggage transfer control and trace",
 };
 
 export const viewport: Viewport = {
@@ -26,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

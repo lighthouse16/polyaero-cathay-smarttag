@@ -69,9 +69,6 @@ coverage/
 *.tsbuildinfo
 
 
-# ESP32 Wi-Fi secrets
-apps/firmware/esp32-display/secrets.h
-apps/firmware/esp32-display/build/
 # Local Python virtual environments & caches
 .venv/
 **/.venv/
@@ -83,8 +80,12 @@ __pycache__/
 .env
 **/.env
 .expo/
+
+# Local secrets and alternate Next.js build directories
+.env.*
+!.env.example
+.next-build/
+
 apps/api/data/
 /firmware/
 .pio/
-
-

@@ -80,11 +80,13 @@ interface FlightRiskAssessment {
 
 // ponytail: Demo ephemeral in-memory + os.tmpdir() JSON store.
 // Ceiling: Node process restarts and serverless cold starts reload from tmp file or initial fixtures. Not durable multi-node storage, no ACID transactions.
-// Upgrade path: Migrate to Supabase / PostgreSQL with row-level locks and write-ahead log.
+// Upgrade path: Use the FastAPI PostgreSQL routes for durable operations.
 const STORE_FILE = path.join(os.tmpdir(), "polyaero_demo_bags_v2.json");
 
 function createInitialBags(): Record<string, LiveBag> {
-  const now = new Date().toISOString();
+  const base = Date.now();
+  const now = new Date(base).toISOString();
+  const offsetIso = (mins: number) => new Date(base + mins * 60_000).toISOString();
   return {
     "0160892014": {
       id: "bag_01",
@@ -98,7 +100,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX255",
       departure_airport: "HKG",
       arrival_airport: "NRT",
-      departure_time: "2026-11-12T16:30:00+08:00",
+      departure_time: offsetIso(10),
       seat_number: "14K",
       weight_kg: 28.5,
       connection_minutes: 35,
@@ -117,8 +119,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Bag not confirmed at the transfer make-up area within 35 min.",
-      predicted_arrival_time: "2026-11-12T16:30:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(240),
+      model_version: "2.4.0",
       recommended_action: "Dispatch for retrieval",
       copilot_approval_status: "PENDING_STAFF_APPROVAL",
       passenger_recovery_choice: null,
@@ -128,29 +130,29 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_014_1",
           event_type: "TAGGED",
-          timestamp: "2026-11-12T11:45:00+08:00",
+          timestamp: offsetIso(-180),
           location_code: "HKG-APP",
           station_name: "Cathay Mobile Check-In",
           scanner_type: "NFC_TAP",
-          notes: "11:45 · SmartTag E-paper synced (Rev v3.0)",
+          notes: "SmartTag E-paper synced (Rev v3.0)",
         },
         {
           id: "evt_014_2",
           event_type: "IN_TRANSFER",
-          timestamp: "2026-11-12T14:15:00+08:00",
+          timestamp: offsetIso(-45),
           location_code: "HKG-T1-TRANSFER-IN",
           station_name: "HKIA Transfer Belt B",
           scanner_type: "RFID_GATE",
-          notes: "14:15 · Inbound arrival scanned",
+          notes: "Inbound arrival scanned",
         },
         {
           id: "evt_014_3",
           event_type: "MISROUTED",
-          timestamp: "2026-11-12T14:41:00+08:00",
+          timestamp: offsetIso(-15),
           location_code: "HKG-TRANSFER-STAGING-AREA",
           station_name: "HKIA Transfer Staging Area",
           scanner_type: "RFID_GATE",
-          notes: "14:41 · Transfer exception",
+          notes: "Transfer exception",
         },
       ],
     },
@@ -166,7 +168,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX703",
       departure_airport: "HKG",
       arrival_airport: "ICN",
-      departure_time: "2026-11-12T15:40:00+08:00",
+      departure_time: offsetIso(50),
       seat_number: "11A",
       weight_kg: 21.8,
       connection_minutes: 48,
@@ -185,8 +187,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Tight 48-minute transfer window to CX703; awaiting final container seal.",
-      predicted_arrival_time: "2026-11-12T15:40:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(260),
+      model_version: "2.4.0",
       recommended_action: "Dispatch for retrieval",
       copilot_approval_status: "PENDING_STAFF_APPROVAL",
       passenger_recovery_choice: null,
@@ -196,11 +198,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_037_1",
           event_type: "LOADED",
-          timestamp: "2026-11-12T13:52:00+08:00",
+          timestamp: offsetIso(-30),
           location_code: "HKG-T1-ULD-MAKEUP-03",
           station_name: "HKIA Transfer Make-up Bay 3",
           scanner_type: "RFID_GATE",
-          notes: "13:52 · Loaded to ULD",
+          notes: "Loaded to ULD",
         },
       ],
     },
@@ -216,7 +218,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX918",
       departure_airport: "HKG",
       arrival_airport: "SYD",
-      departure_time: "2026-11-12T16:05:00+08:00",
+      departure_time: offsetIso(75),
       seat_number: "34C",
       weight_kg: 24.0,
       connection_minutes: 42,
@@ -235,8 +237,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Bag accepted on transfer belt 7 with 42-minute connection buffer.",
-      predicted_arrival_time: "2026-11-12T16:05:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(300),
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -246,11 +248,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_056_1",
           event_type: "IN_TRANSFER",
-          timestamp: "2026-11-12T13:49:00+08:00",
+          timestamp: offsetIso(-40),
           location_code: "HKG-T1-SORT-BELT-07",
           station_name: "HKIA Sortation Belt 7",
           scanner_type: "OPTICAL_BARCODE",
-          notes: "13:49 · Bag accepted",
+          notes: "Bag accepted",
         },
       ],
     },
@@ -266,7 +268,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX370",
       departure_airport: "HKG",
       arrival_airport: "SIN",
-      departure_time: "2026-11-12T16:15:00+08:00",
+      departure_time: offsetIso(85),
       seat_number: "22H",
       weight_kg: 19.6,
       connection_minutes: 44,
@@ -285,8 +287,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Checked in and routed toward Midfield Concourse transfer belt.",
-      predicted_arrival_time: "2026-11-12T16:15:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(320),
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -296,11 +298,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_088_1",
           event_type: "CHECKED_IN",
-          timestamp: "2026-11-12T13:40:00+08:00",
+          timestamp: offsetIso(-45),
           location_code: "HKG-T1-CHECKIN-DROP-12",
           station_name: "HKIA Transfer Desk 12",
           scanner_type: "OPTICAL_BARCODE",
-          notes: "13:40 · Checked in",
+          notes: "Checked in",
         },
       ],
     },
@@ -316,7 +318,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX728",
       departure_airport: "HKG",
       arrival_airport: "BKK",
-      departure_time: "2026-11-12T16:25:00+08:00",
+      departure_time: offsetIso(95),
       seat_number: "41F",
       weight_kg: 18.2,
       connection_minutes: 46,
@@ -335,8 +337,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Bag accepted on transfer belt 4; normal progression expected.",
-      predicted_arrival_time: "2026-11-12T16:25:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(330),
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -346,11 +348,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_097_1",
           event_type: "IN_TRANSFER",
-          timestamp: "2026-11-12T13:36:00+08:00",
+          timestamp: offsetIso(-50),
           location_code: "HKG-T1-TRANSFER-BELT-04",
           station_name: "HKIA Transfer Belt 4",
           scanner_type: "RFID_GATE",
-          notes: "13:36 · Bag accepted",
+          notes: "Bag accepted",
         },
       ],
     },
@@ -366,7 +368,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX504",
       departure_airport: "HKG",
       arrival_airport: "NRT",
-      departure_time: "2026-11-12T16:40:00+08:00",
+      departure_time: offsetIso(110),
       seat_number: "29D",
       weight_kg: 23.1,
       connection_minutes: 52,
@@ -385,8 +387,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Bag accepted at transfer sortation belt 9.",
-      predicted_arrival_time: "2026-11-12T16:40:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(350),
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -396,11 +398,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_115_1",
           event_type: "IN_TRANSFER",
-          timestamp: "2026-11-12T13:28:00+08:00",
+          timestamp: offsetIso(-55),
           location_code: "HKG-T1-TRANSFER-BELT-09",
           station_name: "HKIA Transfer Belt 9",
           scanner_type: "RFID_GATE",
-          notes: "13:28 · Bag accepted",
+          notes: "Bag accepted",
         },
       ],
     },
@@ -416,7 +418,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX418",
       departure_airport: "HKG",
       arrival_airport: "ICN",
-      departure_time: "2026-11-12T16:50:00+08:00",
+      departure_time: offsetIso(120),
       seat_number: "38K",
       weight_kg: 20.4,
       connection_minutes: 55,
@@ -435,8 +437,8 @@ function createInitialBags(): Record<string, LiveBag> {
       ],
       passenger_risk_summary:
         "Checked in for CX418; transfer buffer within normal window.",
-      predicted_arrival_time: "2026-11-12T16:50:00+08:00",
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      predicted_arrival_time: offsetIso(360),
+      model_version: "2.4.0",
       recommended_action: "Monitor transfer belt",
       copilot_approval_status: "AUTO_CLEARED",
       passenger_recovery_choice: null,
@@ -446,11 +448,11 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_122_1",
           event_type: "CHECKED_IN",
-          timestamp: "2026-11-12T13:21:00+08:00",
+          timestamp: offsetIso(-60),
           location_code: "HKG-T1-CHECKIN-DROP-06",
           station_name: "HKIA Transfer Desk 6",
           scanner_type: "OPTICAL_BARCODE",
-          notes: "13:21 · Checked in",
+          notes: "Checked in",
         },
       ],
     },
@@ -466,7 +468,7 @@ function createInitialBags(): Record<string, LiveBag> {
       flight_number: "CX888",
       departure_airport: "HKG",
       arrival_airport: "YVR",
-      departure_time: "2026-11-12T17:30:00+08:00",
+      departure_time: offsetIso(160),
       seat_number: "12A",
       weight_kg: 22.4,
       connection_minutes: 95,
@@ -490,29 +492,29 @@ function createInitialBags(): Record<string, LiveBag> {
         {
           id: "evt_01",
           event_type: "TAGGED",
-          timestamp: "2026-11-12T11:00:00+08:00",
+          timestamp: offsetIso(-120),
           location_code: "HKG-APP",
           station_name: "Cathay Mobile Check-In & Risk Scan",
           scanner_type: "NFC_TAP",
-          notes: "11:00 · SmartTag synced",
+          notes: "SmartTag synced",
         },
         {
           id: "evt_02",
           event_type: "CHECKED_IN",
-          timestamp: "2026-11-12T14:15:00+08:00",
+          timestamp: offsetIso(-60),
           location_code: "HKG-T1-DROP-04",
           station_name: "Self Bag Drop Counter 4",
           scanner_type: "OPTICAL_BARCODE",
-          notes: "14:15 · Bag drop verified",
+          notes: "Bag drop verified",
         },
         {
           id: "evt_03",
           event_type: "LOADED",
-          timestamp: "2026-11-12T15:45:00+08:00",
+          timestamp: offsetIso(-15),
           location_code: "HKG-GATE-36-RAMP",
           station_name: "Baggage Makeup Ramp Gate 36",
           scanner_type: "NFC_TAP",
-          notes: "15:45 · Loaded to ULD AK7291",
+          notes: "Loaded to ULD AK7291",
         },
       ],
     },
@@ -527,9 +529,14 @@ function getBags(): Record<string, LiveBag> {
   if (!g.__polyaeroBags) {
     try {
       if (fs.existsSync(STORE_FILE)) {
-        g.__polyaeroBags = JSON.parse(
+        const loaded = JSON.parse(
           fs.readFileSync(STORE_FILE, "utf-8"),
         ) as Record<string, LiveBag>;
+        const first = Object.values(loaded)[0];
+        const ageMs = first?.updated_at ? Date.now() - Date.parse(first.updated_at) : Infinity;
+        if (ageMs < 4 * 3600_000) {
+          g.__polyaeroBags = loaded;
+        }
       }
     } catch {
       // ignore tmp read errors
@@ -537,6 +544,7 @@ function getBags(): Record<string, LiveBag> {
   }
   if (!g.__polyaeroBags) {
     g.__polyaeroBags = createInitialBags();
+    saveBags(g.__polyaeroBags);
   }
   return g.__polyaeroBags;
 }
@@ -755,7 +763,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
 
   if (score >= 65) {
     return {
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
       risk_level: "HIGH_PRIORITY",
       priority_sequence: 1,
@@ -768,7 +776,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
   }
   if (score >= 35) {
     return {
-      model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+      model_version: "cathay-bag-risk-v1.0-interface",
       risk_score: score,
       risk_level: "MEDIUM",
       priority_sequence: 2,
@@ -780,7 +788,7 @@ function predictRisk(features: FlightRiskFeatures): FlightRiskAssessment {
     };
   }
   return {
-    model_version: "cathay-bag-risk-v3.0-hkg-feeder",
+    model_version: "cathay-bag-risk-v1.0-interface",
     risk_score: score,
     risk_level: "LOW",
     priority_sequence: 3,

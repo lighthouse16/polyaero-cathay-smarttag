@@ -39,12 +39,7 @@ def main():
     epd.init()
     canvas = PortraitCanvas(epd)
 
-    pending_refresh = [None]
-
     def refresh_display(parsed):
-        if hasattr(epd, "cs"):
-            pending_refresh[0] = parsed
-            return
         print("[EPD] Rendering baggage label")
         render_iata_baggage_tag(canvas, parsed)
         epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
@@ -78,14 +73,6 @@ def main():
         try:
             # Listen for phone NFC write (blocking, ~5s session)
             nfc_target.listen(session_ms=NFC_SESSION_MS)
-            if pending_refresh[0] is not None:
-                parsed = pending_refresh[0]
-                pending_refresh[0] = None
-                print("[EPD] Rendering baggage label")
-                render_iata_baggage_tag(canvas, parsed)
-                epd.EPD_4IN2_V2_PartialDisplay(epd.buffer_1Gray)
-                print("[EPD] Baggage refresh completed")
-                time.sleep_ms(3000)
         except Exception as exc:
             print(f"[NFC] Loop recovery: {exc}")
             time.sleep_ms(20)

@@ -123,10 +123,10 @@ class NfcTarget:
                     if self.readback_completed:
                         break
 
-            if self.wrote_payload and not self.refresh_attempted:
+            if self.write_completed and not self.refresh_attempted:
                 self._refresh_display()
 
-            if self.write_completed or self.wrote_payload:
+            if self.write_completed:
                 return self.ndef_file
 
         except Exception as e:
@@ -147,13 +147,10 @@ class NfcTarget:
         return None
 
     def _refresh_display(self):
+        if not self.write_completed:
+            return
         self.refresh_attempted = True
         try:
-            if ((self.ndef_file[0] << 8) | self.ndef_file[1]) == 0 and self.wrote_payload:
-                if (self.ndef_file[2] & 0x10) and self.ndef_file[3] == 1:
-                    inferred = 4 + self.ndef_file[4]
-                    self.ndef_file[0] = (inferred >> 8) & 0xFF
-                    self.ndef_file[1] = inferred & 0xFF
             parsed = parse_iata_payload(self.ndef_file)
             if not parsed or self.refresh_display is None:
                 return

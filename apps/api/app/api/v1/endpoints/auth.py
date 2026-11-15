@@ -44,7 +44,7 @@ from app.services.auth import (
     update_user,
     verify_verification_code,
 )
-from app.services.email import send_verification_code
+from app.services.email import EmailDeliveryError, send_verification_code
 
 router = APIRouter(tags=["authentication"])
 
@@ -66,7 +66,9 @@ def _otp_error(exc: AuthError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc) or "Invalid code")
 
 
-def _destination(channel: str, email: str, country_code: str | None, phone_number: str | None) -> str:
+def _destination(
+    channel: str, email: str, country_code: str | None, phone_number: str | None
+) -> str:
     if channel == "sms":
         return f"{country_code or ''}{phone_number or ''}"
     return email
@@ -101,7 +103,12 @@ async def signup_initiate(
     except AuthError as exc:
         raise _otp_error(exc) from exc
 
-    await send_verification_code(signup_in.channel, destination, code)
+    try:
+        await send_verification_code(signup_in.channel, destination, code)
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
     return SignupInitiateResponse(
         signup_id=user.id,
@@ -155,9 +162,7 @@ async def signup_verify(
 async def signin(signin_in: SigninRequest, db: AsyncSession = Depends(get_db)) -> SigninResponse:
     user = await find_user_by_identifier(db, signin_in.identifier)
     if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     if user.password_hash is not None:
         if not signin_in.password:
@@ -183,7 +188,12 @@ async def signin(signin_in: SigninRequest, db: AsyncSession = Depends(get_db)) -
     except AuthError as exc:
         raise _otp_error(exc) from exc
 
-    await send_verification_code(channel, destination, code)
+    try:
+        await send_verification_code(channel, destination, code)
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
     return SigninResponse(
         otp_required=True,
@@ -263,8 +273,6 @@ async def update_me(
     if user_in.email and user_in.email.lower() != current_user.email.lower():
         existing = await get_user_by_email(db, str(user_in.email))
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail="Email already in use"
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
 
     return await update_user(db, current_user, user_in)

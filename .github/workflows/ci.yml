@@ -50,6 +50,22 @@ jobs:
       - name: Run Unit Tests
         run: pnpm test
 
+      - name: Run Native NFC Regression Tests
+        run: pnpm --filter @polyaero/shared exec vitest run --root ../.. apps/mobile/src/services/nfc/__tests__
+
+      - name: Setup Python for Firmware Tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Firmware Regression Tests
+        run: |
+          python -m pip install pytest==8.3.5
+          python -B -m pytest -p no:cacheprovider apps/firmware/micropython-esp32c6/tests/ -q
+
+      - name: Run Staff Portal Tests
+        run: pnpm --filter @polyaero/staff test
+
       - name: Run Staff Portal Build
         run: pnpm build:staff
 

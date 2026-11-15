@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { runSmartTagSync, SmartTagPayload } from '@polyaero/shared';
 import { NativeNfcService } from '../NativeNfcService';
 import {
@@ -146,6 +147,45 @@ describe('MicroPython bridge physical NFC sync', () => {
       expect(mock.cancelTechnologyRequest).toHaveBeenCalled();
     },
   );
+
+  it.each(['receipt', 'readback'] as const)(
+    'never verifies a physical write after transport loss during %s',
+    async (stage) => {
+      const exchange = mock.exchange.getMockImplementation()!;
+      mock.exchange.mockImplementation(async (command: number[]) => {
+        if (
+          (stage === 'receipt' && command[0] === 0x80 && command[1] === 0x11) ||
+          (stage === 'readback' && command[1] === 0xb0)
+        ) {
+          throw new Error('Tag was lost.');
+        }
+        return exchange(command);
+      });
+
+      const outcome = await sync();
+      expect(outcome.finalState).toBe('FAILED');
+      expect(outcome.failure?.code).toBe('NFC_WRITE_FAILED');
+      expect(outcome.writeRecord).toBeNull();
+      expect(mock.cancelTechnologyRequest).toHaveBeenCalled();
+    },
+  );
+
+  it('requires the prepared bag UID for physical sync in the screen', () => {
+    const screen = readFileSync(
+      new URL('../../../features/smarttag/screens/SyncSmartTagScreen.tsx', import.meta.url),
+      'utf8',
+    );
+    expect(screen).toMatch(/expectedTagUid:\s*bag\.smartTag\.tagUid\s*,/);
+  });
+
+  it('does not auto-prepare demo baggage from NFC taps in live API mode', () => {
+    const shell = readFileSync(
+      new URL('../../../features/cathay-shell/CathayAppShell.tsx', import.meta.url),
+      'utf8',
+    );
+    const listener = shell.slice(shell.indexOf('// Launch / Background NFC tag intent listener'));
+    expect(listener).toMatch(/if \(Platform\.OS === 'web' \|\| !USE_MOCK_DATA\) return;/);
+  });
 
   it('rejects corrupted payload readback even with a refresh receipt', async () => {
     corruptReadback = true;

@@ -138,7 +138,7 @@ export const SyncSmartTagScreen: React.FC<SyncSmartTagScreenProps> = ({
       mode: physicalService ? 'PHYSICAL_HARDWARE' : 'SIMULATED_DEMO',
       service: effectiveService,
       payload,
-      expectedTagUid: physicalService ? '' : bag.smartTag.tagUid,
+      expectedTagUid: bag.smartTag.tagUid,
       stepDelayMs: physicalService ? 0 : 140,
       onStep: (step) => {
         if (operation.cancelled) {

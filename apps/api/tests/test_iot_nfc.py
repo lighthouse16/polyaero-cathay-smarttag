@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.core.database import async_session_maker
 from app.main import app
@@ -44,9 +44,7 @@ async def member_headers(client: AsyncClient, monkeypatch) -> dict[str, str]:
 
 async def seeded_flight() -> Flight:
     async with async_session_maker() as session:
-        flight = await session.scalar(
-            select(Flight).where(Flight.flight_number == "CX548")
-        )
+        flight = await session.scalar(select(Flight).where(Flight.flight_number == "CX548"))
     assert flight is not None
     return flight
 
@@ -189,9 +187,7 @@ async def test_tap_requires_device_key_when_configured(client: AsyncClient, monk
         lambda: SimpleNamespace(iot_device_key="secret"),
     )
 
-    denied = await client.post(
-        f"/api/v1/tags/{tag_code}/tap", json={"next_status": "LOADED"}
-    )
+    denied = await client.post(f"/api/v1/tags/{tag_code}/tap", json={"next_status": "LOADED"})
     assert denied.status_code == 401
 
     allowed = await client.post(
@@ -202,21 +198,22 @@ async def test_tap_requires_device_key_when_configured(client: AsyncClient, monk
     assert allowed.status_code == 200, allowed.text
 
 
-async def test_display_falls_back_to_demo_bag(client: AsyncClient):
+async def test_unregistered_display_does_not_fall_back_to_demo_bag(client: AsyncClient):
     response = await client.get("/api/v1/tags/04:A2:3B:4C:5D:6E:70/display")
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["flight"] == "CX888"
-    assert body["destination"] == "YVR"
-    assert body["banner"]
+    assert response.status_code == 404, response.text
 
 
 async def test_mobile_baggage_sync_mirrors_into_database(client: AsyncClient, monkeypatch):
+    async def no_hardware_publish(*args):
+        return False
+
+    monkeypatch.setattr("app.api.v1.endpoints.smarttag.publish_display", no_hardware_publish)
     headers = await member_headers(client, monkeypatch)
     _, tag_id, tag_code, _ = await synced_booking(client, headers)
 
     sync = await client.post(
         "/api/v1/baggage/sync",
+        headers=headers,
         json={
             "tag_number": uuid4().hex[:10],
             "tag_code": tag_code,
@@ -236,19 +233,10 @@ async def test_mobile_baggage_sync_mirrors_into_database(client: AsyncClient, mo
 
 async def test_staff_scan_mirrors_into_database(client: AsyncClient, monkeypatch):
     headers = await member_headers(client, monkeypatch)
-    _, tag_id, _, _ = await synced_booking(client, headers)
-
-    async with async_session_maker() as session:
-        await session.execute(delete(Tag).where(Tag.bar_code_payload == "0160892014"))
-        await session.commit()
-        tag = await session.get(Tag, tag_id)
-        assert tag is not None
-        tag.bar_code_payload = "0160892014"
-        tag.baggage_barcode = "0160892014"
-        await session.commit()
+    _, tag_id, _, synced = await synced_booking(client, headers)
 
     scan = await client.post(
-        "/api/v1/baggage/0160892014/scan",
+        f"/api/v1/baggage/{synced['bar_code_payload']}/scan",
         json={"event_type": "MISROUTED", "location_code": "HKG-TRANSFER-BAY-2"},
     )
     assert scan.status_code == 200, scan.text
@@ -266,20 +254,17 @@ async def test_staff_scan_mirrors_into_database(client: AsyncClient, monkeypatch
 
 async def test_normalize_status_aliases():
     from app.services.baggage import normalize_status
+
     assert normalize_status("priority_transfer") == "MISROUTED"
     assert normalize_status("PRIORITY_TRANSFER") == "MISROUTED"
 
 
-async def test_demo_tap_updates_banner_and_rush(client: AsyncClient):
+async def test_unregistered_tap_does_not_modify_demo_state(client: AsyncClient):
     tap = await client.post(
         "/api/v1/tags/0160892012/tap",
         json={"next_status": "MISROUTED", "reader_id": "TEST-READER"},
     )
-    assert tap.status_code == 200, tap.text
-    display = tap.json()["display"]
-    assert display["status"] == "MISROUTED"
-    assert display["banner"] == "MISROUTED - REROUTING"
-    assert display["is_rush"] is True
+    assert tap.status_code == 404, tap.text
 
 
 async def test_smarttag_sync_payload_status_is_tagged(client: AsyncClient, monkeypatch):

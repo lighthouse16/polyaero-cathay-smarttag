@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.flight import FlightStatusRead
+
 BookingStatus = Literal["UPCOMING", "PAST", "CANCELLED"]
 
 
@@ -36,3 +38,15 @@ class BookingRead(BaseModel):
 class LinkTagRequest(BaseModel):
     pnr: str = Field(..., min_length=5, max_length=10)
     tag_id: UUID
+
+
+class PrototypeBoardingPass(BaseModel):
+    booking_id: UUID
+    pnr: str
+    passenger_name: str
+    cabin_class: str
+    seat_number: None = None
+    flight: FlightStatusRead
+    generated_at: datetime
+    valid_for_boarding: Literal[False] = False
+    notice: Literal["PROTOTYPE - NOT VALID FOR BOARDING"] = "PROTOTYPE - NOT VALID FOR BOARDING"
