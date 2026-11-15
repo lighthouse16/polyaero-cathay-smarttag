@@ -50,6 +50,9 @@ jobs:
       - name: Run Unit Tests
         run: pnpm test
 
+      - name: Run Staff Portal Tests
+        run: pnpm --filter @polyaero/staff test
+
       - name: Run Staff Portal Build
         run: pnpm build:staff
 

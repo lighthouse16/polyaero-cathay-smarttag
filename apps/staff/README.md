@@ -11,27 +11,11 @@ pnpm --filter @polyaero/staff build
 
 ## Data contract and scope
 
-`NEXT_PUBLIC_API_URL` selects the live API base (including `/api/v1`), defaulting
-to the hackathon Cloud Run service. The separate Next.js mock routes retain an
-isolated ephemeral demo store for local development/tests; they are not the
-live adapter's source and are not durable or authenticated. Operator identity
-is demo metadata, not authenticated authorization.
+`NEXT_PUBLIC_API_URL` selects an existing API base (including `/api/v1`). Without it, Next.js uses its **isolated ephemeral demo store**. This store is not shared with FastAPI/mobile, not durable, not authenticated, and not suitable for real passenger data or production operations. Operator identity is demo metadata, not authenticated authorization.
 
-The live dashboard defaults to the Cloud Run API and reads the full database
-dataset through `GET /baggage`; it no longer guesses seed tag codes or dates.
-Detail previews use `GET /tags/{tag_code}/display`. Scans and risk updates use
-`POST /baggage/{tag}/scan` and `POST /baggage/{tag}/risk/apply`. A failed write is
-reported as an error, never fake local success. Manual custody scans use
-`TAG_TAPPED` / `MANUAL_OVERRIDE` and do not claim loading or physical NFC proof.
-Unassessed database bags show unavailable risk rather than a fabricated score.
-Risk re-scoring uses demo model assumptions, not verified telemetry.
-FastAPI `/baggage/reset` is disabled for persistent data.
+Reads: `GET /baggage`, `GET /tags/{tag_code}/display`. Mutations: existing `POST /baggage/{tag}/scan`, `POST /baggage/{tag}/risk/apply`, and confirmed demo reset. Manual portal changes use `MANUAL_OVERRIDE`; reported event types do not establish physical proof. Risk simulation uses operator-entered assumptions and persists resulting assessment, not verified telemetry.
 
-Snapshot scope is the returned baggage dataset, not a historical window.
-Database event/departure timestamps are retained. The existing transfer adapter
-still synthesizes feeder legs and transfer timing from demo assumptions; those
-are not authoritative RDS flight connections. Transfer success/recovery durations
-need eligible completed-transfer denominators and persisted case history.
+Snapshot metrics: tracked count = returned bag records; at risk = score >=35, exception status, or supplied connection buffer <70 minutes; exceptions = MISROUTED/MISSING/RECOVERY_IN_PROGRESS. Scope: returned dataset, no historical window. Transfer success/recovery durations unavailable without eligible completed-transfer denominators and persisted case history. Historical ranges disabled; no synthetic sparklines. Timeline plots actual event/departure timestamps in HKT, not fabricated inbound legs or transfer intervals.
 
 Display payload preview never acknowledges E-paper refresh. No invented battery, revision, QR, PA2 encoding, or online state. Firmware/passenger app remain unchanged.
 
@@ -42,3 +26,7 @@ Jade header/sidebar, ivory two-column workspace, TanStack grid, case tabs, nativ
 ## Release gate
 
 Draft only until screenshot comparison/E2E/accessibility QA and required ChatGPT reviewer approval pass. Monorepo typecheck has existing mobile TS2367 errors (BaggageJourneyScreen); do not suppress them or edit passenger app in this task. Production dependency audit reports existing advisories; triage before release. No production deployment or merge authorized.
+
+## Current backend integration handoff
+
+See [STAFF_BACKEND_HANDOFF.md](../../docs/STAFF_BACKEND_HANDOFF.md) for current Transfer Control, Performance and Copilot contracts, provider setup, deployment limits, and known data/auth gaps.
