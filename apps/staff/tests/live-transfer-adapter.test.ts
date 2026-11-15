@@ -35,6 +35,61 @@ const features = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("persistent baggage integration", () => {
+  it("never assigns an unrelated real feeder arriving after the outbound flight", () => {
+    const now = new Date("2026-11-15T06:00:00Z");
+    const flights = [
+      { id: "out", flight_number: "CX548", origin_code: "HKG", destination_code: "NRT", departure_time: "2026-11-15T07:00:00Z", arrival_time: "2026-11-15T11:00:00Z" },
+      { id: "late", flight_number: "CX541", origin_code: "NRT", destination_code: "HKG", departure_time: "2026-11-15T10:00:00Z", arrival_time: "2026-11-15T14:00:00Z" },
+    ];
+    const snapshot = buildLiveTransferSnapshot([{ ...bag, departure_time: flights[0].departure_time }], now, "test", flights);
+    const connection = snapshot.connections[0];
+    const feeder = snapshot.legs.find((leg) => leg.id === connection.inboundLegId)!;
+    expect(feeder.flightNumber).not.toBe("CX541");
+    expect(Date.parse(feeder.scheduledArrivalAt!)).toBeLessThan(Date.parse(connection.deadline!.at));
+  });
+
+  it("keeps overnight inbound dates and uses the next feasible real outbound", () => {
+    const now = new Date("2026-11-15T06:00:00Z");
+    const flights = [
+      { id: "in", flight_number: "CX889", origin_code: "YVR", destination_code: "HKG", departure_time: "2026-11-14T06:00:00Z", arrival_time: "2026-11-15T05:00:00Z" },
+      { id: "out", flight_number: "CX548", origin_code: "HKG", destination_code: "NRT", departure_time: "2026-11-15T07:00:00Z", arrival_time: "2026-11-15T11:00:00Z" },
+    ];
+    const snapshot = buildLiveTransferSnapshot([{ ...bag, flight_number: "CX889", departure_airport: "YVR", arrival_airport: "HKG", departure_time: flights[0].departure_time }], now, "test", flights);
+    expect(snapshot.connections[0].inboundLegId).toBe("in-CX889-2026-11-14");
+    expect(snapshot.connections[0].outboundLegId).toBe("out-CX548-2026-11-15");
+    expect(snapshot.bags[0].departure_time).toBe("2026-11-15T07:00:00.000Z");
+    expect(snapshot.connections[0].deadline!.at).toBe("2026-11-15T06:40:00.000Z");
+  });
+
+  it("keeps inferred departure after known inbound arrival when no feasible onward exists", () => {
+    const now = new Date("2026-11-15T06:00:00Z");
+    const inbound = { id: "in", flight_number: "CX889", origin_code: "YVR", destination_code: "HKG", departure_time: "2026-11-14T20:00:00Z", arrival_time: "2026-11-15T12:00:00Z" };
+    const snapshot = buildLiveTransferSnapshot([{ ...bag, flight_number: "CX889", departure_airport: "YVR", arrival_airport: "HKG", departure_time: inbound.departure_time }], now, "test", [inbound]);
+    expect(Date.parse(snapshot.connections[0].deadline!.at)).toBeGreaterThan(Date.parse(inbound.arrival_time));
+  });
+
+  it("rejects flight-phase cancellation instead of returning an available snapshot", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string, options: RequestInit) => {
+      if (url.endsWith("/baggage/dashboard")) return new Response(JSON.stringify([bag]));
+      expect(options.signal).toBe(controller.signal);
+      controller.abort();
+      throw new DOMException("Cancelled", "AbortError");
+    }));
+    await expect(fetchLiveTransferSnapshot(controller.signal)).rejects.toThrow("Cancelled");
+  });
+
+  it.each([401, 403])("propagates flight HTTP %s without successful fallback", async (status) => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) =>
+      url.endsWith("/baggage/dashboard") ? new Response(JSON.stringify([bag])) : new Response("", { status })));
+    await expect(fetchLiveTransferSnapshot(base)).rejects.toThrow(`HTTP ${status}`);
+  });
+
+  it("retains the baggage snapshot when optional flight enrichment returns 503", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) =>
+      url.endsWith("/baggage/dashboard") ? new Response(JSON.stringify([bag])) : new Response("", { status: 503 })));
+    expect((await fetchLiveTransferSnapshot(base)).bags).toHaveLength(1);
+  });
   it("loads every database bag and queries matching flights", async () => {
     const bags = Array.from({ length: 11 }, (_, i) => ({
       ...bag,

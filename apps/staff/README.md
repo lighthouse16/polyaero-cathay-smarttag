@@ -30,3 +30,15 @@ Draft only until screenshot comparison/E2E/accessibility QA and required ChatGPT
 ## Current backend integration handoff
 
 See [STAFF_BACKEND_HANDOFF.md](../../docs/STAFF_BACKEND_HANDOFF.md) for current Transfer Control, Performance and Copilot contracts, provider setup, deployment limits, and known data/auth gaps.
+
+## Production promotion guard
+
+The custom domain `cathay.haidangtrih.me` was verified on 2026-11-15 pinned to deployment `dpl_Aax3cRikyJ2nVRrrFHyUcM7zcPzk` (commit `e921c86`). Vercel project `autoAssignCustomDomains` was `false`; keep this rollback guard enabled until an explicitly approved promotion. A GitHub merge or green build alone does not authorize replacing the demo.
+
+Before promotion:
+1. Verify the exact deployment commit, `READY` state, and environment (including `STAFF_LIVE_BACKEND=1`).
+2. Run staff tests/lint/typecheck and an isolated build (`STAFF_QA_DIST_DIR=.next-build`) to avoid corrupting the running dev server's `.next` assets.
+3. Verify the preview includes Performance trends/funnel/KPIs for the intended demo cohort, Copilot chat, and the file picker. Snapshot-only fallback is not equivalent to the full demo. Synthetic cohort metrics remain demo estimates, not measured operational outcomes.
+4. Obtain explicit approval, promote only that verified deployment, and re-check the custom-domain alias. Preserve the previous deployment ID for rollback.
+
+Do not automatically re-enable custom-domain assignment or promote a deployment merely because a PR merged. No permanent absence of regressions is guaranteed; regression tests and manual promotion are the safeguards.
