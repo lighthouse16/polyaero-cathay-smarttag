@@ -157,6 +157,76 @@ describe("persistent baggage integration", () => {
     expect(second.bags[0].events[0].event_type).toBe("TAGGED");
   });
 
+  it.each(["2026-11-15T02:48:00Z", "2026-11-17T23:50:00Z"])("rebases every marked demo flight despite old persisted schedules at %s", (clock) => {
+    const now = new Date(clock);
+    const flights = ["CX251", "CX548", "CX888", "CX255", "CX711"];
+    const destinations = ["LHR", "NRT", "YVR", "NKG", "SIN"];
+    const cohort: BackendBag[] = Array.from({ length: 50 }, (_, i) => ({
+      ...bag, id: `demo-${i}`, tag_number: `01699${String(i).padStart(5, "0")}`,
+      dataset: i % 2 ? "realistic-v1" : undefined,
+      tag_code: i % 2 ? "BENCHMARK" : `REALISTIC-${i}`,
+      flight_number: flights[i % 5], arrival_airport: destinations[i % 5],
+      departure_time: "2026-11-14T01:00:00Z", status: "MISROUTED", risk_score: 85,
+    }));
+    const schedules = flights.map((flight_number, i) => ({
+      id: `flight-${i}`, flight_number, origin_code: "HKG", destination_code: destinations[i],
+      departure_time: "2026-11-14T01:00:00Z", arrival_time: "2026-11-14T14:00:00Z",
+    }));
+    const original = structuredClone(cohort);
+    const snapshot = buildLiveTransferSnapshot(cohort, now, "Demo test", schedules);
+    const outbounds = snapshot.legs.filter((l) => l.id.startsWith("out-"));
+    expect(outbounds).toHaveLength(5);
+    expect(new Set(outbounds.map((l) => l.scheduledDepartureAt)).size).toBe(5);
+    for (const c of snapshot.connections) {
+      const out = snapshot.legs.find((l) => l.id === c.outboundLegId)!;
+      const inbound = snapshot.legs.find((l) => l.id === c.inboundLegId)!;
+      expect(Date.parse(c.deadline!.at) - now.getTime()).toBeGreaterThanOrEqual(55 * 60_000);
+      expect(Date.parse(inbound.scheduledArrivalAt!)).toBeLessThan(Date.parse(c.deadline!.at));
+      expect(snapshot.bags.find((b) => b.tag_number === c.bagTag)!.departure_time).toBe(out.scheduledDepartureAt);
+      expect(out.scheduledArrivalAt === null || Date.parse(out.scheduledArrivalAt) > Date.parse(out.scheduledDepartureAt!)).toBe(true);
+    }
+    expect(cohort).toEqual(original);
+  });
+
+  it("keeps shared synthetic feeders before each outbound cutoff", () => {
+    const now = new Date("2026-11-15T02:48:00Z");
+    const cohort = Array.from({ length: 6 }, (_, i) => ({
+      ...bag, id: `shared-${i}`, tag_number: `016700000${i}`, dataset: "realistic-v1",
+      flight_number: i < 5 ? "CX251" : "CX548", arrival_airport: i < 5 ? "LHR" : "NRT",
+      departure_time: "2026-11-14T01:00:00Z", connection_minutes: 90,
+    }));
+    const snapshot = buildLiveTransferSnapshot(cohort, now);
+    for (const c of snapshot.connections) {
+      const feeder = snapshot.legs.find((l) => l.id === c.inboundLegId)!;
+      expect(Date.parse(feeder.scheduledArrivalAt!)).toBeLessThan(Date.parse(c.deadline!.at));
+    }
+  });
+
+  it.each([false, true])("isolates real and demo outbound schedules regardless of input order %s", (reverse) => {
+    const now = new Date("2026-11-15T02:00:00Z");
+    const schedule = { id: "real", flight_number: "CX548", origin_code: "HKG", destination_code: "NRT", departure_time: "2026-11-15T08:00:00Z", arrival_time: "2026-11-15T13:00:00Z" };
+    const real = { ...bag, departure_time: schedule.departure_time };
+    const demo = { ...real, id: "demo", tag_number: "0161234500", dataset: "realistic-v1" };
+    const snapshot = buildLiveTransferSnapshot(reverse ? [demo, real] : [real, demo], now, "Mixed", [schedule]);
+    expect(snapshot.connections[0].outboundLegId).not.toBe(snapshot.connections[1].outboundLegId);
+    for (const c of snapshot.connections) {
+      const out = snapshot.legs.find((l) => l.id === c.outboundLegId)!;
+      const b = snapshot.bags.find((b) => b.tag_number === c.bagTag)!;
+      expect(b.departure_time).toBe(out.scheduledDepartureAt);
+      expect(Date.parse(c.deadline!.at)).toBe(Date.parse(out.scheduledDepartureAt!) - 20 * 60_000);
+    }
+    expect(snapshot.bags.find((b) => b.tag_number === real.tag_number)!.departure_time).toBe("2026-11-15T08:00:00.000Z");
+  });
+
+  it("does not roll an authentic overdue flight into the demo shift", () => {
+    const now = new Date("2026-11-15T02:48:00Z");
+    const departure_time = "2026-11-14T01:00:00Z";
+    const schedule = { id: "real", flight_number: "CX548", origin_code: "HKG", destination_code: "NRT", departure_time, arrival_time: "2026-11-14T06:00:00Z" };
+    const snapshot = buildLiveTransferSnapshot([{ ...bag, departure_time }], now, "Real test", [schedule]);
+    expect(snapshot.legs.find((l) => l.id.startsWith("out-"))!.scheduledDepartureAt).toBe("2026-11-14T01:00:00.000Z");
+    expect(Date.parse(snapshot.connections[0].deadline!.at)).toBeLessThan(now.getTime());
+  });
+
   it("never assigns an unrelated real feeder arriving after the outbound flight", () => {
     const now = new Date("2026-11-15T06:00:00Z");
     const flights = [
@@ -422,6 +492,10 @@ describe("persistent baggage integration", () => {
     expect(report.efficiency.responseTimeBuckets?.length).toBe(5);
     expect(report.kpis.every((k) => k.comparison !== null)).toBe(true);
     expect(report.businessImpact.every((b) => b.value !== null && b.value > 0)).toBe(true);
+    const daily = await fetchLiveRecoveryPerformance({ window: "24h", station: "HKG", outboundLegId: "all" });
+    const success = daily.kpis.find((k) => k.id === "transferSuccess")!;
+    expect(success.denominator).toBeGreaterThan(0);
+    expect(success.value).toBeCloseTo(100 * success.numerator! / success.denominator!, 1);
   });
 
   it("populates transferSuccess and differentiates flight composite risk scores across departure banks", () => {
