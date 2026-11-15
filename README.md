@@ -3,18 +3,30 @@
 > Cathay Hackathon 2026 Prototype  
 > Unofficial PolyAero Research Concept — Not an official Cathay Pacific production product.
 
+[![Live Portal](https://img.shields.io/badge/Live%20Demo-Operations%20Portal-006564?style=flat-square&logo=vercel)](https://cathay.haidangtrih.me/#transfer-control)
+[![Android Release](https://img.shields.io/badge/Release-v1.0.0%20(APK)-163230?style=flat-square&logo=android)](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases/tag/v1.0.0)
+[![Hardware Specs](https://img.shields.io/badge/Hardware-ESP32--C6%20%2B%20E--Paper-blue?style=flat-square)](docs/hardware/README.md)
+
+---
+
+## 📌 Quick Access & Demonstrations
+- 🌐 **Live Ground Operations Portal**: [https://cathay.haidangtrih.me/#transfer-control](https://cathay.haidangtrih.me/#transfer-control)
+- 📱 **Download Android App (Release APK)**: [CathaySmartTag-Release.apk (v1.0.0)](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases/tag/v1.0.0)
+- 🏷️ **Hardware Specifications & Circuit Pinout**: [docs/hardware/README.md](docs/hardware/README.md)
+- ⚡ **MicroPython Hardware Firmware**: [apps/firmware/micropython-esp32c6/README.md](apps/firmware/micropython-esp32c6/README.md)
+
 ---
 
 ## 1. Project Overview
 
-**PolyAero Cathay SmartTag** is a reusable digital baggage identity platform designed to integrate into the Cathay Pacific passenger experience.
+**PolyAero Cathay SmartTag** is a reusable digital baggage identity platform designed to integrate into the Cathay Pacific passenger experience and ground operations.
 
 The prototype includes:
-1. **Passenger Mobile App**: An Expo / React Native application designed to integrate into the reconstructed Cathay mobile app shell.
-2. **SmartTag Digital Identity & E-ink Interaction**: Contactless NFC reading, baggage tagging, and passive E-ink display buffer simulation.
-3. **Ground Staff Operations Portal**: A Next.js web application for ground staff and ramp leads to inspect, verify, and re-route baggage.
+1. **Passenger Mobile App**: Reconstructed Cathay Pacific mobile app shell with flight booking, baggage management, digital pass, and contactless NFC tag pairing with session acknowledgment and continuous tap loop protection.
+2. **SmartTag Physical E-ink Hardware**: Standalone ESP32-C6 firmware with PN532 Type-4A card emulation, offline IATA 10-digit Interleaved 2 of 5 barcode generation, and Waveshare 4.2" bi-stable E-Paper display with power-cycle cold reset.
+3. **Ground Staff Operations Portal**: Next.js 15 transfer control dashboard featuring flight-first baggage tracking, tight connection alerts, and an **Operations Copilot** (draggable Grammarly-style floating AI widget).
 4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
-5. **Backend API**: FastAPI with local PostgreSQL for development and an AWS RDS PostgreSQL demo deployment runbook for Google Cloud Run.
+5. **Backend API**: FastAPI with PostgreSQL migrations and Cloud Run / RDS production deployment runbooks.
 
 ---
 
@@ -24,17 +36,20 @@ The prototype includes:
 polyaero-cathay-smarttag/
 ├── apps/
 │   ├── api/            # FastAPI backend, Alembic migrations, Cloud Run deployment
-│   ├── mobile/         # React Native + Expo SDK 52 + Expo Router v4
+│   ├── firmware/       # ESP32-C6 MicroPython firmware (PN532 NFC + 4.2" E-Paper)
+│   │   └── micropython-esp32c6/
+│   ├── mobile/         # React Native + Expo SDK 52 + Expo Router v4 (Android APK)
 │   └── staff/          # Next.js 15 App Router Ground Staff Portal
 ├── packages/
-│   ├── shared/         # TypeScript domain models, NFC mock engine, test fixtures
+│   ├── shared/         # TypeScript domain models, NFC protocol engine, test fixtures
 │   └── design-tokens/  # Semantic tokens (Cathay jade, PolyAero accent, typography)
 ├── supabase/
 │   └── migrations/     # PostgreSQL schema, RLS policies, realtime publications
 ├── tests/
 │   └── maestro/        # Maestro mobile smoke test
-├── docs/               # Architecture, UI reconstruction guide, hardware specs
-└── .github/            # GitHub Actions CI workflow and PR template
+├── docs/               # Architecture, UI reconstruction guide, hardware specs & photos
+│   └── hardware/       # Pinout tables, circuit schematics, and prototype photos
+└── .github/            # GitHub Actions CI, APK release builds, and PR templates
 ```
 
 ---
@@ -101,15 +116,15 @@ When reference screenshots of the official Cathay Pacific application are provid
 
 ---
 
-## 5. Scope: Mock vs. Live Services
+## 5. Scope: Implementation Status & Architecture
 
-| Component | Current Implementation | Hackathon Delivery Target |
+| Component | Status | Production Implementation |
 |:---|:---|:---|
-| **Cathay App Shell** | Static typed mock data (`@polyaero/shared`) | Remains isolated mock data (no private Cathay API access) |
-| **SmartTag Mobile Linking** | `MockNfcService` with error & cancellation tests | Native NFC integration via Expo Dev Client |
-| **Baggage Milestone Events** | Append-only `baggage_events` in PostgreSQL, written by app sync, staff scans, and IoT taps | Supabase PostgreSQL + Realtime WebSockets |
-| **IoT E-Paper Bridge** | ESP32-S3 + PN532 target mode + 4.2" E-Paper polling the API | Live NFC → API → E-ink loop (see [`apps/firmware/esp32-display`](apps/firmware/esp32-display)) |
-| **Ground Staff Portal** | Interactive React state with shared fixtures | Live Supabase queries & status mutations |
+| **Cathay App Shell** | ✅ Complete | Reconstructed Cathay Pacific mobile app shell with brand Cathay Sans typography, flight bookings, and digital boarding pass. |
+| **SmartTag NFC Linking** | ✅ Complete | Native NFC (`react-native-nfc-manager` + Android intent dispatch) with ISO-DEP Type-4A NDEF & PA1 protocol, session ACK protection against repeated tap loops. Packaged in [Release APK v1.0.0](https://github.com/lighthouse16/polyaero-cathay-smarttag/releases/tag/v1.0.0). |
+| **Physical E-ink Tag** | ✅ Complete | Standalone MicroPython firmware on **ESP32-C6** + **Waveshare PN532 NFC HAT** + **Waveshare 4.2" E-Paper V2**. Autonomous offline IATA barcode rendering, zero WiFi dependency, cold reset on power cycle. |
+| **Ground Staff Portal** | ✅ Complete | Live on [Vercel](https://cathay.haidangtrih.me/#transfer-control). Flight-first transfer control dashboard, connection risk tracking, and draggable Grammarly-style **Operations Copilot**. |
+| **Data & Backend API** | ✅ Complete | FastAPI with PostgreSQL migrations and Supabase auditing for immutable baggage milestone events. |
 
 ---
 
