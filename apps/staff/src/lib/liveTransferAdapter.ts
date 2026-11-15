@@ -341,16 +341,19 @@ export function buildLiveTransferSnapshot(
         ? "NRT"
         : rawDest;
 
+    const synthetic = isSyntheticBenchmarkBag(b);
     const parsedDep = Date.parse(b.departure_time || "");
     const requestedOpDate = Number.isFinite(parsedDep)
       ? formatHktDateKey(parsedDep)
       : formatHktDateKey(nowMs);
-    const inboundFlight = isInboundToHkg
+    const inboundFlight = !synthetic && isInboundToHkg
       ? findFlight(rawFlight, rawOrigin, "HKG", requestedOpDate)
       : undefined;
     const inboundArrivalMs = inboundFlight ? Date.parse(inboundFlight.arrival_time) : Number.NaN;
     // An outbound record does not identify its feeder; never attach an unrelated real flight.
-    const scheduledFlight = isInboundToHkg && Number.isFinite(inboundArrivalMs)
+    // ponytail: marked benchmark records use a current-shift demo clock, never persisted flight schedules.
+    // Replace with a fixed scenario clock if the demo needs elapsed-time simulation.
+    const scheduledFlight = synthetic ? undefined : isInboundToHkg && Number.isFinite(inboundArrivalMs)
       ? flightOptions
           .filter((flight) => flight.flight_number.toUpperCase() === outFlight &&
             flight.origin_code.toUpperCase() === outOrigin &&
@@ -366,8 +369,8 @@ export function buildLiveTransferSnapshot(
       : nowMs + 110 * 60_000;
     // Live demo anchor: keep stale or near-cutoff departures safely ahead of handling cutoff, assigned per outbound flight wave.
     if (
-      !scheduledFlight &&
-      (depMs < nowMs + 60 * 60_000 || depMs > nowMs + 24 * 3600_000)
+      synthetic || (!scheduledFlight &&
+      (depMs < nowMs + 60 * 60_000 || depMs > nowMs + 24 * 3600_000))
     ) {
       let offsetMin = anchoredFlightOffsetMin.get(outFlight);
       if (offsetMin === undefined) {
@@ -385,7 +388,7 @@ export function buildLiveTransferSnapshot(
     }
     const depIso = new Date(depMs).toISOString();
     const opDate = formatHktDateKey(depMs);
-    const outLegId = `out-${outFlight}-${opDate}`;
+    const outLegId = `out-${outFlight}-${opDate}${synthetic ? "-demo" : ""}`;
 
     if (!legsMap.has(outLegId)) {
       legsMap.set(outLegId, {
@@ -419,7 +422,7 @@ export function buildLiveTransferSnapshot(
       ? { flightNumber: rawFlight, origin: rawOrigin }
       : FEEDER_POOL[idx % FEEDER_POOL.length];
     const inOpDate = inboundFlight ? requestedOpDate : opDate;
-    const inLegId = `in-${feeder.flightNumber}-${inOpDate}`;
+    const inLegId = `in-${feeder.flightNumber}-${inOpDate}${synthetic ? `-${outFlight}` : ""}`;
     const rawConnMins =
       typeof b.connection_minutes === "number" && b.connection_minutes >= 0
         ? b.connection_minutes
