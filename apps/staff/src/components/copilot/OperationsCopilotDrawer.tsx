@@ -729,14 +729,14 @@ export function OperationsCopilotDrawer({
               }
             : undefined
         }
-        aria-label="Open Operations Copilot (Drag to reposition)"
-        title="Operations Copilot (Drag to reposition)"
+        aria-label="Open Baggage Recovery Copilot (Drag to reposition)"
+        title="Baggage Recovery Copilot (Drag to reposition)"
       >
         <span className={styles.launcherGrip} aria-hidden="true">
           <GripDotsIcon size={12} color="currentColor" />
         </span>
         <SparkleAiIcon size={18} color="currentColor" />
-        <span>Operations Copilot</span>
+        <span>Baggage Recovery Copilot</span>
       </button>
     );
   }
@@ -747,7 +747,7 @@ export function OperationsCopilotDrawer({
       className={`${styles.drawer} ${isDraggingDrawer ? styles.isDragging : ""}`}
       role="dialog"
       aria-modal="false"
-      aria-label="Operations Copilot"
+      aria-label="Baggage Recovery Copilot"
       style={
         drawerPos
           ? {
@@ -775,7 +775,7 @@ export function OperationsCopilotDrawer({
           </span>
           <div className={styles.titleGroup}>
             <div className={styles.titleRow}>
-              <h2 className={styles.title}>Operations Copilot</h2>
+              <h2 className={styles.title}>Baggage Recovery Copilot</h2>
             </div>
             <p className={styles.subtitle}>AI assistant for baggage transfer</p>
           </div>
@@ -798,7 +798,7 @@ export function OperationsCopilotDrawer({
             type="button"
             className={styles.iconBtn}
             onClick={() => onOpenChange(false)}
-            aria-label="Close Operations Copilot"
+            aria-label="Close Baggage Recovery Copilot"
             title="Close"
           >
             <CloseIcon size={18} color="currentColor" />
@@ -983,7 +983,7 @@ export function OperationsCopilotDrawer({
             className={styles.textarea}
             value={draft}
             placeholder="Ask anything"
-            aria-label="Ask Operations Copilot a question"
+            aria-label="Ask Baggage Recovery Copilot a question"
             onChange={(e) => {
               setDraft(e.target.value);
               adjustTextareaHeight(e.currentTarget);

@@ -258,7 +258,7 @@ describe("OperationsCopilotDrawer", () => {
         activeView="transfer-control"
       />,
     );
-    expect(html).toContain("Operations Copilot");
+    expect(html).toContain("Baggage Recovery Copilot");
     expect(html).not.toContain("Beta");
     expect(html).toContain("AI assistant for baggage transfer");
     expect(html).toContain("Hi Dang, how can I help you with transfer operations?");
