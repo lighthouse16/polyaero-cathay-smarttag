@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlightBooking } from './CathayTypes';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayBookScreenProps {
   onFlightSelected: (booking: FlightBooking) => void;
@@ -678,6 +679,7 @@ const styles = StyleSheet.create({
   },
   heroHeading: {
     fontSize: 28,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
@@ -711,6 +713,7 @@ const styles = StyleSheet.create({
   },
   underlineTabLabel: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
   },
@@ -746,12 +749,14 @@ const styles = StyleSheet.create({
   },
   airportCodeLabel: {
     fontSize: 30,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#2E6E6D',
     letterSpacing: -0.5,
   },
   airportCityLabel: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
     marginTop: 2,
   },
@@ -784,11 +789,13 @@ const styles = StyleSheet.create({
   },
   fieldSmallLabel: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#6B7280',
     fontWeight: '400',
   },
   fieldValueText: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginTop: 4,
@@ -815,6 +822,7 @@ const styles = StyleSheet.create({
   },
   promoLinkText: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
   },
@@ -830,6 +838,7 @@ const styles = StyleSheet.create({
   },
   peachPromoPillText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#9E3E1E',
     fontWeight: '400',
   },
@@ -839,21 +848,25 @@ const styles = StyleSheet.create({
   },
   redeemMilesText: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
     marginBottom: 10,
   },
   indicativePriceLine: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#6B7280',
   },
   priceCurrencyText: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     fontWeight: '400',
   },
   priceAmountBold: {
     fontSize: 18,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     fontWeight: '700',
   },
@@ -869,6 +882,7 @@ const styles = StyleSheet.create({
   searchFlightButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
   },
 
@@ -889,11 +903,13 @@ const styles = StyleSheet.create({
   },
   favCardTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
   },
   favCardSub: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#6B7280',
     marginTop: 3,
   },
@@ -942,11 +958,13 @@ const styles = StyleSheet.create({
   },
   loadingOriginCode: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#2E6E6D',
   },
   loadingDestCode: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#CBD5E1',
   },
@@ -969,6 +987,7 @@ const styles = StyleSheet.create({
   },
   resultsTitle: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
   },
@@ -993,6 +1012,7 @@ const styles = StyleSheet.create({
   },
   dateRibbonDay: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   dateRibbonDayActive: {
@@ -1001,6 +1021,7 @@ const styles = StyleSheet.create({
   },
   dateRibbonPrice: {
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     marginTop: 2,
   },
@@ -1019,6 +1040,7 @@ const styles = StyleSheet.create({
   },
   resultsCountText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
   },
@@ -1046,11 +1068,13 @@ const styles = StyleSheet.create({
   },
   cabinUnifiedTitle: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1E4E68',
   },
   cabinUnifiedSubPrice: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1E4E68',
     marginTop: 2,
   },
@@ -1091,6 +1115,7 @@ const styles = StyleSheet.create({
   },
   mixedCabinPillText: {
     fontSize: 11,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#9E3E1E',
   },
   splitTimeRouteRow: {
@@ -1101,11 +1126,13 @@ const styles = StyleSheet.create({
   },
   splitTimeTeal: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#195A58',
   },
   splitAirportCode: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     marginTop: 4,
   },
@@ -1116,6 +1143,7 @@ const styles = StyleSheet.create({
   },
   splitDurationText: {
     fontSize: 11,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#6B7280',
     marginBottom: 6,
   },
@@ -1143,15 +1171,18 @@ const styles = StyleSheet.create({
   },
   transitLabelText: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
     marginTop: 6,
   },
   splitFlightNumText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   splitOperatorSub: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
     marginTop: 4,
   },
@@ -1163,6 +1194,7 @@ const styles = StyleSheet.create({
   },
   splitRightTag: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#9E3E1E',
   },
   splitRightPriceGroup: {
@@ -1171,6 +1203,7 @@ const styles = StyleSheet.create({
   },
   splitRightPrice: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   splitRightPriceBold: {
@@ -1178,6 +1211,7 @@ const styles = StyleSheet.create({
   },
   splitRightPerAdult: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#6B7280',
     marginTop: 2,
   },
@@ -1202,6 +1236,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 17,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },
@@ -1225,6 +1260,7 @@ const styles = StyleSheet.create({
   },
   sheetCabinPillText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2C3034',
   },
   sheetCabinPillTextActive: {
@@ -1241,6 +1277,7 @@ const styles = StyleSheet.create({
   },
   paxLabel: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   counterRow: {
@@ -1259,6 +1296,7 @@ const styles = StyleSheet.create({
   },
   counterVal: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: '#1C2024',
   },

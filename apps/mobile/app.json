@@ -17,7 +17,9 @@
     "android": {
       "package": "com.polyaero.smarttag",
       "adaptiveIcon": {
-        "backgroundColor": "#006564"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#005D63"
       },
       "permissions": ["android.permission.NFC"]
     },
@@ -28,6 +30,59 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
+      [
+        "expo-font",
+        {
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Cathay Sans EN",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/cathay/CathaySans_WCorp_Lt.ttf",
+                    "weight": 300
+                  },
+                  {
+                    "path": "./assets/fonts/cathay/CathaySans_WCorp_Rg.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/cathay/CathaySans_WCorp_Bd.ttf",
+                    "weight": 700
+                  }
+                ]
+              },
+              {
+                "fontFamily": "GT Walsheim",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/cathay/GT-Walsheim-Light.ttf",
+                    "weight": 300
+                  },
+                  {
+                    "path": "./assets/fonts/cathay/GT-Walsheim-Regular.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/cathay/GT-Walsheim-Bold.ttf",
+                    "weight": 700
+                  }
+                ]
+              }
+            ]
+          },
+          "ios": {
+            "fonts": [
+              "./assets/fonts/cathay/CathaySans_WCorp_Lt.ttf",
+              "./assets/fonts/cathay/CathaySans_WCorp_Rg.ttf",
+              "./assets/fonts/cathay/CathaySans_WCorp_Bd.ttf",
+              "./assets/fonts/cathay/GT-Walsheim-Light.ttf",
+              "./assets/fonts/cathay/GT-Walsheim-Regular.ttf",
+              "./assets/fonts/cathay/GT-Walsheim-Bold.ttf"
+            ]
+          }
+        }
+      ],
       [
         "react-native-nfc-manager",
         {

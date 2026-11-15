@@ -60,6 +60,8 @@ export const CATHAY_MINT_SURFACE = '#EAF3F2';
 export const CATHAY_MINT_BADGE = '#DCECE8';
 export const CATHAY_WARM_CREAM = '#FAF5EA';
 export const CATHAY_WARM_BORDER = '#EDE4D3';
+export const CATHAY_CRIMSON = '#87323A';
+export const CATHAY_AMBER_WARM = '#785D2A';
 export const CATHAY_BG = '#F6F7F7';
 export const CATHAY_TEXT_PRIMARY = '#1C2024';
 export const CATHAY_TEXT_SECONDARY = '#52565A';
@@ -67,16 +69,12 @@ export const CATHAY_TEXT_MUTED = '#76777A';
 export const CATHAY_BORDER = '#ECEEEF';
 
 export const CATHAY_FONT_FAMILY = Platform.select({
-  ios: undefined,
-  android: 'sans-serif',
-  default: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  ios: 'Cathay Sans EN',
+  android: 'Cathay Sans EN',
+  default: '"Cathay Sans EN", "GT Walsheim", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 });
 
-export const CATHAY_SERIF = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, "Times New Roman", Garamond, serif',
-});
+export const CATHAY_SERIF = CATHAY_FONT_FAMILY;
 
 export const cardShadowStyle: ViewStyle = {
   shadowColor: '#0F172A',
@@ -267,15 +265,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       : tone === 'amber'
         ? '#F4EFE4'
         : tone === 'red'
-          ? '#FDE8E8'
+          ? '#F1EFEB'
           : '#EFEFEF';
   const fg =
     tone === 'jade'
       ? CATHAY_JADE
       : tone === 'amber'
-        ? '#785D2A'
+        ? CATHAY_AMBER_WARM
         : tone === 'red'
-          ? '#9B1C1C'
+          ? CATHAY_CRIMSON
           : '#3B4148';
 
   return (
@@ -693,22 +691,24 @@ export const SmartTagProgressIndicator: React.FC<{
     state === 'WRITING' ||
     state === 'VERIFYING';
 
-  const toneBg =
-    state === 'SUCCESS'
-      ? CATHAY_MINT_SURFACE
-      : state === 'FAILED' || state === 'UNSUPPORTED'
-        ? '#FEF2F2'
-        : CATHAY_MINT_SURFACE;
+  const isError = state === 'FAILED' || state === 'UNSUPPORTED';
 
+  const toneBg = isError ? '#FFFFFF' : CATHAY_MINT_SURFACE;
   const toneColor =
     state === 'SUCCESS'
       ? CATHAY_JADE
-      : state === 'FAILED' || state === 'UNSUPPORTED'
-        ? '#991B1B'
+      : isError
+        ? CATHAY_CRIMSON
         : CATHAY_TEXT_PRIMARY;
 
   return (
-    <View style={[styles.progressStrip, { backgroundColor: toneBg }]}>
+    <View
+      style={[
+        styles.progressStrip,
+        { backgroundColor: toneBg },
+        isError && { borderColor: CATHAY_BORDER, borderLeftWidth: 3, borderLeftColor: CATHAY_CRIMSON },
+      ]}
+    >
       <View style={styles.progressLeft}>
         {isBusy ? (
           <ActivityIndicator size="small" color={CATHAY_JADE} />
@@ -726,7 +726,9 @@ export const SmartTagProgressIndicator: React.FC<{
           />
         )}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.progressText, { color: toneColor }]}>{message}</Text>
+          <Text style={[styles.progressText, { color: isError ? CATHAY_TEXT_PRIMARY : toneColor }]}>
+            {message}
+          </Text>
         </View>
       </View>
       {isBusy && onCancel && (
@@ -794,7 +796,7 @@ export const BaggageJourneyTimeline: React.FC<{
               <Text
                 style={[
                   styles.timelineSubtitle,
-                  isException && { color: '#B91C1C', fontWeight: '500' },
+                  isException && { color: CATHAY_CRIMSON, fontWeight: '500' },
                 ]}
               >
                 {item.subtitle}
@@ -828,38 +830,31 @@ export const InlineNotice: React.FC<{
   secondaryActionLabel,
   onSecondaryAction,
 }) => {
-  const bg =
-    tone === 'danger'
-      ? '#FEF2F2'
-      : tone === 'warning' || tone === 'demo'
-        ? CATHAY_WARM_CREAM
-        : CATHAY_MINT_SURFACE;
-  const border =
-    tone === 'danger'
-      ? '#FECACA'
-      : tone === 'warning' || tone === 'demo'
-        ? CATHAY_WARM_BORDER
-        : '#D0E6E4';
-  const iconColor =
-    tone === 'danger'
-      ? '#B91C1C'
-      : tone === 'warning' || tone === 'demo'
-        ? '#785D2A'
-        : CATHAY_JADE;
+  const isDanger = tone === 'danger';
+  const isWarning = tone === 'warning' || tone === 'demo';
+  const bg = isDanger ? '#FFFFFF' : isWarning ? CATHAY_WARM_CREAM : CATHAY_MINT_SURFACE;
+  const border = isDanger ? CATHAY_BORDER : isWarning ? CATHAY_WARM_BORDER : '#D0E6E4';
+  const accentColor = isDanger ? CATHAY_CRIMSON : isWarning ? CATHAY_AMBER_WARM : CATHAY_JADE;
 
   return (
-    <View style={[styles.noticeBox, { backgroundColor: bg, borderColor: border }]}>
+    <View
+      style={[
+        styles.noticeBox,
+        { backgroundColor: bg, borderColor: border },
+        isDanger && { borderLeftWidth: 3, borderLeftColor: CATHAY_CRIMSON },
+      ]}
+    >
       <View style={styles.noticeTopRow}>
         <Ionicons
           name={
-            tone === 'danger'
+            isDanger
               ? 'alert-circle-outline'
-              : tone === 'warning'
+              : isWarning
                 ? 'warning-outline'
                 : 'information-circle-outline'
           }
           size={18}
-          color={iconColor}
+          color={accentColor}
           style={{ marginTop: 1 }}
         />
         <View style={{ flex: 1 }}>
@@ -910,9 +905,9 @@ const styles = StyleSheet.create({
     width: 38,
   },
   headerTitle: {
-    fontSize: 18.5,
+    fontSize: 18,
     fontFamily: CATHAY_FONT_FAMILY,
-    fontWeight: '700',
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
@@ -932,6 +927,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: '#FFFFFF',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     letterSpacing: -0.1,
   },
@@ -949,6 +945,7 @@ const styles = StyleSheet.create({
   outlineBtnText: {
     color: CATHAY_JADE,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
@@ -960,6 +957,7 @@ const styles = StyleSheet.create({
   linkBtnText: {
     color: CATHAY_JADE,
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
 
@@ -973,6 +971,7 @@ const styles = StyleSheet.create({
   rowChevronText: {
     color: CATHAY_JADE,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
 
@@ -997,6 +996,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
@@ -1018,6 +1018,7 @@ const styles = StyleSheet.create({
   },
   flightDateText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2B3035',
     fontWeight: '400',
   },
@@ -1027,15 +1028,18 @@ const styles = StyleSheet.create({
   },
   bookingRefCaption: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
   },
   bookingRefValue: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_JADE_LIGHT,
   },
   bagHeaderLabel: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2B3035',
   },
   bagHeaderCode: {
@@ -1059,12 +1063,14 @@ const styles = StyleSheet.create({
   },
   airportIataText: {
     fontSize: 28,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_JADE_LIGHT,
     letterSpacing: -0.4,
   },
   airportCityText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#3B4148',
     marginTop: 2,
   },
@@ -1100,6 +1106,7 @@ const styles = StyleSheet.create({
   },
   flightMetaText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#3B4148',
   },
   verticalDivider: {
@@ -1121,12 +1128,14 @@ const styles = StyleSheet.create({
   },
   cardSectionHeading: {
     fontSize: 17,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.2,
   },
   previewCardHeading: {
     fontSize: 16.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 8,
@@ -1151,6 +1160,7 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#4B5259',
     fontWeight: '400',
   },
@@ -1161,11 +1171,13 @@ const styles = StyleSheet.create({
   },
   detailValuePrimary: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
   },
   detailValueInteractive: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: CATHAY_JADE_LIGHT,
   },
@@ -1201,6 +1213,7 @@ const styles = StyleSheet.create({
   },
   einkMetaLabel: {
     fontSize: 10.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: CATHAY_TEXT_MUTED,
     letterSpacing: 0.3,
@@ -1224,11 +1237,13 @@ const styles = StyleSheet.create({
   },
   einkRouteStrong: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#111111',
   },
   einkFlightStrong: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#111111',
   },
@@ -1265,6 +1280,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   cancelScanLink: {
@@ -1273,8 +1289,9 @@ const styles = StyleSheet.create({
   },
   cancelScanLinkText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
-    color: '#991B1B',
+    color: CATHAY_CRIMSON,
   },
 
   timelineContainer: {
@@ -1302,7 +1319,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#B91C1C',
+    backgroundColor: CATHAY_CRIMSON,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1352,11 +1369,13 @@ const styles = StyleSheet.create({
   },
   timelineTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   timelineSubtitle: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     marginTop: 3,
   },
@@ -1374,12 +1393,14 @@ const styles = StyleSheet.create({
   },
   noticeTitle: {
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 2,
   },
   noticeText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#2C3034',
   },
@@ -1399,6 +1420,7 @@ const styles = StyleSheet.create({
   noticeActionBtnText: {
     color: '#FFFFFF',
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
   noticeSecondaryBtn: {
@@ -1409,6 +1431,7 @@ const styles = StyleSheet.create({
   noticeSecondaryBtnText: {
     color: CATHAY_JADE,
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
   },
 
@@ -1445,6 +1468,7 @@ const styles = StyleSheet.create({
   ticketFlightCode: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
@@ -1459,6 +1483,7 @@ const styles = StyleSheet.create({
   ticketDate: {
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 13.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   ticketBottomSection: {
@@ -1480,12 +1505,14 @@ const styles = StyleSheet.create({
   },
   ticketInfoLabel: {
     fontSize: 11,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     marginBottom: 4,
     fontWeight: '500',
   },
   ticketInfoValue: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
@@ -1525,12 +1552,14 @@ const styles = StyleSheet.create({
   },
   entryCardTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 3,
   },
   entryCardSubtitle: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 17,
   },
@@ -1563,12 +1592,14 @@ const styles = StyleSheet.create({
   },
   yourBaggageTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 2,
   },
   yourBaggageSubtitle: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
   },
   yourBaggageBtn: {
@@ -1583,6 +1614,7 @@ const styles = StyleSheet.create({
   yourBaggageBtnText: {
     color: '#FFFFFF',
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
 
@@ -1615,6 +1647,7 @@ const styles = StyleSheet.create({
   },
   brushwingFlightTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     marginBottom: 3,
   },
   brushwingFlightCode: {
@@ -1627,6 +1660,7 @@ const styles = StyleSheet.create({
   },
   brushwingFlightDate: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
   },
 
@@ -1645,6 +1679,7 @@ const styles = StyleSheet.create({
   },
   checklistSectionHeading: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 12,
@@ -1686,11 +1721,13 @@ const styles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   checklistSubtitle: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },
@@ -1706,6 +1743,7 @@ const styles = StyleSheet.create({
   },
   guideSectionTitle: {
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 16,
@@ -1731,6 +1769,7 @@ const styles = StyleSheet.create({
   guideNumberText: {
     color: '#FFFFFF',
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
   },
   guideLine: {
@@ -1745,11 +1784,13 @@ const styles = StyleSheet.create({
   },
   guideTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   guideSubtitle: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },
@@ -1776,14 +1817,15 @@ const styles = StyleSheet.create({
   statusCardTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     letterSpacing: -0.3,
     marginBottom: 4,
   },
   statusCardSubtitle: {
     color: '#A2D9D2',
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
   },
   statusCardIconBox: {

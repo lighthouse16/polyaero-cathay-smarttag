@@ -18,8 +18,8 @@ import {
   SmartTagDeclarations,
 } from '@polyaero/shared';
 import {
+  CATHAY_FONT_FAMILY,
   CATHAY_JADE,
-  CATHAY_SERIF,
   CATHAY_TEXT_PRIMARY,
   CATHAY_TEXT_SECONDARY,
   CATHAY_TEXT_MUTED,
@@ -234,8 +234,8 @@ export const PrepareSmartTagScreen: React.FC<PrepareSmartTagScreenProps> = ({
         )}
 
         {feedbackError && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{feedbackError}</Text>
+          <View style={styles.errorWrap}>
+            <InlineNotice tone="danger" message={feedbackError} />
           </View>
         )}
 
@@ -332,14 +332,15 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 24,
-    fontFamily: CATHAY_SERIF,
-    fontWeight: '700',
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '600',
     color: CATHAY_TEXT_PRIMARY,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
   mainSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_SECONDARY,
     lineHeight: 20,
   },
@@ -350,6 +351,7 @@ const styles = StyleSheet.create({
   },
   checklistSectionHeading: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
     marginBottom: 14,
@@ -396,26 +398,19 @@ const styles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: CATHAY_TEXT_PRIMARY,
   },
   checklistSubtitle: {
     fontSize: 12.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: CATHAY_TEXT_MUTED,
     marginTop: 2,
   },
 
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
-    padding: 12,
+  errorWrap: {
     marginBottom: 16,
-  },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 13,
   },
 
   continueBtn: {

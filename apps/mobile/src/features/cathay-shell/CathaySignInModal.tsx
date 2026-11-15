@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 import { USE_MOCK_DATA } from '../../services/apiConfig';
 import { signIn, verifySignIn, userProfile } from '../../services/api';
 
@@ -272,7 +273,9 @@ export const CathaySignInModal: React.FC<CathaySignInModalProps> = ({
 
               {attemptsLeft !== null && (
                 <View style={styles.errorBanner}>
-                  <Ionicons name="warning" size={18} color="#DC2626" />
+                  <View style={styles.errorExclamationBox}>
+                    <Text style={styles.errorExclamationMark}>!</Text>
+                  </View>
                   <Text style={styles.errorBannerText}>
                     The password you entered is incorrect. You have {attemptsLeft} attempts left before your account will be locked. Please try again or{' '}
                     <Text style={styles.errorLink} onPress={() => setViewState('reset_phone')}>
@@ -465,6 +468,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#1C2024',
   },
@@ -478,6 +482,7 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 8,
@@ -485,12 +490,14 @@ const styles = StyleSheet.create({
   },
   pageSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#52565A',
     marginBottom: 24,
   },
   identifierDisplay: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#1C2024',
     marginBottom: 20,
@@ -500,6 +507,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 11.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
     color: '#52565A',
     marginBottom: 6,
@@ -516,6 +524,7 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   textInput: {
@@ -525,6 +534,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   passwordContainer: {
@@ -539,6 +549,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#1C2024',
   },
   eyeBtn: {
@@ -554,6 +565,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
   },
   dividerRow: {
@@ -569,6 +581,7 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   altButtonsCol: {
@@ -584,6 +597,7 @@ const styles = StyleSheet.create({
   },
   outlineButtonText: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
   },
@@ -594,10 +608,12 @@ const styles = StyleSheet.create({
   },
   signUpPromptText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#52565A',
   },
   signUpLinkText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '500',
     color: '#2E6E6D',
   },
@@ -607,26 +623,47 @@ const styles = StyleSheet.create({
   },
   forgotPassText: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#2E6E6D',
     fontWeight: '400',
   },
   errorBanner: {
     flexDirection: 'row',
-    backgroundColor: '#FEF2F2',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#87323A',
+    borderRadius: 6,
     padding: 12,
     marginBottom: 20,
     gap: 10,
   },
+  errorExclamationBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: '#87323A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  errorExclamationMark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
+    fontWeight: '700',
+  },
   errorBannerText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
-    color: '#DC2626',
+    color: '#1C2024',
     flex: 1,
   },
   errorLink: {
+    color: '#006564',
     textDecorationLine: 'underline',
     fontWeight: '600',
   },
@@ -643,6 +680,7 @@ const styles = StyleSheet.create({
     borderColor: '#CBD5E1',
     borderRadius: 8,
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#006564',
     backgroundColor: '#F8FAFC',
@@ -660,6 +698,7 @@ const styles = StyleSheet.create({
   },
   resetDoneTitle: {
     fontSize: 20,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     textAlign: 'center',
@@ -668,6 +707,7 @@ const styles = StyleSheet.create({
   },
   resetDoneSub: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#64748B',
     textAlign: 'center',

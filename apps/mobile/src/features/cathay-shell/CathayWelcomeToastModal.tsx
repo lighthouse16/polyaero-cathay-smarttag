@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserAuthProfile } from './CathayTypes';
+import { CATHAY_FONT_FAMILY } from '../smarttag/components/CathaySmartTagPrimitives';
 
 interface CathayWelcomeToastModalProps {
   visible: boolean;
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     letterSpacing: -0.5,
@@ -133,6 +135,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#64748B',
     marginTop: 4,
     marginBottom: 20,
@@ -146,12 +149,14 @@ const styles = StyleSheet.create({
   },
   calloutHeading: {
     fontSize: 16,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     marginBottom: 6,
   },
   calloutText: {
     fontSize: 13,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 18,
     color: '#64748B',
     marginBottom: 16,
@@ -180,6 +185,7 @@ const styles = StyleSheet.create({
   cardStatusText: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     letterSpacing: 1,
   },
@@ -187,12 +193,14 @@ const styles = StyleSheet.create({
   cardName: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   cardNumber: {
     color: '#D1EAE7',
     fontSize: 12,
+    fontFamily: CATHAY_FONT_FAMILY,
     marginTop: 2,
   },
   primaryButton: {
@@ -204,6 +212,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15.5,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '400',
   },
   notifContainer: {
@@ -225,6 +234,7 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     fontSize: 22,
+    fontFamily: CATHAY_FONT_FAMILY,
     fontWeight: '700',
     color: '#1C2024',
     textAlign: 'center',
@@ -233,6 +243,7 @@ const styles = StyleSheet.create({
   },
   notifSubtitle: {
     fontSize: 14,
+    fontFamily: CATHAY_FONT_FAMILY,
     lineHeight: 20,
     color: '#64748B',
     textAlign: 'center',
@@ -244,6 +255,7 @@ const styles = StyleSheet.create({
   },
   secondaryTextButtonLabel: {
     fontSize: 15,
+    fontFamily: CATHAY_FONT_FAMILY,
     color: '#64748B',
     fontWeight: '500',
   },
