@@ -49,7 +49,7 @@ into JavaScript.
 ## Production
 
 Copy `apps\mobile\.env.production.example` to `apps\mobile\.env`, replace the
-placeholder hostname with your deployed HTTPS API, and keep mock mode false.
+demo hostname if using another deployed HTTPS API, and keep mock mode false.
 For EAS builds, set these same public variables in the corresponding EAS
 environment. Development/preview and production can use different addresses.
 Do not rely on `NODE_ENV` to select a custom environment file.

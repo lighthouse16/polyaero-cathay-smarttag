@@ -5,8 +5,7 @@
  * optional key-value persistence adapter (used with `localStorage` on web; pure
  * in-memory on React Native without native storage dependencies).
  *
- * Also documents the `SupabaseSmartTagRepository` integration boundary so a
- * live backend can replace the in-memory store without rewriting screens.
+ * This repository is the local simulator, not the authenticated API client.
  */
 
 import {

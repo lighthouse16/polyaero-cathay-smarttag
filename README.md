@@ -1,127 +1,249 @@
-# PolyAero Cathay SmartTag
+# Baggage Recovery Copilot
 
-> Cathay Hackathon 2026 Prototype  
-> Unofficial PolyAero Research Concept — Not an official Cathay Pacific production product.
+**Cathay Hackathon 2026 submission** - a reusable digital baggage identity and
+ground-operations prototype. This is an independent PolyAero concept, not an
+official Cathay Pacific product or a production airline system.
 
----
+## What the project does
 
-## 1. Project Overview
+- **Passenger app:** Expo / React Native app with member sign-in, flight search,
+  bookings, trips, staff-reported flight status, and prototype boarding passes.
+- **SmartTag:** NFC baggage identity, sync/readback logic, and a simulated journey
+  experience. Native NFC requires a development build and compatible hardware.
+- **Staff dashboard:** Next.js operations workspace for baggage visibility,
+  custody scans, model risk assessments, and recovery choices backed by the API.
+- **Backend:** FastAPI, SQLAlchemy, and Alembic with PostgreSQL. Bookings and
+  baggage reference a shared flight catalogue; events and operational updates
+  persist in the database.
+- **Hardware prototype:** ESP32-C6, PN532, and a Waveshare 4.2-inch e-paper display
+  running standalone MicroPython firmware.
 
-**PolyAero Cathay SmartTag** is a reusable digital baggage identity platform designed to integrate into the Cathay Pacific passenger experience.
+## Hosted API
 
-The prototype includes:
-1. **Passenger Mobile App**: An Expo / React Native application designed to integrate into the reconstructed Cathay mobile app shell.
-2. **SmartTag Digital Identity & E-ink Interaction**: Contactless NFC reading, baggage tagging, and passive E-ink display buffer simulation.
-3. **Ground Staff Operations Portal**: A Next.js web application for ground staff and ramp leads to inspect, verify, and re-route baggage.
-4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
-5. **Backend API**: FastAPI with local PostgreSQL for development and an AWS RDS PostgreSQL demo deployment runbook for Google Cloud Run.
+| Resource                      | URL                                                               |
+| ----------------------------- | ----------------------------------------------------------------- |
+| API base                      | https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1              |
+| Interactive API documentation | https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1/docs         |
+| OpenAPI schema                | https://smarttag-demo-4pu4shawla-df.a.run.app/api/v1/openapi.json |
+| Service health                | https://smarttag-demo-4pu4shawla-df.a.run.app/health              |
 
----
+The API is hosted on **Google Cloud Run**; its data is stored in **AWS RDS
+PostgreSQL**, not in the Cloud Run container. This is a temporary hackathon
+service: availability and demo data may change. Member endpoints require
+sign-in. The health endpoint reports service health, not a database readiness
+guarantee. Use synthetic data only; do not submit real passenger information.
 
-## 2. Monorepo Architecture
+To point a local frontend at the hosted service, set its API variable to the
+base URL above: `EXPO_PUBLIC_API_URL` for mobile or `NEXT_PUBLIC_API_URL` for
+staff. Restart the development server after changing environment values.
+Standalone mobile builds must be rebuilt when their API URL changes.
+
+## Repository layout
 
 ```text
-polyaero-cathay-smarttag/
-├── apps/
-│   ├── api/            # FastAPI backend, Alembic migrations, Cloud Run deployment
-│   ├── mobile/         # React Native + Expo SDK 52 + Expo Router v4
-│   └── staff/          # Next.js 15 App Router Ground Staff Portal
-├── packages/
-│   ├── shared/         # TypeScript domain models, NFC mock engine, test fixtures
-│   └── design-tokens/  # Semantic tokens (Cathay jade, PolyAero accent, typography)
-├── supabase/
-│   └── migrations/     # PostgreSQL schema, RLS policies, realtime publications
-├── tests/
-│   └── maestro/        # Maestro mobile smoke test
-├── docs/               # Architecture, UI reconstruction guide, hardware specs
-└── .github/            # GitHub Actions CI workflow and PR template
+apps/
+  api/                         FastAPI, PostgreSQL models, migrations, seeds
+  mobile/                      Expo passenger app and native NFC services
+  staff/                       Next.js ground-operations dashboard
+  firmware/micropython-esp32c6/ Standalone PN532 / e-paper firmware
+packages/
+  shared/                      Domain contracts, NFC simulation, fixtures
+  design-tokens/               Shared colors, typography, and layout tokens
+docs/                          Architecture, development, and hardware notes
+tests/maestro/                 Mobile smoke-test flows
+.github/                       CI and contribution templates
 ```
 
----
-
-## 3. Getting Started
+## Run locally
 
 ### Prerequisites
-- Node.js: `v20.x` or `v22.x` (Tested on `v22.21.0`)
-- pnpm: `v10.x` (`corepack enable pnpm` or `npm install -g pnpm`)
 
-### Install Dependencies
-```bash
-pnpm install
+- Node.js 22 (the CI baseline) and pnpm 10.33.0.
+- Python 3.13 (matching the API container) and [uv](https://docs.astral.sh/uv/).
+- PostgreSQL 16+ running locally, or Docker to start an isolated development DB.
+- For physical NFC: Android tooling, a compatible phone, and an Expo development
+  build. Browser/Expo Go testing does not verify native NFC or e-paper refresh.
+
+The following commands use **PowerShell**, starting at the repository root.
+On macOS/Linux, use `cp` instead of `Copy-Item`, `cd` instead of `Set-Location`,
+and the corresponding shell path separators. Run the three servers in separate
+terminals.
+
+### 1. Install frontend dependencies and configure environments
+
+```powershell
+pnpm install --frozen-lockfile
+Copy-Item apps\mobile\.env.example apps\mobile\.env
+Copy-Item apps\staff\.env.example apps\staff\.env.local
+Copy-Item apps\api\.env.example apps\api\.env
 ```
 
-### Run the Mobile Application (Expo)
-```bash
+Do not overwrite an existing configured environment file. The root
+`.env.example` is a reference only; each application loads its own file.
+Never put database credentials, signing keys, SMTP passwords, or device/staff
+keys in `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*`: those values reach client bundles.
+
+### 2. Start PostgreSQL
+
+If you already have PostgreSQL, create an empty `smarttag` database and set
+`DATABASE_URL` in `apps\api\.env` to match your local credentials.
+Alternatively, start a dedicated local Docker database:
+
+```powershell
+docker run --name polyaero-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=smarttag -p 127.0.0.1:5432:5432 -v polyaero-postgres-data:/var/lib/postgresql/data -d postgres:16
+```
+
+These credentials are **local demo defaults only**. Port 5432 must be free.
+The named volume retains data; subsequent starts use
+`docker start polyaero-postgres`. Local development does not require AWS.
+
+### 3. Run the backend
+
+```powershell
+Set-Location apps\api
+uv sync --frozen --extra dev
+uv run alembic upgrade head
+uv run python -m app.seed
+uv run python -m app.seed --apply
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The first seed command previews; only `--apply` writes. Seeding uses today's UTC
+date and creates synthetic members, flights, bookings, tags, bags, and events.
+Rerunning the same date adds missing records without resetting existing data.
+Review the target database before applying; **never seed production by mistake**.
+
+For demo password login, set `$env:SEED_USER_PASSWORD` privately to a password
+of at least eight characters **before the first seed apply**, then remove it
+afterward with `Remove-Item Env:\SEED_USER_PASSWORD`. Reruns do not reset member
+passwords. The seeded accounts are `seed.passenger.1@example.com` through
+`seed.passenger.4@example.com`. Without a seeded password, email OTP requires
+configured SMTP credentials; no real email is sent by the seed script.
+
+Open http://localhost:8000/api/v1/docs and http://localhost:8000/health.
+Do not leave the development server exposed on an untrusted network.
+
+### 4. Run the passenger frontend
+
+From the repository root in another terminal:
+
+```powershell
 pnpm dev:mobile
 ```
-- Press `w` to open in a web browser.
-- Or scan the terminal QR code using Expo Go on iOS / Android.
 
-### Run the Ground Staff Portal (Next.js)
-```bash
+Use `EXPO_PUBLIC_API_URL=http://10.0.2.2:8000/api/v1` for the Android emulator,
+`http://localhost:8000/api/v1` for browser/iOS simulator, or your computer's
+LAN IP for a physical phone on the same Wi-Fi. For browser preview, press `w`;
+for native testing, use a compatible Expo development client.
+Set `EXPO_PUBLIC_USE_MOCK_DATA=true` only for the explicit simulator/demo flows.
+Live API failures do not silently become successful mock operations.
+
+After changing the mobile environment:
+
+```powershell
+pnpm --filter @polyaero/mobile start --clear
+```
+
+### 5. Run the staff frontend
+
+From the repository root in a third terminal:
+
+```powershell
 pnpm dev:staff
 ```
-Open `http://localhost:3000` to access the ground staff dashboard.
 
-### Run the Backend API
+Open http://localhost:3000. The provided `apps\staff\.env.example` selects
+`http://localhost:8000/api/v1`. Without that override, the live adapter defaults
+to the hosted Cloud Run API. The staff view reads `/baggage/dashboard`; member
+baggage routes are separate and ownership-scoped. Do not test mutations against
+the hosted demo when you intended to use a local database.
 
-See [API setup and deployment](apps/api/README.md) for local PostgreSQL setup,
-environment variables, migrations, and Python checks.
+## How the cloud database and API were deployed
 
-For the one-day cloud demo, the backend runs on Google Cloud Run and connects
-to AWS RDS PostgreSQL using verified TLS. The deployment script creates a
-static outbound IP for the AWS firewall and keeps secrets in Google Secret
-Manager. Local and AWS databases remain separate, even when both are named
-`smarttag`.
+The repository's deployment runbook connects a Google Cloud container service
+to an **AWS RDS PostgreSQL database in Hong Kong (`ap-east-1`)**:
 
-This is not a production release: some routes still lack authorization and
-baggage demo state resets when the server instance is replaced. Do not use
-real passenger data. Cloud NAT, reserved IPs, and database resources can incur
-charges; follow the API README's cleanup instructions after the hackathon.
+1. Provision an RDS PostgreSQL instance and the `smarttag` database in AWS,
+   retaining its endpoint, database user, and password privately. The deployment
+   helper connects to an existing RDS instance; it does not create one.
+2. Build the API Docker image with Google Cloud Build and store it in Artifact
+   Registry. The Dockerfile includes the AWS RDS CA bundle for verified TLS.
+3. Deploy Cloud Run in **`asia-east2`** with a dedicated VPC subnet and all-traffic
+   egress through Cloud NAT using a reserved outbound IP.
+4. Allow PostgreSQL TCP 5432 in the RDS security group **only from that outbound
+   IP (`/32`)** and any explicitly authorized development IP. This cross-cloud
+   setup requires an RDS endpoint reachable from the Google Cloud egress network;
+   it does not establish a private AWS-to-Google VPN. Never allow `0.0.0.0/0`.
+5. Supply `DATABASE_URL`, signing/device keys, and other server-only configuration
+   through the runtime configuration. The first-deployment script uses Google
+   Secret Manager and grants the runtime account access to the required secrets.
+6. Run `alembic upgrade head` in a one-off Cloud Run job before starting the API.
+   Apply synthetic seed data separately when needed; API replicas do not seed or
+   migrate the database at startup.
 
-### Verification & Quality Gates
-```bash
-pnpm lint        # Run ESLint across all workspaces
-pnpm typecheck   # Type-check all packages with TypeScript strict mode
-pnpm test        # Run Vitest unit test suite in @polyaero/shared
-pnpm build:staff # Production build of Next.js Staff Portal
+See the [API deployment and cleanup runbook](apps/api/README.md) for
+`deploy-cloudrun.sh`, the resume helper, and `seed_cloudrun.py`. These scripts
+create billable resources and are **not safe blind redeployment commands**.
+The resume helper is a demo fallback that stores credentials in Cloud Run
+environment configuration rather than Secret Manager; users with configuration
+access can see them. Do not treat that fallback as a production secret-management
+design. Never commit RDS endpoints with credentials or actual environment files.
+
+Local PostgreSQL and AWS RDS are separate databases. Back up existing RDS data
+before migrating. Ambiguous legacy baggage-to-flight identities intentionally
+stop the migration instead of guessing. Cloud NAT, reserved IPs, RDS, images,
+and backups may continue to incur costs even when the API is idle.
+
+## Validation
+
+From the repository root:
+
+```powershell
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @polyaero/staff test
+pnpm build:staff
+pnpm --filter @polyaero/shared exec vitest run --root ..\.. apps\mobile\src\services\__tests__ apps\mobile\src\services\nfc\__tests__
 ```
 
----
+From `apps\api`:
 
-## 4. Screenshot-Driven UI Reconstruction Workflow
+```powershell
+uv run --frozen --extra dev pytest
+uv run --frozen --extra dev ruff check .
+uv run --frozen --extra dev mypy app
+```
 
-This repository is in the foundation phase. No speculative Cathay Pacific UI has been invented.
+Database regression tests require an **isolated** test database; some skip unless
+`SEED_TEST_DATABASE_URL` or their documented test environment is supplied.
+Commands listed here are validation instructions, not a claim that every gate
+or physical device test has passed. See [API testing](apps/api/README.md) and
+[mobile integration testing](apps/mobile/README.md).
 
-When reference screenshots of the official Cathay Pacific application are provided:
-1. Place raw screenshots into `reference-screenshots/` (excluded from Git).
-2. Log each screen in `docs/screen-inventory.md`.
-3. Follow the 10-step protocol in `docs/ui-reconstruction-plan.md`.
-4. Implement components strictly inside `apps/mobile/src/features/cathay-shell/`.
+## Prototype boundaries
 
----
+- No private Cathay APIs, airline ticket issuance, payment processing, or real
+  boarding credentials. Passes say **PROTOTYPE - NOT VALID FOR BOARDING**.
+- Flight status is maintained in our database, not fetched from a live airline
+  feed. Risk scores and transfer assumptions are demo model outputs, not verified
+  airport telemetry or operational guarantees.
+- Some promotional screens and the local SmartTag preparation/journey simulator
+  remain fixtures. Full live-booking NFC setup is not completely connected.
+- Member tokens are held in memory. SMTP OTP needs a server-configured sender
+  and app password; SMS delivery remains a development stub.
+- Staff/dashboard and device authorization are not production-complete. Do not
+  expose operational routes to untrusted users or store real passenger data.
+- The retained firmware runs **NFC -> local e-paper without Wi-Fi/API calls**.
+  It is an externally powered ESP32 prototype, not proof of passive energy
+  harvesting. Readback/receipt logic exists; end-to-end physical refresh and
+  barcode readability require hardware validation.
 
-## 5. Scope: Mock vs. Live Services
+## Further documentation
 
-| Component | Current Implementation | Hackathon Delivery Target |
-|:---|:---|:---|
-| **Cathay App Shell** | Static typed mock data (`@polyaero/shared`) | Remains isolated mock data (no private Cathay API access) |
-| **SmartTag Mobile Linking** | `MockNfcService` with error & cancellation tests | Native NFC integration via Expo Dev Client |
-| **Baggage Milestone Events** | Append-only `baggage_events` in PostgreSQL, written by app sync, staff scans, and IoT taps | Supabase PostgreSQL + Realtime WebSockets |
-| **IoT E-Paper Bridge** | ESP32-S3 + PN532 target mode + 4.2" E-Paper polling the API | Live NFC → API → E-ink loop (see [`apps/firmware/esp32-display`](apps/firmware/esp32-display)) |
-| **Ground Staff Portal** | Interactive React state with shared fixtures | Live Supabase queries & status mutations |
-
----
-
-## 6. Hardware & Platform Limitations
-
-- **Passive RF E-ink**: The hardware prototype uses passive RF energy harvesting without an internal battery. In Phase 0, NFC operations are simulated via `MockNfcService`.
-- **Expo Go vs Dev Client**: Standard Expo Go does not bundle native NFC libraries (`react-native-nfc-manager`). Testing on physical E-ink tags will require an Expo Development Build (`eas build`).
-- **Barcode Readability**: Standard IATA 10-digit license plate numbers use Interleaved 2 of 5. Readability on reflective E-ink under airport lighting requires physical hardware calibration.
-- **IoT Bridge**: The ESP32 runs PN532 in target mode, so the phone writes NDEF into the bridge. The API gates taps with an optional shared `IOT_DEVICE_KEY`; the NFC UID itself is spoofable.
-
----
-
-## 7. Contributing & Collaboration
-
-See [Collaboration Guide](docs/collaboration-guide.md) for branch naming conventions (`feat/cathay-ui`, `feat/smarttag-mobile`, `feat/backend`, `feat/staff-portal`) and PR requirements.
+- [Architecture](docs/architecture.md)
+- [API setup, schema, seed data, deployment](apps/api/README.md)
+- [Mobile environment and supported flows](apps/mobile/README.md)
+- [Staff dashboard](apps/staff/README.md)
+- [MicroPython firmware and wiring](apps/firmware/micropython-esp32c6/README.md)
+- [Contribution workflow](docs/collaboration-guide.md)

@@ -80,7 +80,7 @@ interface FlightRiskAssessment {
 
 // ponytail: Demo ephemeral in-memory + os.tmpdir() JSON store.
 // Ceiling: Node process restarts and serverless cold starts reload from tmp file or initial fixtures. Not durable multi-node storage, no ACID transactions.
-// Upgrade path: Migrate to Supabase / PostgreSQL with row-level locks and write-ahead log.
+// Upgrade path: Use the FastAPI PostgreSQL routes for durable operations.
 const STORE_FILE = path.join(os.tmpdir(), "polyaero_demo_bags_v2.json");
 
 function createInitialBags(): Record<string, LiveBag> {

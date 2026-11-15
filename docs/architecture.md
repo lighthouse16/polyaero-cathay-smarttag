@@ -1,76 +1,69 @@
-# PolyAero Cathay SmartTag System Architecture
+# System architecture
 
-## 1. High-Level Architecture Overview
+PolyAero Cathay SmartTag is an independent hackathon prototype. The API is the
+source of persisted member, booking, flight, tag, baggage, and operational data.
 
-PolyAero Cathay SmartTag is a reusable digital baggage identity platform proposed for integration into the Cathay Pacific passenger experience.
+```text
+Expo passenger app                 Next.js staff dashboard
+  member login / bookings            baggage / custody / risk / recovery
+  authenticated baggage              dashboard-specific API routes
+           |                                      |
+           +--------------- HTTPS ----------------+
+                              |
+                    FastAPI on Google Cloud Run
+                    SQLAlchemy / Alembic / model inference
+                              |
+                    VPC egress -> Cloud NAT static IP
+                              |
+                    Verified TLS on PostgreSQL port 5432
+                              |
+                    AWS RDS PostgreSQL
 
-```
-+------------------------------------------------------------------------+
-|                   PASSENGER EXPERIENCE (Native Mobile)                 |
-|                                                                        |
-|  +------------------------------+    +------------------------------+  |
-|  |     Cathay Shell (UI)        |    |    SmartTag Feature Area     |  |
-|  |  - Reconstructed App Screens |    |  - NFC Tag Pairing & Writing |  |
-|  |  - Local typed mock data     |    |  - Baggage Live Milestones   |  |
-|  |  - Pure presentation layer   |    |  - Carousel Notifications    |  |
-|  +------------------------------+    +--------------+---------------+  |
-+-----------------------------------------------------+------------------+
-                                                      |
-                                    +-----------------+-----------------+
-                                    |      Shared Contracts & Tokens    |
-                                    |    (@polyaero/shared & tokens)    |
-                                    +-----------------+-----------------+
-                                                      |
-+-----------------------------------------------------+------------------+
-|                   GROUND OPERATIONS                 |                  |
-|                                                     v                  |
-|  +------------------------------+    +------------------------------+  |
-|  |     Physical E-ink Tag       |    |     Ground Staff Portal      |  |
-|  |  - 2.9" E-paper Display      |    |  - Next.js Web Dashboard     |  |
-|  |  - Passive RF Energy Harvest |    |  - Baggage Verification      |  |
-|  |  - ISO 14443-A Transceive    |    |  - Recovery Management       |  |
-|  +--------------^---------------+    +--------------+---------------+  |
-+-----------------+-----------------------------------+------------------+
-                  | NFC RF Touch (ISO 14443-A)        | HTTPS / Realtime
-                  +-----------------+-----------------+
-                                    v
-+------------------------------------------------------------------------+
-|                        BACKEND (Supabase Platform)                     |
-|  - PostgreSQL with Row-Level Security (RLS)                            |
-|  - Realtime WebSocket updates for baggage milestones                   |
-|  - Ground staff role verification via app_metadata                    |
-+------------------------------------------------------------------------+
+Compatible phone -> NFC / ISO-DEP -> PN532 -> ESP32-C6 -> 4.2" e-paper
+                                      standalone MicroPython; no device API calls
 ```
 
----
+## Data ownership
 
-## 2. Core Architectural Boundaries
+- `flights` stores schedule, route, cabin availability, staff-reported operations,
+  shared weather/load/congestion inputs, and the initial baggage-status default.
+- `bookings.flight_id` and `baggage.flight_id` reference the same flight.
+  Connection minutes and actual milestones remain baggage-specific.
+- Tags carry registration/booking identity and sync state. Baggage events and
+  `baggage.operational_data` persist custody, assessment, and recovery details.
+- A flight's initial status does not prove tag sync or overwrite later baggage
+  milestones. Display previews and server events do not prove physical refresh.
+- The local shared SmartTag repository is a deterministic simulator, optionally
+  persisted in browser storage; it is not the PostgreSQL source of truth.
 
-### A. Separation of Responsibilities
-1. **Cathay Shell**:
-   - Location: `apps/mobile/src/features/cathay-shell/`
-   - Scope: High-fidelity visual reconstruction of authentic Cathay app screens based on provided screenshots.
-   - Data Source: Static local mock data (`@polyaero/shared`).
-   - Boundaries: Strictly isolated from private Cathay production APIs or payment gateways.
+## Application boundaries
 
-2. **PolyAero SmartTag Core**:
-   - Location: `apps/mobile/src/features/smarttag/` and `apps/staff/`
-   - Scope: Active engineering feature: NFC tag interaction, baggage lifecycle tracking, and ground recovery workflows.
-   - Data Source: Shared domain contracts and Supabase backend.
+- The passenger app uses the authenticated central API client for integrated
+  flows. Explicit mock mode retains fixtures; promotional screens and full
+  live-booking NFC setup are not completely integrated.
+- Member baggage routes enforce ownership. The staff adapter uses
+  `/baggage/dashboard` and persists operations through separate mutation routes.
+  Staff access restrictions remain a deployment requirement, not a completed
+  individual staff authorization model.
+- Flight status is staff-maintained, not an external airline feed. Risk-model
+  outputs use demo inputs and are not verified airport telemetry.
+- The ESP32 firmware receives an NDEF record and renders locally. Readback and
+  refresh-receipt logic exist; physical behavior still needs device validation.
+  This powered prototype does not establish passive RF energy harvesting.
 
-### B. Hardware & NFC Integration Boundary
-- The physical SmartTag display is passive and battery-free, powered via NFC energy harvesting.
-- The mobile codebase abstracts NFC through the `INfcService` interface.
-- Local simulator and web builds use `MockNfcService` with error and timeout simulation.
-- Physical tag writes will require an Expo Development Build (`eas build --profile development` or `npx expo run:android / ios`) with native NFC entitlements.
+## Configuration and deployment
 
-### C. Security & Credential Hygiene
-- Service-role keys are never exposed in mobile or browser client code.
-- Only anonymous public keys are configured on client devices.
-- Access to baggage records and operational tools is governed by PostgreSQL Row-Level Security (RLS) checking trusted `app_metadata` roles.
+- Each app has its own environment example. Client URLs are public, build-time
+  configuration; passwords, signing keys, device keys, and staff credentials are
+  server-only.
+- Cloud Run uses a container image from Artifact Registry. A separate job runs
+  migrations; data and seed operations do not run in each API replica.
+- AWS RDS allows the Google Cloud NAT outbound IP on TCP 5432. The container
+  verifies RDS TLS using the AWS CA bundle. The documented demo uses Hong Kong
+  regions (`asia-east2` / `ap-east-1`).
+- Local and cloud databases remain separate. Use synthetic data and back up
+  existing data before migrations. Authentication gaps, demo assumptions, and
+  physical hardware limits prevent describing this as production-ready.
 
-### D. Identity Mapping & Row-Level Security (RLS)
-- Passenger records decouple internal UUID primary keys (`passengers.id`) from authentication identities via `passengers.auth_user_id REFERENCES auth.users(id)`.
-- SmartTag records are visibility-restricted: passengers can only SELECT SmartTags linked to their own baggage.
-- Ground staff authorization is strictly validated through `public.is_ground_staff()` with immutable `app_metadata->>'role' = 'ground_staff'` claims and a hardened `search_path = public, pg_temp`.
-- Newly initialized tags start truthfully as `'UNPROGRAMMED'` with `last_written_at = NULL`.
+See the [root setup guide](../README.md) and
+[API deployment runbook](../apps/api/README.md) for executable commands.
