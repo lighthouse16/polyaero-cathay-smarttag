@@ -1,3 +1,4 @@
+import { clearReadCache } from "../src/lib/readCache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyLiveBagRisk,
@@ -32,9 +33,130 @@ const features = {
   airport_congestion: 2,
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.unstubAllEnvs(); clearReadCache(); });
 
 describe("persistent baggage integration", () => {
+  it("reuses warm baggage and schedule reads but fresh refresh bypasses baggage cache", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : { outbound: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    const coldCalls = fetchMock.mock.calls.length;
+    await fetchLiveTransferSnapshot(base);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls);
+    await fetchLiveTransferSnapshot(base, true);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls + 1);
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(`${base}/baggage/dashboard`);
+  });
+
+  it("expires baggage after 15 seconds without repeating schedule searches", async () => {
+    let clock = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : { outbound: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    const coldCalls = fetchMock.mock.calls.length;
+    clock += 15_001;
+    await fetchLiveTransferSnapshot(base);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls + 1);
+  });
+
+  it("does not mutate upstream records while normalizing duplicate IDs", () => {
+    const input = [{ ...bag }, { ...bag, tag_number: "0161234568" }];
+    const original = structuredClone(input);
+    const snapshot = buildLiveTransferSnapshot(input);
+    expect(new Set(snapshot.bags.map((b) => b.id)).size).toBe(2);
+    expect(input).toEqual(original);
+  });
+
+  it("expires flight searches after five minutes", async () => {
+    let clock = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : { outbound: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    const coldCalls = fetchMock.mock.calls.length;
+    clock += 300_001;
+    await fetchLiveTransferSnapshot(base);
+    expect(fetchMock).toHaveBeenCalledTimes(coldCalls * 2);
+  });
+
+  it.each(["scan", "risk"])("invalidates cached baggage after persisted %s", async (action) => {
+    let status = "CHECKED_IN";
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith("/baggage/dashboard")) return new Response(JSON.stringify([{ ...bag, status }]));
+      if (url.endsWith("/scan") || url.endsWith("/risk/apply")) {
+        status = "LOADED";
+        return new Response(JSON.stringify({ ...bag, status }));
+      }
+      return new Response("{}");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await fetchLiveTransferSnapshot(base)).bags[0].status).toBe("CHECKED_IN");
+    if (action === "scan") {
+      await recordLiveBagScan(base, bag.tag_number, { event_type: "LOADED", location_code: "HKG", station_name: "Test" });
+    } else {
+      await applyLiveBagRisk(base, bag.tag_number, features);
+    }
+    expect((await fetchLiveTransferSnapshot(base)).bags[0].status).toBe("LOADED");
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/baggage/dashboard"))).toHaveLength(2);
+  });
+
+  it.each([401, 403])("expired cache propagates HTTP %s and retries instead of returning old records", async (denied) => {
+    let clock = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    let status = 200;
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(status === 200 ? JSON.stringify(url.endsWith("/baggage/dashboard") ? [bag] : {}) : "", { status }));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchLiveTransferSnapshot(base);
+    clock += 300_001;
+    status = denied;
+    await expect(fetchLiveTransferSnapshot(base)).rejects.toThrow(`HTTP ${denied}`);
+    status = 200;
+    expect((await fetchLiveTransferSnapshot(base)).bags).toHaveLength(1);
+  });
+
+  it("failed writes preserve valid reads and successful scans invalidate Performance baggage", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", base);
+    let writeFails = true;
+    let status = "CHECKED_IN";
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith("/baggage/dashboard")) return new Response(JSON.stringify([{ ...bag, status }]));
+      if (url.endsWith("/scan")) {
+        if (writeFails) return new Response("", { status: 503 });
+        status = "LOADED";
+        return new Response(JSON.stringify({ ...bag, status }));
+      }
+      return new Response("{}");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const filters = { window: "24h", station: "HKG", outboundLegId: "all" } as const;
+    await fetchLiveRecoveryPerformance(filters);
+    const scan = { event_type: "LOADED", location_code: "HKG", station_name: "Test" };
+    await expect(recordLiveBagScan(base, bag.tag_number, scan)).rejects.toThrow("HTTP 503");
+    await fetchLiveRecoveryPerformance(filters);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/baggage/dashboard"))).toHaveLength(1);
+    writeFails = false;
+    await recordLiveBagScan(base, bag.tag_number, scan);
+    await fetchLiveRecoveryPerformance(filters);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/baggage/dashboard"))).toHaveLength(2);
+  });
+
+  it("snapshot output edits cannot alter a later warm snapshot", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
+      new Response(JSON.stringify(url.endsWith("/baggage/dashboard") ? [{ ...bag, events: [{ id: "e", event_type: "TAGGED", timestamp: "2026-11-14T12:00:00Z" }] }] : {})));
+    vi.stubGlobal("fetch", fetchMock);
+    const first = await fetchLiveTransferSnapshot(base);
+    first.bags[0].status = "LOADED";
+    first.bags[0].events[0].event_type = "COLLECTED";
+    const second = await fetchLiveTransferSnapshot(base);
+    expect(second.bags[0].status).toBe("CHECKED_IN");
+    expect(second.bags[0].events[0].event_type).toBe("TAGGED");
+  });
+
   it("never assigns an unrelated real feeder arriving after the outbound flight", () => {
     const now = new Date("2026-11-15T06:00:00Z");
     const flights = [
@@ -174,7 +296,7 @@ describe("persistent baggage integration", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const before = await fetchLiveTransferSnapshot(base);
-    const after = await fetchLiveTransferSnapshot(base);
+    const after = await fetchLiveTransferSnapshot(base, true);
     expect(before.bags[0].id).toBe(after.bags[0].id);
     expect(before.bags[0].is_tag_synced).toBe(false);
     expect(after.bags[0]).toMatchObject({ id: bag.id, tag_number: bag.tag_number, status: "TAGGED", is_tag_synced: true, updated_at: new Date(updatedAt).toISOString() });

@@ -76,7 +76,7 @@ export async function GET(request: Request) {
   const now = new Date();
   if (process.env.STAFF_LIVE_BACKEND === "1") {
     try {
-      const liveReport = await fetchLiveRecoveryPerformance(filters);
+      const liveReport = await fetchLiveRecoveryPerformance(filters, undefined, url.searchParams.get("fresh") === "1");
       return NextResponse.json(liveReport, {
         headers: { "Cache-Control": "no-store" },
       });

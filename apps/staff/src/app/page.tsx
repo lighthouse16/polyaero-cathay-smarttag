@@ -24,11 +24,11 @@ export default function StaffDashboardPage() {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [contextError, setContextError] = useState<string | null>(null);
   const busy = useRef(false);
-  const fetchSnapshot = useCallback(async (signal?: AbortSignal) => {
+  const fetchSnapshot = useCallback(async (signal?: AbortSignal, fresh = true) => {
     if (busy.current) return;
     busy.current = true;
     try {
-      const response = await fetch("/api/v1/transfer-control", { cache: "no-store", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
+      const response = await fetch(`/api/v1/transfer-control${fresh ? "?fresh=1" : ""}`, { cache: "no-store", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) });
       if (!response.ok) throw new Error(`Transfer snapshot request failed (${response.status})`);
       const next = validateTransferSnapshot(await response.json());
       if (signal?.aborted) return;
@@ -45,7 +45,7 @@ export default function StaffDashboardPage() {
   useEffect(() => {
     const controller = new AbortController();
     setNow(new Date());
-    void fetchSnapshot(controller.signal);
+    void fetchSnapshot(controller.signal, false);
     return () => { controller.abort(); };
   }, [fetchSnapshot]);
   useEffect(() => {

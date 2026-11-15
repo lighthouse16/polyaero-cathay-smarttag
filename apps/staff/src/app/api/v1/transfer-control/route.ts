@@ -7,7 +7,7 @@ import type { TransferControlSnapshot } from "../../../../lib/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
   // ponytail: upstream transfer manifest/assessment adapter not supplied; no legacy demo-store join.
   const snapshot: TransferControlSnapshot = {
     availability: "unavailable", generatedAt: new Date().toISOString(), validUntil: null,
@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
   };
   if (process.env.STAFF_LIVE_BACKEND === "1") {
     try {
-      const liveSnapshot = await fetchLiveTransferSnapshot();
+      const liveSnapshot = await fetchLiveTransferSnapshot(undefined, new URL(request.url).searchParams.get("fresh") === "1");
       return NextResponse.json(liveSnapshot, { headers: { "Cache-Control": "no-store" } });
     } catch {
       return NextResponse.json({ detail: "Transfer-control source unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });
