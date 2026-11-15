@@ -26,7 +26,7 @@
 The prototype includes:
 1. **Passenger Mobile App**: Reconstructed Cathay Pacific mobile app shell with flight booking, baggage management, digital pass, and contactless NFC tag pairing with session acknowledgment and continuous tap loop protection.
 2. **SmartTag Physical E-ink Hardware**: Standalone ESP32-C6 firmware with PN532 Type-4A card emulation, offline IATA 10-digit Interleaved 2 of 5 barcode generation, and Waveshare 4.2" bi-stable E-Paper display with power-cycle cold reset.
-3. **Ground Staff Operations Portal**: Next.js 15 transfer control dashboard featuring flight-first baggage tracking, tight connection alerts, and an **Baggage Recovery Copilot** (draggable Grammarly-style floating AI widget).
+3. **Ground Staff Operations Portal**: Next.js 15 transfer control dashboard featuring flight-first baggage tracking, tight connection alerts, and **Baggage Recovery Copilot** (draggable Grammarly-style floating AI widget).
 4. **Data Layer**: Supabase PostgreSQL schema with milestone event auditing and Row-Level Security (RLS).
 5. **Backend API**: FastAPI with PostgreSQL migrations and Cloud Run / RDS production deployment runbooks.
 
