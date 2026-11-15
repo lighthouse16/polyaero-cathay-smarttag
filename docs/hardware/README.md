@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag — Hardware Specification & Prototype
+# Baggage Recovery Copilot — Hardware Specification & Prototype
 
 Physical prototype verification for the Cathay Hackathon 2026 digital baggage identity tag.
 

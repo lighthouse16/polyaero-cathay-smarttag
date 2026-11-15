@@ -1,6 +1,6 @@
-# System architecture
+# Baggage Recovery Copilot System Architecture
 
-PolyAero Cathay SmartTag is an independent hackathon prototype. The API is the
+Baggage Recovery Copilot is an independent hackathon prototype. The API is the
 source of persisted member, booking, flight, tag, baggage, and operational data.
 
 ```text

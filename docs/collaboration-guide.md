@@ -1,4 +1,4 @@
-# PolyAero Cathay SmartTag Collaboration Guide
+# Baggage Recovery Copilot Collaboration Guide
 
 ## 1. Team Ownership Boundaries
 

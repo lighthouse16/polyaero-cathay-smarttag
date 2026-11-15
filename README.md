@@ -4,6 +4,10 @@
 ground-operations prototype. This is an independent PolyAero concept, not an
 official Cathay Pacific product or a production airline system.
 
+**Naming:** Baggage Recovery Copilot is the project name; SmartTag refers to the
+physical NFC/e-paper tag. Repository URLs, APK filenames, API paths, package names,
+and protocol identifiers retain their legacy names for compatibility.
+
 ## Demo and release links
 
 - [Hosted operations portal](https://cathay.haidangtrih.me/#transfer-control)

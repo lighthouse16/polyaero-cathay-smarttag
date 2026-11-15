@@ -1,4 +1,4 @@
-# Development guide
+# Baggage Recovery Copilot Development Guide
 
 The [root README](../README.md#run-locally) is the canonical local quickstart:
 prerequisites, PostgreSQL setup, migrations/seeds, environment files, and
